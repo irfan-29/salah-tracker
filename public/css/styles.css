@@ -1,0 +1,9 @@
+body{
+    text-align: center;
+}
+
+.form-floating {
+    margin: 20px 23%;
+    width: auto;
+    text-align: center;
+  }

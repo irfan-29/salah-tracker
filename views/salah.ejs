@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Track My Salah</title>
+        <!-- meta tag -->
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <!-- web logo -->
+        <!-- <link rel="icon" type="image/png" href="images/class_logo.png" /> -->
+        <!-- bootstrap -->
+        <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css"
+        rel="stylesheet"
+        integrity="sha384-Zenh87qX5JnK2Jl0vWa8Ck2rdkQ2Bzep5IDxbcnCeuOxjzrPF/et3URy9Bv1WTRi"
+        crossorigin="anonymous"
+        />
+        <!-- css link -->
+        <link rel="stylesheet" href="css/styles.css" />
+    </head>
+    <body>
+        <h3>Welcome, to salah tracker</h3>
+        <form action="/salah" method="post">
+            <div class="form-floating">
+              <input class="form-control" type="date" required id="date" name="date"">
+              <label for="date">Date</label>
+            </div>
+              <div class="form-floating">
+                  <select name="salah_name" id="salah" required class="form-control" placeholder="Enter the salah name">
+                    <option value="Fajr">Fajr</option>
+                    <option value="Zuhur">Zuhur</option>
+                    <option value="Asar">Asar</option>
+                    <option value="Magrib">Magrib</option>
+                    <option value="Isha">Isha</option>
+                    <option value="others">others</option>
+                  </select>
+                  <label for="salah">Salah</label>
+              </div>
+              <div class="form-floating">
+                <select name="salah_value" id="value" required class="form-control" placeholder="Enter the salah value">
+                  <option value="In Jamath">In Jamath</option>
+                  <option value="On Time">On Time</option>
+                  <option value="Late">Late</option>
+                  <option value="Not Prayed">Not Prayed</option>
+                  <option value="others">others</option>
+                </select>
+                <label for="value">Value</label>
+            </div>
+          
+              <div class="new-task">
+                <button type="submit" class="add btn btn-primary" value="add" name="add">Save</button>
+              </div>
+        </form>
+        
+        <br>
+        <hr>
+
+        <h3>Recorded Salah</h3>
+        <% if(keySalah!=""){ %>
+            <% keySalah.forEach(function(salah){ %>
+                <p><%= salah.date %></p>
+                <p><%= salah.name %></p>
+                <p><%= salah.value %></p>
+            <% }); %>
+        <% } %>
+
+    </body>
+</html>
