@@ -57,14 +57,27 @@
         <br>
         <hr>
 
-        <h3>Recorded Salah</h3>
-        <% if(keySalah!=""){ %>
-            <% keySalah.forEach(function(salah){ %>
-                <p><%= salah.date %></p>
-                <p><%= salah.name %></p>
-                <p><%= salah.value %></p>
-            <% }); %>
-        <% } %>
+        <h3>Today's Salah</h3>
+
+        <%= keyDate %>
+        <table class="table table-hover table-striped">
+          <thead class="table-light">
+              <tr>
+                  <th>Name</th>
+                  <th>Value</th>
+                  <!-- <th>Reason</th> -->
+              </tr>
+          </thead>
+          <tbody>
+              <% keySalah.forEach(function(salah) { %>
+                  <tr>
+                      <td><%= salah.name %></td>
+                      <td><%= salah.value %></td>
+                  </tr>
+              <% }); %>
+          </tbody>
+      </table>
+      <br>
 
     </body>
 </html>

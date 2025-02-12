@@ -17,7 +17,7 @@ mongoose.connect("mongodb+srv://admin-irfan:Irf6360944@cluster0.jo7etur.mongodb.
 
 
 const salahSchema = new mongoose.Schema({
-    date: Date,
+    date: String,
     name: String,
     value: String
 });
@@ -34,36 +34,47 @@ app.get("/", function(req, res){
     res.render("salah", {keySalah: "", keyLocation: 1258740});
 });
 
+
+app.get("/salah", function(req, res){
+    const today = new Date();
+    const options = { weekday: "long", month: "short", day: "2-digit", year: "numeric" };
+    const formattedDate = today.toLocaleDateString("en-US", options);
+    // console.log(formattedDate);
+    Salah.find({date: formattedDate}).then((salah) => {
+        // console.log(salah);
+        res.render('salah', { keyDate: formattedDate,  keySalah: salah, keyLocation: "1258740" });
+    });
+});
+
+
 app.post("/salah", function(req, res){
-    const date=req.body.date;
+    const date=new Date(req.body.date);
+    const options = { weekday: "long", month: "short", day: "2-digit", year: "numeric" };
+    const formattedDate = date.toLocaleDateString("en-US", options);
     const name=req.body.salah_name;
     const value=req.body.salah_value;
     const salah = new Salah({
-        date: date,
+        date: formattedDate,
         name: name,
         value: value
-    })
+    });
+    // console.log(formattedDate);
     salah.save();
     res.redirect("/salah");
 });
 
-app.get("/salah", function(req, res){
-    // try {
-    //     const salah = await Salah.find({});
-    //     res.render("salah", {keySalah: salah});
-    // } catch (err) {
-    //     console.log(err);
-    //     res.status(500).send('Error occurred while fetching Salah');
-    // }
-    Salah.find({}).then((salah) => {
-        res.render('salah', { keySalah: salah, keyLocation: "1258740" });
-    });
-});
-
 app.post("/location", function(req, res) {
     const location = req.body.location;
-    
-    Location.findOneAndUpdate({}, { location: location }, { sort: { _id: -1 }, upsert: true })
+
+    //add new locations here - for support
+    const locationMap = new Map([
+        ["Coimbatore", "1273865"],
+        ["Salem", "1257629"],
+        ["Hosur", "1269934"],
+        ["Ramanathapuram", "1258740"],
+        ["Bengaluru", "1277333"]
+    ]);
+    Location.findOneAndUpdate({}, { location: locationMap.get(location) }, { sort: { _id: -1 }, upsert: true })
         .then(() => {
             res.redirect("/salah-timings");
         })
@@ -81,16 +92,24 @@ app.get("/salah-timings", async(req, res)=>{
         const data = await response.text();
 
         const $ = cheerio.load(data);
-            const prayerTimes = [];
-            
-            $(".d-flex.flex-direction-row").each((index, element) => {
-                const timeType = $(element).find("p").first().text().trim(); // Fajr, Dhuhr, etc.
-                const time = $(element).find("p").last().text().trim(); // Prayer time (e.g., 05:29 AM)
-                prayerTimes.push({ timeType, time });
-            });
-            $("span:contains('Powered By')").remove();
-            // console.log(data);
-        res.render('salah-timings', { keyLocation: location!=null ? location.location : "1258740", keyPrayerTimes: prayerTimes, keyData: data });
+        const prayerDetails = {};
+
+        prayerDetails.location = $(".table-controller a").first().text().trim();
+        prayerDetails.hijriDate = $(".table-controller div").first().text().trim();
+        const today = new Date();
+        const options = { weekday: "long", month: "short", day: "2-digit", year: "numeric" };
+        const formattedDate = today.toLocaleDateString("en-US", options);
+        prayerDetails.date = formattedDate;
+
+        const prayerTimes = [];
+        $(".d-flex.flex-direction-row").each((index, element) => {
+            const timeType = $(element).find("p").first().text().trim();
+            const time = $(element).find("p").last().text().trim();
+            prayerTimes.push({ timeType, time });
+        });
+        prayerDetails.prayerTimes = prayerTimes;
+
+        res.render('salah-timings', { keyLocation: location!=null ? location.location : "1258740", keyPrayerDetails: prayerDetails, keyData: data });
     });
     }catch (err) {
         console.error(err);
