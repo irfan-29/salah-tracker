@@ -31,20 +31,23 @@ const Location = mongoose.model("Location", locationSchema);
 
 
 app.get("/", function(req, res){
-    res.render("salah", {keySalah: "", keyLocation: 1258740});
+    res.redirect("/salah");
+    // res.render("salah", {keyDate: "", keySalah: "", keyLocation: 1258740});
 });
 
 
 app.get("/salah", function(req, res){
-    const today = new Date();
+    let date = new Date(req.query.date);
+    if(isNaN(date.getTime())) date = new Date();
     const options = { weekday: "long", month: "short", day: "2-digit", year: "numeric" };
-    const formattedDate = today.toLocaleDateString("en-US", options);
-    // console.log(formattedDate);
+    const formattedDate = date.toLocaleDateString("en-US", options);
+
     Salah.find({date: formattedDate}).then((salah) => {
         // console.log(salah);
         res.render('salah', { keyDate: formattedDate,  keySalah: salah, keyLocation: "1258740" });
     });
 });
+
 
 
 app.post("/salah", function(req, res){
@@ -117,6 +120,14 @@ app.get("/salah-timings", async(req, res)=>{
     }
 });
 
+
+app.get("/special-days", function(req, res){
+    res.render('special-days');
+});
+
+app.get("/navbar", function(req, res){
+    res.render('navbar');
+});
 
 app.listen(process.env.PORT || 3000, function(){
     console.log("Server is running on port 3000");
