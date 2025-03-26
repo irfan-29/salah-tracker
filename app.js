@@ -111,7 +111,7 @@ app.get("/salah-timings", async(req, res)=>{
             prayerTimes.push({ timeType, time });
         });
         prayerDetails.prayerTimes = prayerTimes;
-
+        console.log($);
         res.render('salah-timings', { keyLocation: location!=null ? location.location : "1258740", keyPrayerDetails: prayerDetails, keyData: data });
     });
     }catch (err) {
@@ -122,7 +122,44 @@ app.get("/salah-timings", async(req, res)=>{
 
 
 app.get("/special-days", function(req, res){
-    res.render('special-days');
+    // res.render('special-days');
+
+    try{
+        Location.findOne({}).then(async (location) => {
+            const response = await fetch(`https://www.islamicfinder.org/specialislamicdays`);
+            const data = await response.text();
+    
+            const $ = cheerio.load(data);
+            const specialDays = [];
+
+            // Loop through each row of special days
+            $("#special-days-table tr").each((index, element) => {
+              const month = $(element).find(".date-box .title span").text().trim();
+              const day = $(element).find(".date-box .date span").text().trim();
+              const event = $(element).find(".day-details h2 a").text().trim();
+              const weekday = $(element).find(".day-details h4").text().split(",")[0].trim();
+              const hijriDate = $(element).find(".day-details h4").text().split(",")[1].trim();
+              const hijriYear = $(element).find(".day-details h4").text().split(",")[2].trim();
+            
+              if (month && day && event) {
+                specialDays.push({
+                  date: `${month} ${day}`,
+                  event,
+                  weekday,
+                  hijriDate,
+                  hijriYear,
+                });
+              }
+            });
+            
+            // console.log(specialDays);
+            // console.log(data);
+            res.render('special-days', {specialDays});
+        });
+    }catch (err) {
+        console.error(err);
+        res.status(500).send('Error fetching prayer times.');
+    }
 });
 
 app.get("/navbar", function(req, res){

@@ -3,9 +3,64 @@
 
         <h4>Special Islamic Days</h4>
         
-        <iframe style="width: 240px; height: 460px; border: 1px solid #ddd;" scrolling="no" src="https://www.islamicfinder.org/specialislamicdays"> </iframe>
+        <!-- <iframe style="width: 240px; height: 460px; border: 1px solid #ddd;" scrolling="no" src="https://www.islamicfinder.org/specialislamicdays"> </iframe> -->
         
         
+        <div class="container mt-5">
+            <table class="table table-bordered table-hover table-striped text-center shadow-sm">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Date</th>
+                        <th>Event</th>
+                        <th>Hijri Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% specialDays.forEach(function(day) { %>
+                        <tr>
+                            <td><%= day.date %><br><span class="badge bg-info text-dark"><%= day.weekday %></span</td>
+                            <td><strong><%= day.event %></strong></td>
+                            <td><em><%= day.hijriDate %><br><%= day.hijriYear %></em></td>
+                        </tr>
+                    <% }); %>
+                </tbody>
+            </table>
+        </div>
+        
+        <style>
+
+
+table {
+    /* border-collapse: collapse; */
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.table thead th {
+    background: #343a40;
+    color: #fff;
+    padding: 15px;
+}
+
+/* .table tbody tr:hover {
+    background: #ddd;
+    cursor: pointer;
+    transition: 0.3s ease;
+} */
+
+.table td {
+    text-wrap: nowrap;
+    padding: 15px 25px;
+    vertical-align: middle;
+}
+
+.badge {
+    font-size: 0.85rem;
+    padding: 5px 10px;
+    border-radius: 8px;
+}
+
+        </style>
 
     </body>
 </html>
