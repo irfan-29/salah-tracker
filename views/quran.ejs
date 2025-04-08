@@ -1,0 +1,75 @@
+<%- include("navbar") -%>
+
+
+        <h4>Quran</h4>
+        
+        <!-- <iframe style="width: 240px; height: 460px; border: 1px solid #ddd;" scrolling="no" src="https://www.islamicfinder.org/specialislamicdays"> </iframe> -->
+        
+        <br>
+        <h5>Surahs</h5>
+            <div class="container1">
+                <!-- <% surahs.forEach(function(surah) { %>
+                    <a href="/<">
+                      <div class="surah-item">
+                        <p class="surah-name"><%= surah.surahName %> ( <%= surah.surahNameArabic %> )</p>
+                        <p class="surah-translation"><%= surah.surahNameTranslation %></p>
+                        <p>Revelation Place: <%= surah.revelationPlace %></p>
+                        <p>Total Ayah: <%= surah.totalAyah %></p>
+                      </div>
+                    </a>
+                <% }); %> -->
+                <% for (let i = 0; i < surahs.length; i++) { 
+                    const surah = surahs[i]; %>
+                   <a href="/surah/<%= i + 1 %>">
+                       <div class="surah-item">
+                           <p class="surah-name"><%= surah.surahName %> ( <%= surah.surahNameArabic %> )</p>
+                           <p class="surah-translation"><%= surah.surahNameTranslation %></p>
+                           <p>Revelation Place: <%= surah.revelationPlace %></p>
+                           <p>Total Ayah: <%= surah.totalAyah %></p>
+                       </div>
+                   </a>
+               <% } %>
+            </div>
+            <br>
+            <br>
+
+            <!-- Make the change to store the reciter, and display that reciter, also store the last read surah, -->
+
+            
+    <style>
+        a{
+            text-decoration: none;
+            text-emphasis: none;
+        }
+        .container1 {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            padding: 30px 15px;
+            border-radius: 10px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.05);
+        }
+
+        .surah-item {
+            padding: 15px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .surah-item:last-child {
+            border-bottom: none;
+        }
+
+        .surah-name {
+            font-weight: bold;
+            font-size: 17px;
+            color: #333;
+        }
+
+        .surah-translation {
+            font-size: 15px;
+            color: #666;
+        }
+    </style>
+
+    </body>
+</html>

@@ -88,6 +88,22 @@ app.post("/location", function(req, res) {
 });
 
 
+app.get("/quran", async(req, res) => {
+    const response = await fetch(`https://quranapi.pages.dev/api/surah.json`);
+    const data = await response.json();
+    // console.log(data);
+    res.render("quran", {surahs: data});
+});
+
+app.get("/surah/:surahNo", async(req, res) => {
+    const surahNo = req.params.surahNo;
+    const response = await fetch(`https://quranapi.pages.dev/api/${surahNo}.json`);
+    const data = await response.json();
+    // console.log(data);
+    res.render("surah", {surah: data});
+});
+
+
 app.get("/salah-timings", async(req, res)=>{
     try{
     Location.findOne({}).then(async (location) => {
@@ -111,7 +127,7 @@ app.get("/salah-timings", async(req, res)=>{
             prayerTimes.push({ timeType, time });
         });
         prayerDetails.prayerTimes = prayerTimes;
-        console.log($);
+
         res.render('salah-timings', { keyLocation: location!=null ? location.location : "1258740", keyPrayerDetails: prayerDetails, keyData: data });
     });
     }catch (err) {

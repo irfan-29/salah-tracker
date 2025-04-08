@@ -1,0 +1,107 @@
+<%- include("navbar") -%>
+
+
+        <h4>Quran</h4>
+        
+        <!-- <iframe style="width: 240px; height: 460px; border: 1px solid #ddd;" scrolling="no" src="https://www.islamicfinder.org/specialislamicdays"> </iframe> -->
+        
+        <br>
+        <h5>Surah</h5>
+            <div class="container1">
+                <div class="surah-item">
+                   <p class="surah-name"><%= surah.surahName %> ( <%= surah.surahNameArabic %> )</p>
+                   <p class="surah-translation"><%= surah.surahNameTranslation %></p>
+                   <p>Revelation Place: <%= surah.revelationPlace %></p>
+                   <p>Total Ayah: <%= surah.totalAyah %></p>
+               </div>
+               <!-- <div class="audio-container" style="padding: 20px; background: #f9f9f9; border-radius: 10px;">
+                <% Object.keys(surah.audio).forEach(function(key) { %>
+                  <div class="audio-player" style="margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 8px; background: #fff;">
+                    <h5 style="margin-bottom: 10px;"><%= surah.audio[key].reciter %></h5>
+                    <audio controls style="width: 100%;">
+                      <source src="<%= surah.audio[key].originalUrl %>" type="audio/mpeg">
+                      Your browser does not support the audio element.
+                    </audio>
+                  </div>
+                <% }); %>
+               </div> -->
+
+               <div class="audio-container" style="padding: 20px; background: #f9f9f9; border-radius: 10px;">
+                <label for="reciterSelect"><strong>Select a Reciter:</strong></label>
+                <select id="reciterSelect" style="margin: 10px 0; padding: 8px; border-radius: 5px; border: 1px solid #ccc;">
+                  <% Object.keys(surah.audio).forEach(function(key, index) { %>
+                    <option value="reciter-<%= index %>"><%= surah.audio[key].reciter %></option>
+                  <% }); %>
+                </select>
+              
+                <% Object.keys(surah.audio).forEach(function(key, index) { %>
+                  <div class="audio-player" id="reciter-<%= index %>" style="display: none; margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 8px; background: #fff;">
+                    <h5 style="margin-bottom: 10px;"><%= surah.audio[key].reciter %></h5>
+                    <audio controls style="width: 100%;">
+                      <source src="<%= surah.audio[key].originalUrl %>" type="audio/mpeg">
+                      Your browser does not support the audio element.
+                    </audio>
+                  </div>
+                <% }); %>
+              </div>
+               
+               <% for (let i = 0; i < surah.arabic1.length; i++) { %>
+                    <p><%= i+1 %></p>
+                    <p class="surah-name" style="font-size: 24px;"><%= surah.arabic1[i] %></p>
+                    <p class="surah-translation" style="font-size: 24px; color: #333;"><%= surah.arabic2[i] %></p>
+                    <p class="surah-translation"><%= surah.english[i] %></p>
+                <% } %>
+            </div>
+            <br>
+            <br>
+
+
+            <script>
+                const select = document.getElementById('reciterSelect');
+                const players = document.querySelectorAll('.audio-player');
+              
+                function showSelectedReciter() {
+                  players.forEach(player => player.style.display = 'none');
+                  const selectedId = select.value;
+                  const selectedPlayer = document.getElementById(selectedId);
+                  if (selectedPlayer) selectedPlayer.style.display = 'block';
+                }
+              
+                select.addEventListener('change', showSelectedReciter);
+                // Show the first one by default
+                showSelectedReciter();
+              </script>
+
+    <style>
+        .container1 {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            padding: 30px 15px;
+            border-radius: 10px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.05);
+        }
+
+        .surah-item {
+            padding: 15px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .surah-item:last-child {
+            border-bottom: none;
+        }
+
+        .surah-name {
+            font-weight: bold;
+            font-size: 17px;
+            color: #333;
+        }
+
+        .surah-translation {
+            font-size: 16px;
+            color: #666;
+        }
+    </style>
+
+    </body>
+</html>
