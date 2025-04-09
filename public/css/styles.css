@@ -3,6 +3,11 @@ body{
     align-items: center;
 }
 
+a, h5{
+    text-decoration: none;
+    text-emphasis: none;
+}
+
 .form-floating {
     margin: 20px 23%;
     width: auto;

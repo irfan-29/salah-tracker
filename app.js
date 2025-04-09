@@ -28,6 +28,12 @@ const locationSchema = new mongoose.Schema({
 });
 const Location = mongoose.model("Location", locationSchema);
 
+const settingsSchema = new mongoose.Schema({
+    favoriteReciter: Number,
+    favoriteTranslation: String,
+    lastRead: String
+});
+const Settings = mongoose.model("Settings", settingsSchema);
 
 
 app.get("/", function(req, res){
@@ -88,6 +94,41 @@ app.post("/location", function(req, res) {
 });
 
 
+app.get("/settings", function(req, res){
+    const settings = Settings.findOne({});
+    res.render('settings', {settings: settings});
+});
+
+app.post("/reciter", function(req, res){
+    const reciter = req.body.reciter;
+
+    Settings.findOneAndUpdate({}, { favoriteReciter: reciter }, { sort: { _id: -1 }, upsert: true })
+        .then(() => {
+            res.redirect("/surah/1"); 
+            // change it to last read surah index
+        })
+        .catch((err) => {
+            console.error(err);
+            res.status(500).send("Error updating location.");
+        });
+});
+
+
+app.post("/translation", function(req, res){
+    const translation = req.body.translation;
+
+    // Settings.findOneAndUpdate({}, { favoriteReciter: reciter }, { sort: { _id: -1 }, upsert: true })
+    //     .then(() => {
+    //         res.redirect("/surah/1"); 
+    //         // change it to last read surah index
+    //     })
+    //     .catch((err) => {
+    //         console.error(err);
+    //         res.status(500).send("Error updating location.");
+    //     });
+});
+
+
 app.get("/quran", async(req, res) => {
     const response = await fetch(`https://quranapi.pages.dev/api/surah.json`);
     const data = await response.json();
@@ -99,8 +140,14 @@ app.get("/surah/:surahNo", async(req, res) => {
     const surahNo = req.params.surahNo;
     const response = await fetch(`https://quranapi.pages.dev/api/${surahNo}.json`);
     const data = await response.json();
-    // console.log(data);
-    res.render("surah", {surah: data});
+    // default reciter is 1
+    let reciter = 1; 
+     // wait for settings to be fetched
+    const settings = await Settings.findOne({});
+    if (settings) {
+        reciter = settings.favoriteReciter;
+    }
+    res.render("surah", {surah: data, favoriteReciter: String(reciter)});
 });
 
 

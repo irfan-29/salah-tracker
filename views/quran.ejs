@@ -7,6 +7,27 @@
         
         <br>
         <h5>Surahs</h5>
+            <!-- search -->
+            <div class="form-floating">
+                <input class="form-control" type="text" required id="text" placeholder="text" name="text">
+                <label for="text">Search</label>
+            </div>
+            <!-- <div class="new-task">
+                <button type="submit" class="add btn btn-primary" value="add" name="add">Save</button>
+            </div> -->
+            <!-- last read -->
+            <div class="container1">
+                <p>Last Read: </p>
+                <a href="/surah/1">
+                   <div class="surah-item">
+                       <p class="surah-name">1. <%= surahs[0].surahName %> ( <%= surahs[0].surahNameArabic %> )</p>
+                       <p class="surah-translation"><%= surahs[0].surahNameTranslation %></p>
+                       <p>Revelation Place: <%= surahs[0].revelationPlace %></p>
+                       <p>Total Ayah: <%= surahs[0].totalAyah %></p>
+                   </div>
+               </a>
+             </div>
+             <!-- display all surahs -->
             <div class="container1">
                 <!-- <% surahs.forEach(function(surah) { %>
                     <a href="/<">
@@ -22,7 +43,7 @@
                     const surah = surahs[i]; %>
                    <a href="/surah/<%= i + 1 %>">
                        <div class="surah-item">
-                           <p class="surah-name"><%= surah.surahName %> ( <%= surah.surahNameArabic %> )</p>
+                           <p class="surah-name"><%= i+1 %>. <%= surah.surahName %> ( <%= surah.surahNameArabic %> )</p>
                            <p class="surah-translation"><%= surah.surahNameTranslation %></p>
                            <p>Revelation Place: <%= surah.revelationPlace %></p>
                            <p>Total Ayah: <%= surah.totalAyah %></p>
@@ -32,11 +53,22 @@
             </div>
             <br>
             <br>
-
+            
+            <!-- display surah number -->
+            <!-- search option or filter option with surah number, name -->
+            <!-- back option on surah to, go to quran page -->
+            <!-- make translation option, on settings -> to get translatio -> to be on hindi, eng, urdu -->
+             <!-- also, reciter to set on settings -->
+              <!-- also, to show which arabic format -->
             <!-- Make the change to store the reciter, and display that reciter, also store the last read surah, -->
 
-            
+            <!-- also, add formatting and styling -->
+
     <style>
+        body{
+            text-align: center;
+            align-items: center;
+        }
         a{
             text-decoration: none;
             text-emphasis: none;

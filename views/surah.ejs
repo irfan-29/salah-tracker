@@ -14,36 +14,26 @@
                    <p>Revelation Place: <%= surah.revelationPlace %></p>
                    <p>Total Ayah: <%= surah.totalAyah %></p>
                </div>
-               <!-- <div class="audio-container" style="padding: 20px; background: #f9f9f9; border-radius: 10px;">
-                <% Object.keys(surah.audio).forEach(function(key) { %>
-                  <div class="audio-player" style="margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 8px; background: #fff;">
-                    <h5 style="margin-bottom: 10px;"><%= surah.audio[key].reciter %></h5>
-                    <audio controls style="width: 100%;">
-                      <source src="<%= surah.audio[key].originalUrl %>" type="audio/mpeg">
-                      Your browser does not support the audio element.
-                    </audio>
-                  </div>
-                <% }); %>
-               </div> -->
 
-               <div class="audio-container" style="padding: 20px; background: #f9f9f9; border-radius: 10px;">
-                <label for="reciterSelect"><strong>Select a Reciter:</strong></label>
-                <select id="reciterSelect" style="margin: 10px 0; padding: 8px; border-radius: 5px; border: 1px solid #ccc;">
-                  <% Object.keys(surah.audio).forEach(function(key, index) { %>
-                    <option value="reciter-<%= index %>"><%= surah.audio[key].reciter %></option>
+              <form action="/reciter" method="POST" style="margin-bottom: 20px;">
+                <label for="reciterSelect"><strong>Select Your Preferred Reciter:</strong></label>
+                <select name="reciter" id="reciter" required style="margin: 10px 0; padding: 8px; border-radius: 5px; border: 1px solid #ccc;">
+                  <% Object.keys(surah.audio).forEach(function(key) { %>
+                    <option value="<%= key %>" <%= key === favoriteReciter ? 'selected' : '' %>><%= surah.audio[key].reciter %></option>
                   <% }); %>
                 </select>
-              
-                <% Object.keys(surah.audio).forEach(function(key, index) { %>
-                  <div class="audio-player" id="reciter-<%= index %>" style="display: none; margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 8px; background: #fff;">
-                    <h5 style="margin-bottom: 10px;"><%= surah.audio[key].reciter %></h5>
-                    <audio controls style="width: 100%;">
-                      <source src="<%= surah.audio[key].originalUrl %>" type="audio/mpeg">
-                      Your browser does not support the audio element.
-                    </audio>
-                  </div>
-                <% }); %>
-              </div>
+                <button type="submit" style="padding: 8px 12px; border: none; border-radius: 5px; background: #007bff; color: white;">Save</button>
+              </form>
+
+              <% if (surah.audio[favoriteReciter]) { %>
+                <div class="audio-player" style="margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 8px; background: #fff;">
+                  <h5 style="margin-bottom: 10px;"><%= surah.audio[favoriteReciter].reciter %></h5>
+                  <audio controls style="width: 100%;">
+                    <source src="<%= surah.audio[favoriteReciter].originalUrl %>" type="audio/mpeg">
+                    Your browser does not support the audio element.
+                  </audio>
+                </div>
+              <% } %>
                
                <% for (let i = 0; i < surah.arabic1.length; i++) { %>
                     <p><%= i+1 %></p>
