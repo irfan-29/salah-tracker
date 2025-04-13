@@ -1,5 +1,7 @@
 const express = require("express");
 const bodyParser = require("body-parser");
+const serverless = require("serverless-http");
+const path = require("path");
 const mongoose = require("mongoose");
 const ejs = require("ejs");
 const fetch = require("node-fetch");
@@ -10,7 +12,9 @@ const app=express();
 app.set('view engine', 'ejs');
 
 app.use(bodyParser.urlencoded({extended: true}));
-app.use(express.static("public"));
+// app.use(express.static("public"));
+app.use(express.static(path.join(__dirname, "../public")));
+app.set("views", path.join(__dirname, "../views"));
 
 mongoose.set({strictQuery: true});
 mongoose.connect("mongodb+srv://admin-irfan:Irf6360944@cluster0.jo7etur.mongodb.net/salahDB");
@@ -231,6 +235,7 @@ app.get("/navbar", function(req, res){
 
 
 module.exports = app;
+module.exports.handler = serverless(app);
 
 app.listen(process.env.PORT || 3000, function(){
     console.log("Server is running on port 3000");

@@ -7,7 +7,7 @@
     "node": "20.x"
   },
   "scripts": {
-    "start": "node app.js",
+    "start": "node api/app.js",
     "build": "echo success",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -21,6 +21,8 @@
     "express": "^4.21.2",
     "mongoose": "^8.9.6",
     "node-fetch": "^2.7.0",
-    "nodemon": "^3.1.9"
+    "nodemon": "^3.1.9",
+    "path": "^0.12.7",
+    "serverless-http": "^3.2.0"
   }
 }
