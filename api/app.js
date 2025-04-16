@@ -98,9 +98,16 @@ app.post("/location", function(req, res) {
 });
 
 
-app.get("/settings", function(req, res){
-    const settings = Settings.findOne({});
-    res.render('settings', {settings: settings});
+app.get("/settings", async(req, res) => {
+    const response = await fetch(`https://quranapi.pages.dev/api/reciters.json`);
+    const data = await response.json();
+    let reciter = 1; 
+     // wait for settings to be fetched
+    const settings = await Settings.findOne({});
+    if (settings) {
+        reciter = settings.favoriteReciter;
+    }
+    res.render('settings', {favoriteReciter: String(reciter), reciters: data});
 });
 
 app.post("/reciter", function(req, res){
@@ -137,7 +144,12 @@ app.get("/quran", async(req, res) => {
     const response = await fetch(`https://quranapi.pages.dev/api/surah.json`);
     const data = await response.json();
     // console.log(data);
-    res.render("quran", {surahs: data});
+    let lastRead = 1;
+    const settings = await Settings.findOne({});
+    if (settings) {
+        lastRead = settings.lastRead;
+    }
+    res.render("quran", {surahs: data, lastRead: lastRead});
 });
 
 app.get("/surah/:surahNo", async(req, res) => {
@@ -151,6 +163,12 @@ app.get("/surah/:surahNo", async(req, res) => {
     if (settings) {
         reciter = settings.favoriteReciter;
     }
+    // to update for last read
+    Settings.findOneAndUpdate({}, { lastRead: surahNo }, { sort: { _id: -1 }, upsert: true })
+        .catch((err) => {
+            console.error(err);
+            res.status(500).send("Error updating lsat read.");
+        });
     res.render("surah", {surah: data, favoriteReciter: String(reciter)});
 });
 

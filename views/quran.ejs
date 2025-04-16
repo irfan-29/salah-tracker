@@ -18,12 +18,12 @@
             <!-- last read -->
             <div class="container1">
                 <p>Last Read: </p>
-                <a href="/surah/1">
+                <a href="/surah/<%= lastRead %>">
                    <div class="surah-item">
-                       <p class="surah-name">1. <%= surahs[0].surahName %> ( <%= surahs[0].surahNameArabic %> )</p>
-                       <p class="surah-translation"><%= surahs[0].surahNameTranslation %></p>
-                       <p>Revelation Place: <%= surahs[0].revelationPlace %></p>
-                       <p>Total Ayah: <%= surahs[0].totalAyah %></p>
+                       <p class="surah-name"><%= lastRead %>. <%= surahs[lastRead-1].surahName %> ( <%= surahs[lastRead-1].surahNameArabic %> )</p>
+                       <p class="surah-translation"><%= surahs[lastRead-1].surahNameTranslation %></p>
+                       <p>Revelation Place: <%= surahs[lastRead-1].revelationPlace %></p>
+                       <p>Total Ayah: <%= surahs[lastRead-1].totalAyah %></p>
                    </div>
                </a>
              </div>
