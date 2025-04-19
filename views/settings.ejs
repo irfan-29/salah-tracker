@@ -3,6 +3,8 @@
 
         <h4>Settings</h4>
         
+        <br>
+        <h5 style="text-align: left; margin-left: 25%;">Reciter:</h5>
         <form action="/reciter" method="POST" style="margin-bottom: 20px;">
             <label for="reciterSelect"><strong>Select Your Preferred Reciter:</strong></label>
             <select name="reciter" id="reciter" required style="margin: 10px 0; padding: 8px; border-radius: 5px; border: 1px solid #ccc;">
@@ -12,6 +14,38 @@
             </select>
             <button type="submit" style="padding: 8px 12px; border: none; border-radius: 5px; background: #007bff; color: white;">Save</button>
           </form>
+        <br>
+        
+        <h5 style="text-align: left; margin-left: 25%;">Challenges:</h5>
+        <form action="/add-challenge" method="POST">
+          <input type="text" name="challenge" placeholder="Enter your challenge (e.g., Drink 4L of water)"
+          required style="padding: 10px; width: 25%; border: 1px solid #ccc; border-radius: 5px;"
+        />
+        <button
+          type="submit"
+          style="padding: 8px 15px; margin-left: 10px; background-color: #28a745; color: white; border: none; border-radius: 5px;"
+        >
+          Add Challenge
+        </button>
+        </form>
+        <br>
+        <br>
 
+        <h5 style="text-align: left; margin-left: 25%;">Default Home page:</h5>
+        <form action="/default-home" method="POST">
+          <label for="defaultHome"><strong>Select Your Default Home:</strong></label>
+            <select name="defaultHome" id="defaultHome" required style="margin: 10px 0; padding: 8px; border-radius: 5px; border: 1px solid #ccc;">
+              <option value="salah" <%= "salah" === defaultHome ? 'selected' : '' %>>Salah</option>
+              <option value="quran" <%= "quran" === defaultHome ? 'selected' : '' %>>Quran</option>
+              <option value="audio" <%= "audio" === defaultHome ? 'selected' : '' %>>Audio</option>
+              <option value="salah-tracker" <%= "salah-tracker" === defaultHome ? 'selected' : '' %>>Salah Tracker</option>
+              <option value="salah-timings" <%= "salah-timings" === defaultHome ? 'selected' : '' %>>Salah Timings</option>
+              <option value="challenges" <%= "challenges" === defaultHome ? 'selected' : '' %>>Challenges</option>
+              <option value="analytics" <%= "analytics" === defaultHome ? 'selected' : '' %>>Analytics</option>
+              <option value="posts" <%= "posts" === defaultHome ? 'selected' : '' %>>Posts</option>
+              <option value="settings" <%= "settings" === defaultHome ? 'selected' : '' %>>Settings</option>
+            </select>
+            <button type="submit" style="padding: 8px 12px; border: none; border-radius: 5px; background: #007bff; color: white;">Save</button>
+          </form>
     </body>
 </html>

@@ -1,0 +1,35 @@
+<%- include("navbar") -%>
+
+
+
+
+
+        <h3 style="text-align: center;">Your Challenges</h3>
+
+        <form action="/update-streaks" method="POST">
+            <div class="form-floating">
+                <input class="form-control" type="date" required id="date" name="date"">
+                <label for="date">Date</label>
+              </div>
+              <br>
+            <div style="width: 60%; margin: auto;">
+              <% keyChallenge.forEach(function(challenge, i) { %>
+                  <input type="checkbox" name="completed[]" value="<%= challenge._id %>" id="challenge_<%= i %>">
+                  <label style="margin-bottom: 4px;" for="challenge_<%= i %>">
+                    <strong><%= challenge.challenge %></strong>
+                  </label>
+                  <p style="margin-bottom: 4px;">Current Streak: <%= challenge.streak %> days🔥</p>
+                  <p>Last updated: <%= challenge.lastUpdated %></p>
+                  <br>
+              <% }); %>
+              <button type="submit" style="padding: 10px 20px; background: #28a745; color: white; border: none; border-radius: 5px;">
+                Update Streaks
+              </button>
+            </div>
+          </form>
+        
+        <br>
+
+
+    </body>
+</html>

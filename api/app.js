@@ -33,16 +33,34 @@ const locationSchema = new mongoose.Schema({
 const Location = mongoose.model("Location", locationSchema);
 
 const settingsSchema = new mongoose.Schema({
+    defaultHome: String,
+    location: String,
     favoriteReciter: Number,
     favoriteTranslation: String,
     lastRead: String
 });
 const Settings = mongoose.model("Settings", settingsSchema);
 
+const challengesSchema = new mongoose.Schema({
+    challenge: String,
+    streak: Number,
+    lastUpdated: String
+});
+const Challenges = mongoose.model("Challenges", challengesSchema);
 
-app.get("/", function(req, res){
-    res.redirect("/salah");
-    // res.render("salah", {keyDate: "", keySalah: "", keyLocation: 1258740});
+
+
+app.get("/", async(req, res) => {
+    // chnage to home (or) dashboard page later
+    let defaultHome = "salah"; 
+     // wait for settings to be fetched
+    const settings = await Settings.findOne({});
+    if (settings) {
+        if(settings.defaultHome){
+            defaultHome = settings.defaultHome;
+        }
+    }
+    res.redirect("/"+defaultHome);
 });
 
 
@@ -74,69 +92,6 @@ app.post("/salah", function(req, res){
     // console.log(formattedDate);
     salah.save();
     res.redirect("/salah");
-});
-
-app.post("/location", function(req, res) {
-    const location = req.body.location;
-
-    //add new locations here - for support
-    const locationMap = new Map([
-        ["Coimbatore", "1273865"],
-        ["Salem", "1257629"],
-        ["Hosur", "1269934"],
-        ["Ramanathapuram", "1258740"],
-        ["Bengaluru", "1277333"]
-    ]);
-    Location.findOneAndUpdate({}, { location: locationMap.get(location) }, { sort: { _id: -1 }, upsert: true })
-        .then(() => {
-            res.redirect("/salah-timings");
-        })
-        .catch((err) => {
-            console.error(err);
-            res.status(500).send("Error updating location.");
-        });
-});
-
-
-app.get("/settings", async(req, res) => {
-    const response = await fetch(`https://quranapi.pages.dev/api/reciters.json`);
-    const data = await response.json();
-    let reciter = 1; 
-     // wait for settings to be fetched
-    const settings = await Settings.findOne({});
-    if (settings) {
-        reciter = settings.favoriteReciter;
-    }
-    res.render('settings', {favoriteReciter: String(reciter), reciters: data});
-});
-
-app.post("/reciter", function(req, res){
-    const reciter = req.body.reciter;
-
-    Settings.findOneAndUpdate({}, { favoriteReciter: reciter }, { sort: { _id: -1 }, upsert: true })
-        .then(() => {
-            res.redirect("/surah/1"); 
-            // change it to last read surah index
-        })
-        .catch((err) => {
-            console.error(err);
-            res.status(500).send("Error updating location.");
-        });
-});
-
-
-app.post("/translation", function(req, res){
-    const translation = req.body.translation;
-
-    // Settings.findOneAndUpdate({}, { favoriteReciter: reciter }, { sort: { _id: -1 }, upsert: true })
-    //     .then(() => {
-    //         res.redirect("/surah/1"); 
-    //         // change it to last read surah index
-    //     })
-    //     .catch((err) => {
-    //         console.error(err);
-    //         res.status(500).send("Error updating location.");
-    //     });
 });
 
 
@@ -247,9 +202,152 @@ app.get("/special-days", function(req, res){
     }
 });
 
+
+app.get("/challenges", function(req, res){
+    Challenges.find({}).then((challenge) => {
+        res.render('challenges', {keyChallenge: challenge});
+    });
+    // res.render("challenges");
+});
+
+app.post("/add-challenge", function(req, res){
+    const challenge = req.body.challenge;
+
+    const newChallenge = new Challenges({
+        challenge: challenge
+    });
+    newChallenge.save();
+
+    // Challenges.findOneAndUpdate({}, { challenge: challenge }, { sort: { _id: -1 }, upsert: true })
+    //     .then(() => {
+    //         res.redirect("/settings");
+    //     })
+    //     .catch((err) => {
+    //         console.error(err);
+    //         res.status(500).send("Error adding challenge.");
+    // });
+    res.redirect("/settings");
+});
+
+app.post('/update-streaks', async (req, res) => {
+    const completed = req.body.completed || []; // array of completed challenge IDs
+    const lastUpdated = req.body.date; // get all date keys
+    // console.log(completed);
+    const allChallenges = await Challenges.find({});
+  
+    for (const challenge of allChallenges) {
+      const isCompleted = completed.includes(challenge._id.toString());
+  
+      if (isCompleted) {
+        // increment streak if completed
+        challenge.streak = (challenge.streak || 0) + 1;
+      } else {
+        // reset if not completed
+        challenge.streak = 0;
+      }
+  
+      challenge.lastUpdated = lastUpdated; // optional: track when it was last updated
+      await challenge.save();
+    }
+  
+    res.redirect('/challenges');
+  });
+  
+
 app.get("/navbar", function(req, res){
     res.render('navbar');
 });
+
+
+app.get("/settings", async(req, res) => {
+    const response = await fetch(`https://quranapi.pages.dev/api/reciters.json`);
+    const data = await response.json();
+    let reciter = 1; 
+    let defaultHome = "salah";
+     // wait for settings to be fetched
+    const settings = await Settings.findOne({});
+    if (settings) {
+        if(settings.favoriteReciter)
+            reciter = settings.favoriteReciter;
+        if(settings.defaultHome)
+            defaultHome = settings.defaultHome;
+    }
+    res.render('settings', {favoriteReciter: String(reciter), defaultHome: defaultHome, reciters: data});
+});
+
+
+app.post("/default-home", function(req,res){
+    const defaultHome = req.body.defaultHome;
+    Settings.findOneAndUpdate({}, { defaultHome: defaultHome }, { sort: { _id: -1 }, upsert: true })
+        .then(() => {
+            res.redirect("/settings");
+        })
+        .catch((err) => {
+            console.error(err);
+            res.status(500).send("Error updating default home.");
+    });
+});
+
+
+app.post("/location", function(req, res) {
+    const location = req.body.location;
+
+    //add new locations here - for support
+    const locationMap = new Map([
+        ["Coimbatore", "1273865"],
+        ["Salem", "1257629"],
+        ["Hosur", "1269934"],
+        ["Ramanathapuram", "1258740"],
+        ["Bengaluru", "1277333"]
+    ]);
+    // Location.findOneAndUpdate({}, { location: locationMap.get(location) }, { sort: { _id: -1 }, upsert: true })
+    //     .then(() => {
+    //         res.redirect("/salah-timings");
+    //     })
+    //     .catch((err) => {
+    //         console.error(err);
+    //         res.status(500).send("Error updating location.");
+    //     });
+    Settings.findOneAndUpdate({}, { location: locationMap.get(location) }, { sort: { _id: -1 }, upsert: true })
+        .then(() => {
+            res.redirect("/salah-timings");
+        })
+        .catch((err) => {
+            console.error(err);
+            res.status(500).send("Error updating location.");
+    });
+});
+
+
+app.post("/reciter", function(req, res){
+    const reciter = req.body.reciter;
+
+    Settings.findOneAndUpdate({}, { favoriteReciter: reciter }, { sort: { _id: -1 }, upsert: true })
+        .then(() => {
+            res.redirect("/surah/1"); 
+            // change it to last read surah index
+        })
+        .catch((err) => {
+            console.error(err);
+            res.status(500).send("Error updating location.");
+        });
+});
+
+
+app.post("/translation", function(req, res){
+    const translation = req.body.translation;
+
+    // Settings.findOneAndUpdate({}, { favoriteReciter: reciter }, { sort: { _id: -1 }, upsert: true })
+    //     .then(() => {
+    //         res.redirect("/surah/1"); 
+    //         // change it to last read surah index
+    //     })
+    //     .catch((err) => {
+    //         console.error(err);
+    //         res.status(500).send("Error updating location.");
+    //     });
+});
+
 
 
 module.exports = app;
