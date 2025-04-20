@@ -14,15 +14,23 @@
                    <p>Revelation Place: <%= surah.revelationPlace %></p>
                    <p>Total Ayah: <%= surah.totalAyah %></p>
                </div>
+               <br>
 
               <form action="/reciter" method="POST" style="margin-bottom: 20px;">
-                <label for="reciterSelect"><strong>Select Your Preferred Reciter:</strong></label>
-                <select name="reciter" id="reciter" required style="margin: 10px 0; padding: 8px; border-radius: 5px; border: 1px solid #ccc;">
-                  <% Object.keys(surah.audio).forEach(function(key) { %>
-                    <option value="<%= key %>" <%= key === favoriteReciter ? 'selected' : '' %>><%= surah.audio[key].reciter %></option>
-                  <% }); %>
-                </select>
-                <button type="submit" style="padding: 8px 12px; border: none; border-radius: 5px; background: #007bff; color: white;">Save</button>
+                <input type="hidden" name="redirectTo" value="/surah/<%= lastRead %>">
+                <div class="d-flex align-items-center w-100 gap-2">
+                  <div class="form-floating flex-grow-1">
+                    <select name="reciter" id="reciter" required class="form-control" placeholder="Select your Preferred Reciter">
+                      <% Object.keys(surah.audio).forEach(function(key) { %>
+                          <option value="<%= key %>" <%= key === favoriteReciter ? 'selected' : '' %>><%= surah.audio[key].reciter %></option>
+                        <% }); %>
+                    </select>
+                    <label for="reciter">Preferred Reciter</label>
+                  </div>
+                  <!-- <div class="new-task"> -->
+                    <button type="submit" class="add btn btn-primary" value="add" name="add">Save</button>
+                  <!-- </div> -->
+                </div>
               </form>
 
               <% if (surah.audio[favoriteReciter]) { %>
@@ -41,7 +49,7 @@
                     <p class="surah-translation" style="font-size: 24px; color: #333;"><%= surah.arabic2[i] %></p>
                     <p class="surah-translation"><%= surah.english[i] %></p>
                 <% } %>
-            </div>
+          </div>
             <br>
             <br>
 

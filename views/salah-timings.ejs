@@ -1,9 +1,5 @@
 <%- include("navbar") -%>
 
-
-
-        <!-- <iframe id="iframe" title="prayerWidget" class="widget-m-top" style=" height: 358px; border: 1px solid #ddd;" scrolling="no" src="https://www.islamicfinder.org/prayer-widget/<%= keyLocation %>/shafi/3/0/18.0/18.0"> </iframe> -->
-        
         
         <h4>Salah Timings for <%= keyPrayerDetails.location %></h4>
         <h5><%= keyPrayerDetails.hijriDate %></h5>
@@ -28,35 +24,30 @@
         
     <br>
 
+
+        <div class="container1">
         <form action="/location" method="post">
-              <div class="form-floating">
-                  <select name="location" id="location" required class="form-control" placeholder="Choose your Location">
-                    <option value="" disabled selected hidden>Choose your Location</option>
-                    <option value="Coimbatore">Coimbatore</option>
-                    <option value="Hosur">Hosur</option>
-                    <option value="Salem">Salem</option>
-                    <option value="Ramanathapuram">Ramanathapuram</option>
-                    <option value="Bengaluru">Bengaluru</option>
-                    <!-- <option value="others">others</option> -->
-                  </select>
-                  <label for="location">Location</label>
-              </div>
-              <!-- <div class="form-floating">
-                <select name="salah_value" id="value" required class="form-control" placeholder="Enter the salah value">
-                  <option value="In Jamath">In Jamath</option>
-                  <option value="On Time">On Time</option>
-                  <option value="Late">Late</option>
-                  <option value="Not Prayed">Not Prayed</option>
-                  <option value="others">others</option>
+            <input type="hidden" name="redirectTo" value="/salah-timings">
+            <div class="d-flex align-items-center w-95 gap-2" style="margin: 0 2.5%;">
+              <div class="form-floating flex-grow-1" style="margin: auto;">
+                <select name="location" id="location" required class="form-control" placeholder="Choose your Location">
+                  <!-- <option value="" disabled selected hidden>Choose your Location</option> -->
+                  <option value="Coimbatore" <%= "Coimbatore" === location ? 'selected' : '' %>>Coimbatore</option>
+                  <option value="Hosur" <%= "Hosur" === location ? 'selected' : '' %>>Hosur</option>
+                  <option value="Salem" <%= "Salem" === location ? 'selected' : '' %>>Salem</option>
+                  <option value="Ramanathapuram" <%= "Ramanathapuram" === location ? 'selected' : '' %>>Ramanathapuram</option>
+                  <option value="Bengaluru" <%= "Bengaluru" === location ? 'selected' : '' %>>Bengaluru</option>
+                  <!-- <option value="others">others</option> -->
                 </select>
-                <label for="value">Value</label> -->
+                <label for="location">Location</label>
             </div>
-          
-              <div class="new-task">
-                <button type="submit" class="add btn btn-primary" value="add" name="add">Save</button>
-              </div>
-        </form>
-        
+            <!-- <div class="new-task"> -->
+              <button type="submit" class="add btn btn-primary" style="margin-left: 8px;" value="add" name="add">Save</button>
+            </div>
+          </form>
+        </div>
+        <br>
+        <br>
 
     </body>
 </html>

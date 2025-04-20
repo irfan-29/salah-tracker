@@ -50,6 +50,24 @@ const Challenges = mongoose.model("Challenges", challengesSchema);
 
 
 
+
+
+
+
+//add new locations here - for support
+const locationMap = new Map([
+    ["Coimbatore", "1273865"],
+    ["Salem", "1257629"],
+    ["Hosur", "1269934"],
+    ["Ramanathapuram", "1258740"],
+    ["Bengaluru", "1277333"]
+]);
+
+
+
+
+
+
 app.get("/", async(req, res) => {
     // chnage to home (or) dashboard page later
     let defaultHome = "salah"; 
@@ -71,7 +89,6 @@ app.get("/salah", function(req, res){
     const formattedDate = date.toLocaleDateString("en-US", options);
 
     Salah.find({date: formattedDate}).then((salah) => {
-        // console.log(salah);
         res.render('salah', { keyDate: formattedDate,  keySalah: salah, keyLocation: "1258740" });
     });
 });
@@ -89,7 +106,6 @@ app.post("/salah", function(req, res){
         name: name,
         value: value
     });
-    // console.log(formattedDate);
     salah.save();
     res.redirect("/salah");
 });
@@ -98,11 +114,12 @@ app.post("/salah", function(req, res){
 app.get("/quran", async(req, res) => {
     const response = await fetch(`https://quranapi.pages.dev/api/surah.json`);
     const data = await response.json();
-    // console.log(data);
+
     let lastRead = 1;
     const settings = await Settings.findOne({});
     if (settings) {
-        lastRead = settings.lastRead;
+        if(settings.lastRead)
+            lastRead = settings.lastRead;
     }
     res.render("quran", {surahs: data, lastRead: lastRead});
 });
@@ -113,10 +130,14 @@ app.get("/surah/:surahNo", async(req, res) => {
     const data = await response.json();
     // default reciter is 1
     let reciter = 1; 
+    let lastRead = 1;
      // wait for settings to be fetched
     const settings = await Settings.findOne({});
     if (settings) {
-        reciter = settings.favoriteReciter;
+        if(settings.favoriteReciter)
+            reciter = settings.favoriteReciter;
+        if(settings.lastRead)
+            lastRead = settings.lastRead;
     }
     // to update for last read
     Settings.findOneAndUpdate({}, { lastRead: surahNo }, { sort: { _id: -1 }, upsert: true })
@@ -124,82 +145,73 @@ app.get("/surah/:surahNo", async(req, res) => {
             console.error(err);
             res.status(500).send("Error updating lsat read.");
         });
-    res.render("surah", {surah: data, favoriteReciter: String(reciter)});
+    res.render("surah", {surah: data, favoriteReciter: String(reciter), lastRead: lastRead});
 });
 
 
 app.get("/salah-timings", async(req, res)=>{
-    try{
-    Location.findOne({}).then(async (location) => {
-        const response = await fetch(`https://www.islamicfinder.org/prayer-widget/${location.location}/shafi/3/0/18.0/18.0`);
-        const data = await response.text();
-
-        const $ = cheerio.load(data);
-        const prayerDetails = {};
-
-        prayerDetails.location = $(".table-controller a").first().text().trim();
-        prayerDetails.hijriDate = $(".table-controller div").first().text().trim();
-        const today = new Date();
-        const options = { weekday: "long", month: "short", day: "2-digit", year: "numeric" };
-        const formattedDate = today.toLocaleDateString("en-US", options);
-        prayerDetails.date = formattedDate;
-
-        const prayerTimes = [];
-        $(".d-flex.flex-direction-row").each((index, element) => {
-            const timeType = $(element).find("p").first().text().trim();
-            const time = $(element).find("p").last().text().trim();
-            prayerTimes.push({ timeType, time });
-        });
-        prayerDetails.prayerTimes = prayerTimes;
-
-        res.render('salah-timings', { keyLocation: location!=null ? location.location : "1258740", keyPrayerDetails: prayerDetails, keyData: data });
-    });
-    }catch (err) {
-        console.error(err);
-        res.status(500).send('Error fetching prayer times.');
+    let location = "Coimbatore";
+    const settings = await Settings.findOne({});
+    if (settings) {
+        if(settings.location)
+            location = settings.location;
     }
+
+    const response = await fetch(`https://www.islamicfinder.org/prayer-widget/${locationMap.get(location)}/shafi/3/0/18.0/18.0`);
+    const data = await response.text();
+
+    const $ = cheerio.load(data);
+    const prayerDetails = {};
+
+    prayerDetails.location = $(".table-controller a").first().text().trim();
+    prayerDetails.hijriDate = $(".table-controller div").first().text().trim();
+    const today = new Date();
+    const options = { weekday: "long", month: "short", day: "2-digit", year: "numeric" };
+    const formattedDate = today.toLocaleDateString("en-US", options);
+    prayerDetails.date = formattedDate;
+
+    const prayerTimes = [];
+    $(".d-flex.flex-direction-row").each((index, element) => {
+        const timeType = $(element).find("p").first().text().trim();
+        const time = $(element).find("p").last().text().trim();
+        prayerTimes.push({ timeType, time });
+    });
+    prayerDetails.prayerTimes = prayerTimes;
+
+    res.render('salah-timings', { location: location, keyPrayerDetails: prayerDetails, keyData: data });
 });
 
 
-app.get("/special-days", function(req, res){
+app.get("/special-days", async(req, res) => {
     // res.render('special-days');
 
-    try{
-        Location.findOne({}).then(async (location) => {
-            const response = await fetch(`https://www.islamicfinder.org/specialislamicdays`);
-            const data = await response.text();
+    // Location.findOne({}).then(async (location) => {
+    const response = await fetch(`https://www.islamicfinder.org/specialislamicdays`);
+    const data = await response.text();
     
-            const $ = cheerio.load(data);
-            const specialDays = [];
+    const $ = cheerio.load(data);
+    const specialDays = [];
 
-            // Loop through each row of special days
-            $("#special-days-table tr").each((index, element) => {
-              const month = $(element).find(".date-box .title span").text().trim();
-              const day = $(element).find(".date-box .date span").text().trim();
-              const event = $(element).find(".day-details h2 a").text().trim();
-              const weekday = $(element).find(".day-details h4").text().split(",")[0].trim();
-              const hijriDate = $(element).find(".day-details h4").text().split(",")[1].trim();
-              const hijriYear = $(element).find(".day-details h4").text().split(",")[2].trim();
+    // Loop through each row of special days
+    $("#special-days-table tr").each((index, element) => {
+        const month = $(element).find(".date-box .title span").text().trim();
+        const day = $(element).find(".date-box .date span").text().trim();
+        const event = $(element).find(".day-details h2 a").text().trim();
+        const weekday = $(element).find(".day-details h4").text().split(",")[0].trim();
+        const hijriDate = $(element).find(".day-details h4").text().split(",")[1].trim();
+        const hijriYear = $(element).find(".day-details h4").text().split(",")[2].trim();
             
-              if (month && day && event) {
-                specialDays.push({
-                  date: `${month} ${day}`,
-                  event,
-                  weekday,
-                  hijriDate,
-                  hijriYear,
-                });
-              }
+        if (month && day && event) {
+            specialDays.push({
+                date: `${month} ${day}`,
+                event,
+                weekday,
+                hijriDate,
+                hijriYear,
             });
-            
-            // console.log(specialDays);
-            // console.log(data);
-            res.render('special-days', {specialDays});
-        });
-    }catch (err) {
-        console.error(err);
-        res.status(500).send('Error fetching prayer times.');
-    }
+        }
+        res.render('special-days', {specialDays});
+    });
 });
 
 
@@ -207,7 +219,6 @@ app.get("/challenges", function(req, res){
     Challenges.find({}).then((challenge) => {
         res.render('challenges', {keyChallenge: challenge});
     });
-    // res.render("challenges");
 });
 
 app.post("/add-challenge", function(req, res){
@@ -217,22 +228,15 @@ app.post("/add-challenge", function(req, res){
         challenge: challenge
     });
     newChallenge.save();
-
-    // Challenges.findOneAndUpdate({}, { challenge: challenge }, { sort: { _id: -1 }, upsert: true })
-    //     .then(() => {
-    //         res.redirect("/settings");
-    //     })
-    //     .catch((err) => {
-    //         console.error(err);
-    //         res.status(500).send("Error adding challenge.");
-    // });
     res.redirect("/settings");
 });
 
 app.post('/update-streaks', async (req, res) => {
     const completed = req.body.completed || []; // array of completed challenge IDs
-    const lastUpdated = req.body.date; // get all date keys
-    // console.log(completed);
+    const lastUpdated=new Date(req.body.date);
+    const options = { weekday: "long", month: "short", day: "2-digit", year: "numeric" };
+    const formattedDate = lastUpdated.toLocaleDateString("en-US", options);
+
     const allChallenges = await Challenges.find({});
   
     for (const challenge of allChallenges) {
@@ -246,7 +250,7 @@ app.post('/update-streaks', async (req, res) => {
         challenge.streak = 0;
       }
   
-      challenge.lastUpdated = lastUpdated; // optional: track when it was last updated
+      challenge.lastUpdated = formattedDate; // optional: track when it was last updated
       await challenge.save();
     }
   
@@ -264,6 +268,7 @@ app.get("/settings", async(req, res) => {
     const data = await response.json();
     let reciter = 1; 
     let defaultHome = "salah";
+    let location = "Coimbatore";
      // wait for settings to be fetched
     const settings = await Settings.findOne({});
     if (settings) {
@@ -271,8 +276,10 @@ app.get("/settings", async(req, res) => {
             reciter = settings.favoriteReciter;
         if(settings.defaultHome)
             defaultHome = settings.defaultHome;
+        if(settings.location)
+            location = settings.location;
     }
-    res.render('settings', {favoriteReciter: String(reciter), defaultHome: defaultHome, reciters: data});
+    res.render('settings', {favoriteReciter: String(reciter), defaultHome: defaultHome, location: location, reciters: data});
 });
 
 
@@ -291,26 +298,11 @@ app.post("/default-home", function(req,res){
 
 app.post("/location", function(req, res) {
     const location = req.body.location;
+    const redirectTo = req.body.redirectTo;
 
-    //add new locations here - for support
-    const locationMap = new Map([
-        ["Coimbatore", "1273865"],
-        ["Salem", "1257629"],
-        ["Hosur", "1269934"],
-        ["Ramanathapuram", "1258740"],
-        ["Bengaluru", "1277333"]
-    ]);
-    // Location.findOneAndUpdate({}, { location: locationMap.get(location) }, { sort: { _id: -1 }, upsert: true })
-    //     .then(() => {
-    //         res.redirect("/salah-timings");
-    //     })
-    //     .catch((err) => {
-    //         console.error(err);
-    //         res.status(500).send("Error updating location.");
-    //     });
-    Settings.findOneAndUpdate({}, { location: locationMap.get(location) }, { sort: { _id: -1 }, upsert: true })
+    Settings.findOneAndUpdate({}, { location: location }, { sort: { _id: -1 }, upsert: true })
         .then(() => {
-            res.redirect("/salah-timings");
+            res.redirect(redirectTo);
         })
         .catch((err) => {
             console.error(err);
@@ -321,10 +313,11 @@ app.post("/location", function(req, res) {
 
 app.post("/reciter", function(req, res){
     const reciter = req.body.reciter;
+    const redirectTo = req.body.redirectTo;
 
     Settings.findOneAndUpdate({}, { favoriteReciter: reciter }, { sort: { _id: -1 }, upsert: true })
         .then(() => {
-            res.redirect("/surah/1"); 
+            res.redirect(redirectTo); 
             // change it to last read surah index
         })
         .catch((err) => {

@@ -2,39 +2,33 @@
 
 
         <h4>Settings</h4>
-        
-        <br>
-        <h5 style="text-align: left; margin-left: 25%;">Reciter:</h5>
-        <form action="/reciter" method="POST" style="margin-bottom: 20px;">
-            <label for="reciterSelect"><strong>Select Your Preferred Reciter:</strong></label>
-            <select name="reciter" id="reciter" required style="margin: 10px 0; padding: 8px; border-radius: 5px; border: 1px solid #ccc;">
+
+        <div class="container1">
+        <h5 style="text-align: left; margin-left: 2.5%;">Reciter:</h5>
+        <form action="/reciter" method="POST">
+          <input type="hidden" name="redirectTo" value="/settings">
+          <div class="d-flex align-items-center w-95 gap-2" style="margin: 0 2.5%;">
+            <div class="form-floating flex-grow-1" style="margin: auto;">
+            <select name="reciter" id="reciter" required class="form-control" placeholder="Select your Preferred Reciter">
                 <% Object.keys(reciters).forEach(function(key) { %>
                     <option value="<%= key %>" <%= key === favoriteReciter ? 'selected' : '' %>><%= reciters[key] %></option>
                   <% }); %>
             </select>
-            <button type="submit" style="padding: 8px 12px; border: none; border-radius: 5px; background: #007bff; color: white;">Save</button>
-          </form>
-        <br>
-        
-        <h5 style="text-align: left; margin-left: 25%;">Challenges:</h5>
-        <form action="/add-challenge" method="POST">
-          <input type="text" name="challenge" placeholder="Enter your challenge (e.g., Drink 4L of water)"
-          required style="padding: 10px; width: 25%; border: 1px solid #ccc; border-radius: 5px;"
-        />
-        <button
-          type="submit"
-          style="padding: 8px 15px; margin-left: 10px; background-color: #28a745; color: white; border: none; border-radius: 5px;"
-        >
-          Add Challenge
-        </button>
+            <label for="reciter">Preferred Reciter</label>
+          </div>
+          <!-- <div class="new-task"> -->
+            <button type="submit" class="add btn btn-primary" style="margin-left: 8px;" value="add" name="add">Save</button>
+          </div>
         </form>
         <br>
         <br>
 
-        <h5 style="text-align: left; margin-left: 25%;">Default Home page:</h5>
+
+        <h5 style="text-align: left; margin-left: 2.5%;">Default Home page:</h5>
         <form action="/default-home" method="POST">
-          <label for="defaultHome"><strong>Select Your Default Home:</strong></label>
-            <select name="defaultHome" id="defaultHome" required style="margin: 10px 0; padding: 8px; border-radius: 5px; border: 1px solid #ccc;">
+          <div class="d-flex align-items-center w-95 gap-2" style="margin: 0 2.5%;">
+            <div class="form-floating flex-grow-1" style="margin: auto;">
+            <select name="defaultHome" id="defaultHome" required class="form-control" placeholder="Choose your Default Home">
               <option value="salah" <%= "salah" === defaultHome ? 'selected' : '' %>>Salah</option>
               <option value="quran" <%= "quran" === defaultHome ? 'selected' : '' %>>Quran</option>
               <option value="audio" <%= "audio" === defaultHome ? 'selected' : '' %>>Audio</option>
@@ -45,7 +39,61 @@
               <option value="posts" <%= "posts" === defaultHome ? 'selected' : '' %>>Posts</option>
               <option value="settings" <%= "settings" === defaultHome ? 'selected' : '' %>>Settings</option>
             </select>
-            <button type="submit" style="padding: 8px 12px; border: none; border-radius: 5px; background: #007bff; color: white;">Save</button>
-          </form>
+            <label for="defaultHome">Default Home</label>
+          </div>
+          <!-- <div class="new-task"> -->
+            <button type="submit" class="add btn btn-primary" style="margin-left: 8px;" value="add" name="add">Save</button>
+          </div>
+        </form>
+        <br>
+        <br>
+
+
+        <h5 style="text-align: left; margin-left: 2.5%;">Choose your Location:</h5>
+        <form action="/location" method="post">
+          <input type="hidden" name="redirectTo" value="/settings">
+          <div class="d-flex align-items-center w-95 gap-2" style="margin: 0 2.5%;">
+            <div class="form-floating flex-grow-1" style="margin: auto;">
+              <select name="location" id="location" required class="form-control" placeholder="Choose your Location">
+                <!-- <option value="" disabled selected hidden>Choose your Location</option> -->
+                <option value="Coimbatore" <%= "Coimbatore" === location ? 'selected' : '' %>>Coimbatore</option>
+                <option value="Hosur" <%= "Hosur" === location ? 'selected' : '' %>>Hosur</option>
+                <option value="Salem" <%= "Salem" === location ? 'selected' : '' %>>Salem</option>
+                <option value="Ramanathapuram" <%= "Ramanathapuram" === location ? 'selected' : '' %>>Ramanathapuram</option>
+                <option value="Bengaluru" <%= "Bengaluru" === location ? 'selected' : '' %>>Bengaluru</option>
+                <!-- <option value="others">others</option> -->
+              </select>
+              <label for="location">Location</label>
+          </div>
+          <!-- <div class="new-task"> -->
+            <button type="submit" class="add btn btn-primary" style="margin-left: 8px;" value="add" name="add">Save</button>
+          </div>
+        </form>
+        <br>
+        <br>
+                  
+        <h5 style="text-align: left; margin-left: 2.5%;">Challenges:</h5>
+        <form action="/add-challenge" method="POST">
+          <div class="d-flex align-items-center w-95 gap-2" style="margin: 0 2.5%;">
+          <div class="form-floating flex-grow-1" style="margin: auto;">
+            <input class="form-control" type="text" required id="challenge" name="challenge" placeholder="Enter your challenge (e.g., Drink 4L of water)">
+            <label for="challenge">Enter your challenge (e.g., Drink 4L of water)</label>
+          </div>
+          <button type="submit" class="add btn btn-primary" value="add" name="add" style="padding: 8px 15px; margin-left: 10px; background-color: #28a745; color: white; border: none; border-radius: 5px;">Add Challenge</button>
+        </div>
+        </form>
+        <br>
+        <br>
+      </div>
+<style>
+  .container1 {
+    max-width: 800px;
+    margin: 35px auto;
+    background-color: #ffffff;
+    padding: 30px 15px;
+    border-radius: 10px;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.05);
+}
+</style>
     </body>
 </html>
