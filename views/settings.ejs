@@ -4,50 +4,8 @@
         <h4>Settings</h4>
 
         <div class="container1">
-        <h5 style="text-align: left; margin-left: 2.5%;">Reciter:</h5>
-        <form action="/reciter" method="POST">
-          <input type="hidden" name="redirectTo" value="/settings">
-          <div class="d-flex align-items-center w-95 gap-2" style="margin: 0 2.5%;">
-            <div class="form-floating flex-grow-1" style="margin: auto;">
-              <select name="reciter" id="reciter" required class="form-control" placeholder="Select your Preferred Reciter">
-                <% Object.keys(reciters).forEach(function(key) { %>
-                    <option value="<%= key %>" <%= key === favoriteReciter ? 'selected' : '' %>><%= reciters[key] %></option>
-                  <% }); %>
-              </select>
-              <label for="reciter">Preferred Reciter</label>
-            </div>
-            <!-- <div class="new-task"> -->
-            <button type="submit" class="add btn btn-primary" style="margin-left: 8px;" value="add" name="add">Save</button>
-          </div>
-        </form>
-        <br>
-        <br>
 
-
-        <h5 style="text-align: left; margin-left: 2.5%;">Translation:</h5>
-        <form action="/set-edition" method="POST">
-          <div class="form-group d-flex align-items-center w-95 gap-2" style="margin: 0 2.5%;">
-            <div class="form-floating flex-grow-1" style="margin: auto;">
-              <select name="edition" id="edition" class="form-control" required>
-                <% Object.keys(editions).forEach(function(language) { %>
-                  <optgroup label="<%= language %>">
-                    <% editions[language].forEach(function(edition) { %>
-                      <option value="<%= edition.name %>" <%= edition.name === favoriteTranslation ? 'selected' : '' %>>
-                        <%= edition.author %>
-                      </option>
-                    <% }); %>
-                  </optgroup>
-                <% }); %>
-              </select>
-              <label for="edition">Preferred Quran Edition:</label>
-            </div>
-            <button type="submit" class="add btn btn-primary" style="margin-left: 8px;" value="add" name="add">Save</button>
-          </div>
-        </form>
-        <br>
-        <br>
-
-
+        <!-- Default Home -->
         <h5 style="text-align: left; margin-left: 2.5%;">Default Home page:</h5>
         <form action="/default-home" method="POST">
           <div class="d-flex align-items-center w-95 gap-2" style="margin: 0 2.5%;">
@@ -73,6 +31,72 @@
         <br>
 
 
+        <!-- Reciter -->
+        <h5 style="text-align: left; margin-left: 2.5%;">Reciter:</h5>
+        <form action="/reciter" method="POST">
+          <input type="hidden" name="redirectTo" value="/settings">
+          <div class="d-flex align-items-center w-95 gap-2" style="margin: 0 2.5%;">
+            <div class="form-floating flex-grow-1" style="margin: auto;">
+              <select name="reciter" id="reciter" required class="form-control" placeholder="Select your Preferred Reciter">
+                <% Object.keys(reciters).forEach(function(key) { %>
+                    <option value="<%= key %>" <%= key === favoriteReciter ? 'selected' : '' %>><%= reciters[key] %></option>
+                  <% }); %>
+              </select>
+              <label for="reciter">Preferred Reciter</label>
+            </div>
+            <!-- <div class="new-task"> -->
+            <button type="submit" class="add btn btn-primary" style="margin-left: 8px;" value="add" name="add">Save</button>
+          </div>
+        </form>
+        <br>
+        <br>
+
+
+        <!-- Edition(Translation) -->
+        <!-- Editions Form -->
+        <form action="/set-edition" method="POST">
+          <div class="d-flex align-items-center w-95 gap-2" style="margin: 0 2.5%; position: relative;">
+          
+            <div class="form-floating flex-grow-1" style="margin: auto; position: relative;">
+            
+              <!-- Fake select that opens custom dropdown -->
+              <input type="text" id="selectedEdition" class="form-control" placeholder="Select Preferred Quran Edition" readonly required>
+              <label for="selectedEdition">Preferred Quran Edition</label>
+            
+              <!-- Actual dropdown hidden by default -->
+              <div id="dropdownContainer" class="bg-white border rounded shadow-sm position-absolute w-100 mt-1" style="display: none; z-index: 1000; max-height: 350px; overflow-y: auto;">
+              
+                <!-- Search inside dropdown -->
+                <input type="text" id="searchEdition" class="form-control border-0 border-bottom rounded-0" placeholder="Search Language or Author..." style="border-radius: 0;">
+              
+                <!-- Options list -->
+                <div id="editionOptions" style="max-height: 300px; overflow-y: auto; text-align: left;">
+                  <% Object.keys(editions).forEach(function(language) { %>
+                    <div class="language-group">
+                      <div class="p-2 bg-light small text-muted language-label"><%= language %></div>
+                      <% editions[language].forEach(function(edition) { %>
+                        <div class="p-2 option-item" 
+                          data-value="<%= edition.name %>" 
+                          data-author="<%= edition.author %>" 
+                          data-language="<%= language %>">
+                          <%= edition.author %>
+                        </div>
+                      <% }); %>
+                    </div>
+                  <% }); %>
+                </div>
+              </div>
+              <!-- Hidden real input to submit value -->
+              <input type="hidden" name="edition" id="edition" required>
+            </div>
+            <button type="submit" class="add btn btn-primary" style="margin-left: 8px;" value="add" name="add">Save</button>
+          </div>
+        </form>
+        <br>
+        <br>    
+
+
+        <!-- Location -->
         <h5 style="text-align: left; margin-left: 2.5%;">Choose your Location:</h5>
         <form action="/location" method="post">
           <input type="hidden" name="redirectTo" value="/settings">
@@ -95,7 +119,9 @@
         </form>
         <br>
         <br>
-                  
+              
+        
+        <!-- Challenges -->
         <h5 style="text-align: left; margin-left: 2.5%;">Challenges:</h5>
         <form action="/add-challenge" method="POST">
           <div class="d-flex align-items-center w-95 gap-2" style="margin: 0 2.5%;">
@@ -109,15 +135,95 @@
         <br>
         <br>
       </div>
-<style>
-  .container1 {
-    max-width: 800px;
-    margin: 35px auto;
-    background-color: #ffffff;
-    padding: 30px 15px;
-    border-radius: 10px;
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.05);
-}
-</style>
-    </body>
+
+      <style>
+        .container1 {
+          max-width: 800px;
+          margin: 35px auto;
+          background-color: #ffffff;
+          padding: 30px 15px;
+          border-radius: 10px;
+          box-shadow: 0 8px 16px rgba(0, 0, 0, 0.05);
+      }
+      </style>
+
+      <!-- Script -->
+        <script>
+          document.addEventListener('DOMContentLoaded', function() {
+          const selectedInput = document.getElementById('selectedEdition');
+          const hiddenInput = document.getElementById('edition');
+          const dropdown = document.getElementById('dropdownContainer');
+          const searchInput = document.getElementById('searchEdition');
+          const optionsContainer = document.getElementById('editionOptions');
+        
+          const favoriteEdition = "<%= favoriteEdition %>"; // server-side passed
+        
+          // Prefill selected edition if exists
+          if (favoriteEdition) {
+            const favoriteKey = favoriteEdition.split(' ')[0];
+            const favoriteOption = optionsContainer.querySelector(`[data-value="${favoriteKey}"]`);
+            if (favoriteOption) {
+              const lang = favoriteOption.getAttribute('data-language');
+              const author = favoriteOption.getAttribute('data-author');
+              selectedInput.value = `${author} (${lang})`;
+              hiddenInput.value = `${favoriteOption.getAttribute('data-value')} (${lang})`; 
+            }
+          }
+        
+          selectedInput.addEventListener('click', function() {
+            dropdown.style.display = 'block';
+            searchInput.focus();
+          });
+        
+          optionsContainer.addEventListener('click', function(e) {
+            if (e.target.classList.contains('option-item')) {
+              const value = e.target.getAttribute('data-value');
+              const author = e.target.getAttribute('data-author');
+              const language = e.target.getAttribute('data-language');
+            
+              selectedInput.value = `${author} (${language})`;
+              hiddenInput.value = `${value} (${language})`;
+            
+              dropdown.style.display = 'none';
+            }
+          });
+        
+          searchInput.addEventListener('input', function() {
+            const searchTerm = this.value.trim().toLowerCase();
+            const languageGroups = optionsContainer.getElementsByClassName('language-group');
+          
+            Array.from(languageGroups).forEach(function(group) {
+              const languageLabel = group.querySelector('.language-label');
+              const optionItems = group.querySelectorAll('.option-item');
+            
+              let groupMatches = false;
+            
+              optionItems.forEach(function(item) {
+                const author = item.getAttribute('data-author').toLowerCase();
+                const language = item.getAttribute('data-language').toLowerCase();
+              
+                if (author.includes(searchTerm) || language.includes(searchTerm)) {
+                  item.style.display = 'block';
+                  groupMatches = true;
+                } else {
+                  item.style.display = 'none';
+                }
+              });
+            
+              if (groupMatches) {
+                languageLabel.style.display = 'block';
+              } else {
+                languageLabel.style.display = 'none';
+              }
+            });
+          });
+        
+          document.addEventListener('click', function(e) {
+            if (!dropdown.contains(e.target) && e.target !== selectedInput) {
+              dropdown.style.display = 'none';
+            }
+          });
+        });
+      </script>
+  </body>
 </html>

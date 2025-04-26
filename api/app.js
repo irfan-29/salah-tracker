@@ -20,26 +20,15 @@ mongoose.set({strictQuery: true});
 mongoose.connect("mongodb+srv://admin-irfan:Irf6360944@cluster0.jo7etur.mongodb.net/salahDB");
 
 
+
+// Schemas
+
 const salahSchema = new mongoose.Schema({
     date: String,
     name: String,
     value: String
 });
 const Salah = mongoose.model("Salah", salahSchema);
-
-const locationSchema = new mongoose.Schema({
-    location: String
-});
-const Location = mongoose.model("Location", locationSchema);
-
-const settingsSchema = new mongoose.Schema({
-    defaultHome: String,
-    location: String,
-    favoriteReciter: Number,
-    favoriteTranslation: String,
-    lastRead: String
-});
-const Settings = mongoose.model("Settings", settingsSchema);
 
 const challengesSchema = new mongoose.Schema({
     challenge: String,
@@ -48,11 +37,18 @@ const challengesSchema = new mongoose.Schema({
 });
 const Challenges = mongoose.model("Challenges", challengesSchema);
 
+const settingsSchema = new mongoose.Schema({
+    defaultHome: String,
+    location: String,
+    favoriteReciter: Number,
+    favoriteEdition: String,
+    lastRead: String
+});
+const Settings = mongoose.model("Settings", settingsSchema);
 
 
 
-
-
+// global constants
 
 //add new locations here - for support
 const locationMap = new Map([
@@ -65,49 +61,18 @@ const locationMap = new Map([
 
 
 
+// GET methods
 
-
-
-app.get("/", async(req, res) => {
+app.get("/", async (req, res) => {
     // chnage to home (or) dashboard page later
-    let defaultHome = "salah"; 
-     // wait for settings to be fetched
+    let defaultHome = "salah";
+    // wait for settings to be fetched
     const settings = await Settings.findOne({});
-    if (settings) {
-        if(settings.defaultHome){
+    if(settings){
+        if(settings.defaultHome)
             defaultHome = settings.defaultHome;
-        }
     }
-    res.redirect("/"+defaultHome);
-});
-
-
-app.get("/salah", function(req, res){
-    let date = new Date(req.query.date);
-    if(isNaN(date.getTime())) date = new Date();
-    const options = { weekday: "long", month: "short", day: "2-digit", year: "numeric" };
-    const formattedDate = date.toLocaleDateString("en-US", options);
-
-    Salah.find({date: formattedDate}).then((salah) => {
-        res.render('salah', { keyDate: formattedDate,  keySalah: salah, keyLocation: "1258740" });
-    });
-});
-
-
-
-app.post("/salah", function(req, res){
-    const date=new Date(req.body.date);
-    const options = { weekday: "long", month: "short", day: "2-digit", year: "numeric" };
-    const formattedDate = date.toLocaleDateString("en-US", options);
-    const name=req.body.salah_name;
-    const value=req.body.salah_value;
-    const salah = new Salah({
-        date: formattedDate,
-        name: name,
-        value: value
-    });
-    salah.save();
-    res.redirect("/salah");
+    res.redirect("/" + defaultHome);
 });
 
 
@@ -124,21 +89,22 @@ app.get("/quran", async(req, res) => {
     res.render("quran", {surahs: data, lastRead: lastRead});
 });
 
+
 app.get("/surah/:surahNo", async(req, res) => {
     // default reciter is 1
     let reciter = 1; 
-    let favoriteTranslation = "";
+    let favoriteEdition = "";
      // wait for settings to be fetched
     const settings = await Settings.findOne({});
     if (settings) {
         if(settings.favoriteReciter)
             reciter = settings.favoriteReciter;
-        if(settings.favoriteTranslation)
-            favoriteTranslation = settings.favoriteTranslation;
+        if(settings.favoriteEdition)
+            favoriteEdition = settings.favoriteEdition;
     }
     const surahNo = req.params.surahNo;
     const response = await fetch(`https://quranapi.pages.dev/api/${surahNo}.json`);
-    const translation = await fetch(`https://cdn.jsdelivr.net/gh/fawazahmed0/quran-api@1/editions/${favoriteTranslation}/${surahNo}.json`);
+    const translation = await fetch(`https://cdn.jsdelivr.net/gh/fawazahmed0/quran-api@1/editions/${favoriteEdition}/${surahNo}.json`);
     const data = await response.json();
     const translated = await translation.json();
 
@@ -149,6 +115,18 @@ app.get("/surah/:surahNo", async(req, res) => {
             res.status(500).send("Error updating lsat read.");
         });
     res.render("surah", {surah: data, translation: translated, favoriteReciter: String(reciter), lastRead: surahNo});
+});
+
+
+app.get("/salah", function(req, res){
+    let date = new Date(req.query.date);
+    if(isNaN(date.getTime())) date = new Date();
+    const options = { weekday: "long", month: "short", day: "2-digit", year: "numeric" };
+    const formattedDate = date.toLocaleDateString("en-US", options);
+
+    Salah.find({date: formattedDate}).then((salah) => {
+        res.render('salah', { keyDate: formattedDate,  keySalah: salah });
+    });
 });
 
 
@@ -186,9 +164,6 @@ app.get("/salah-timings", async(req, res)=>{
 
 
 app.get("/special-days", async(req, res) => {
-    // res.render('special-days');
-
-    // Location.findOne({}).then(async (location) => {
     const response = await fetch(`https://www.islamicfinder.org/specialislamicdays`);
     const data = await response.text();
     
@@ -223,6 +198,67 @@ app.get("/challenges", function(req, res){
         res.render('challenges', {keyChallenge: challenge});
     });
 });
+  
+
+app.get("/settings", async(req, res) => {
+    const reciters = await fetch(`https://quranapi.pages.dev/api/reciters.json`);
+    const edition = await fetch('https://cdn.jsdelivr.net/gh/fawazahmed0/quran-api@1/editions.json');
+
+    const recitersJson = await reciters.json();
+    const editionsJson = await edition.json();
+    let reciter = 1; 
+    let defaultHome = "salah";
+    let location = "Coimbatore";
+    let favoriteEdition = "";
+     // wait for settings to be fetched
+    const settings = await Settings.findOne({});
+    if (settings) {
+        if(settings.favoriteReciter)
+            reciter = settings.favoriteReciter;
+        if(settings.defaultHome)
+            defaultHome = settings.defaultHome;
+        if(settings.location)
+            location = settings.location;
+        if(settings.favoriteEdition)
+            favoriteEdition = settings.favoriteEdition;
+    }
+    // Group by language
+    const editionsByLanguage = {};
+    for (let key in editionsJson) {
+      const edition = editionsJson[key];
+      const lang = edition.language || "Unknown";
+      if (!editionsByLanguage[lang]) editionsByLanguage[lang] = [];
+      editionsByLanguage[lang].push({
+        name: edition.name,
+        author: edition.author
+      });
+    }
+    res.render('settings', {favoriteReciter: String(reciter), favoriteEdition: favoriteEdition, defaultHome: defaultHome, location: location, reciters: recitersJson, editions: editionsByLanguage});
+});
+
+
+
+
+
+
+
+// POST methods
+
+app.post("/salah", function(req, res){
+    const date=new Date(req.body.date);
+    const options = { weekday: "long", month: "short", day: "2-digit", year: "numeric" };
+    const formattedDate = date.toLocaleDateString("en-US", options);
+    const name=req.body.salah_name;
+    const value=req.body.salah_value;
+    const salah = new Salah({
+        date: formattedDate,
+        name: name,
+        value: value
+    });
+    salah.save();
+    res.redirect("/salah");
+});
+
 
 app.post("/add-challenge", function(req, res){
     const challenge = req.body.challenge;
@@ -233,6 +269,7 @@ app.post("/add-challenge", function(req, res){
     newChallenge.save();
     res.redirect("/settings");
 });
+
 
 app.post('/update-streaks', async (req, res) => {
     const completed = req.body.completed || []; // array of completed challenge IDs
@@ -258,48 +295,6 @@ app.post('/update-streaks', async (req, res) => {
     }
   
     res.redirect('/challenges');
-  });
-  
-
-app.get("/navbar", function(req, res){
-    res.render('navbar');
-});
-
-
-app.get("/settings", async(req, res) => {
-    const response = await fetch(`https://quranapi.pages.dev/api/reciters.json`);
-    const edition = await fetch('https://cdn.jsdelivr.net/gh/fawazahmed0/quran-api@1/editions.json');
-
-    const reciters = await response.json();
-    const editionsJson = await edition.json();
-    let reciter = 1; 
-    let defaultHome = "salah";
-    let location = "Coimbatore";
-    let favoriteTranslation = "";
-     // wait for settings to be fetched
-    const settings = await Settings.findOne({});
-    if (settings) {
-        if(settings.favoriteReciter)
-            reciter = settings.favoriteReciter;
-        if(settings.defaultHome)
-            defaultHome = settings.defaultHome;
-        if(settings.location)
-            location = settings.location;
-        if(settings.favoriteTranslation)
-            favoriteTranslation = settings.favoriteTranslation;
-    }
-    // Group by language
-    const editionsByLanguage = {};
-    for (let key in editionsJson) {
-      const edition = editionsJson[key];
-      const lang = edition.language || "Unknown";
-      if (!editionsByLanguage[lang]) editionsByLanguage[lang] = [];
-      editionsByLanguage[lang].push({
-        name: edition.name,
-        author: edition.author
-      });
-    }
-    res.render('settings', {favoriteReciter: String(reciter), favoriteTranslation: favoriteTranslation, defaultHome: defaultHome, location: location, reciters: reciters, editions: editionsByLanguage});
 });
 
 
@@ -337,19 +332,18 @@ app.post("/reciter", function(req, res){
 
     Settings.findOneAndUpdate({}, { favoriteReciter: reciter }, { sort: { _id: -1 }, upsert: true })
         .then(() => {
-            res.redirect(redirectTo); 
-            // change it to last read surah index
+            res.redirect(redirectTo);
         })
         .catch((err) => {
             console.error(err);
-            res.status(500).send("Error updating location.");
+            res.status(500).send("Error updating reciter.");
         });
 });
 
 app.post("/set-edition", function(req, res){
     const selectedEdition = req.body.edition;
-
-    Settings.findOneAndUpdate({}, { favoriteTranslation: selectedEdition }, { sort: { _id: -1 }, upsert: true })
+    console.log(selectedEdition);
+    Settings.findOneAndUpdate({}, { favoriteEdition: selectedEdition }, { sort: { _id: -1 }, upsert: true })
         .then(() => {
             res.redirect("/settings"); 
         })
@@ -358,20 +352,6 @@ app.post("/set-edition", function(req, res){
             res.status(500).send("Error updating Edition.");
         });
   });
-
-app.post("/translation", function(req, res){
-    const translation = req.body.translation;
-
-    // Settings.findOneAndUpdate({}, { favoriteReciter: reciter }, { sort: { _id: -1 }, upsert: true })
-    //     .then(() => {
-    //         res.redirect("/surah/1"); 
-    //         // change it to last read surah index
-    //     })
-    //     .catch((err) => {
-    //         console.error(err);
-    //         res.status(500).send("Error updating location.");
-    //     });
-});
 
 
 
