@@ -125,27 +125,30 @@ app.get("/quran", async(req, res) => {
 });
 
 app.get("/surah/:surahNo", async(req, res) => {
-    const surahNo = req.params.surahNo;
-    const response = await fetch(`https://quranapi.pages.dev/api/${surahNo}.json`);
-    const data = await response.json();
     // default reciter is 1
     let reciter = 1; 
-    let lastRead = 1;
+    let favoriteTranslation = "";
      // wait for settings to be fetched
     const settings = await Settings.findOne({});
     if (settings) {
         if(settings.favoriteReciter)
             reciter = settings.favoriteReciter;
-        if(settings.lastRead)
-            lastRead = settings.lastRead;
+        if(settings.favoriteTranslation)
+            favoriteTranslation = settings.favoriteTranslation;
     }
+    const surahNo = req.params.surahNo;
+    const response = await fetch(`https://quranapi.pages.dev/api/${surahNo}.json`);
+    const translation = await fetch(`https://cdn.jsdelivr.net/gh/fawazahmed0/quran-api@1/editions/${favoriteTranslation}/${surahNo}.json`);
+    const data = await response.json();
+    const translated = await translation.json();
+
     // to update for last read
     Settings.findOneAndUpdate({}, { lastRead: surahNo }, { sort: { _id: -1 }, upsert: true })
         .catch((err) => {
             console.error(err);
             res.status(500).send("Error updating lsat read.");
         });
-    res.render("surah", {surah: data, favoriteReciter: String(reciter), lastRead: lastRead});
+    res.render("surah", {surah: data, translation: translated, favoriteReciter: String(reciter), lastRead: surahNo});
 });
 
 
@@ -265,10 +268,14 @@ app.get("/navbar", function(req, res){
 
 app.get("/settings", async(req, res) => {
     const response = await fetch(`https://quranapi.pages.dev/api/reciters.json`);
-    const data = await response.json();
+    const edition = await fetch('https://cdn.jsdelivr.net/gh/fawazahmed0/quran-api@1/editions.json');
+
+    const reciters = await response.json();
+    const editionsJson = await edition.json();
     let reciter = 1; 
     let defaultHome = "salah";
     let location = "Coimbatore";
+    let favoriteTranslation = "";
      // wait for settings to be fetched
     const settings = await Settings.findOne({});
     if (settings) {
@@ -278,8 +285,21 @@ app.get("/settings", async(req, res) => {
             defaultHome = settings.defaultHome;
         if(settings.location)
             location = settings.location;
+        if(settings.favoriteTranslation)
+            favoriteTranslation = settings.favoriteTranslation;
     }
-    res.render('settings', {favoriteReciter: String(reciter), defaultHome: defaultHome, location: location, reciters: data});
+    // Group by language
+    const editionsByLanguage = {};
+    for (let key in editionsJson) {
+      const edition = editionsJson[key];
+      const lang = edition.language || "Unknown";
+      if (!editionsByLanguage[lang]) editionsByLanguage[lang] = [];
+      editionsByLanguage[lang].push({
+        name: edition.name,
+        author: edition.author
+      });
+    }
+    res.render('settings', {favoriteReciter: String(reciter), favoriteTranslation: favoriteTranslation, defaultHome: defaultHome, location: location, reciters: reciters, editions: editionsByLanguage});
 });
 
 
@@ -326,6 +346,18 @@ app.post("/reciter", function(req, res){
         });
 });
 
+app.post("/set-edition", function(req, res){
+    const selectedEdition = req.body.edition;
+
+    Settings.findOneAndUpdate({}, { favoriteTranslation: selectedEdition }, { sort: { _id: -1 }, upsert: true })
+        .then(() => {
+            res.redirect("/settings"); 
+        })
+        .catch((err) => {
+            console.error(err);
+            res.status(500).send("Error updating Edition.");
+        });
+  });
 
 app.post("/translation", function(req, res){
     const translation = req.body.translation;

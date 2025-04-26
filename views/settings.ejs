@@ -9,14 +9,38 @@
           <input type="hidden" name="redirectTo" value="/settings">
           <div class="d-flex align-items-center w-95 gap-2" style="margin: 0 2.5%;">
             <div class="form-floating flex-grow-1" style="margin: auto;">
-            <select name="reciter" id="reciter" required class="form-control" placeholder="Select your Preferred Reciter">
+              <select name="reciter" id="reciter" required class="form-control" placeholder="Select your Preferred Reciter">
                 <% Object.keys(reciters).forEach(function(key) { %>
                     <option value="<%= key %>" <%= key === favoriteReciter ? 'selected' : '' %>><%= reciters[key] %></option>
                   <% }); %>
-            </select>
-            <label for="reciter">Preferred Reciter</label>
+              </select>
+              <label for="reciter">Preferred Reciter</label>
+            </div>
+            <!-- <div class="new-task"> -->
+            <button type="submit" class="add btn btn-primary" style="margin-left: 8px;" value="add" name="add">Save</button>
           </div>
-          <!-- <div class="new-task"> -->
+        </form>
+        <br>
+        <br>
+
+
+        <h5 style="text-align: left; margin-left: 2.5%;">Translation:</h5>
+        <form action="/set-edition" method="POST">
+          <div class="form-group d-flex align-items-center w-95 gap-2" style="margin: 0 2.5%;">
+            <div class="form-floating flex-grow-1" style="margin: auto;">
+              <select name="edition" id="edition" class="form-control" required>
+                <% Object.keys(editions).forEach(function(language) { %>
+                  <optgroup label="<%= language %>">
+                    <% editions[language].forEach(function(edition) { %>
+                      <option value="<%= edition.name %>" <%= edition.name === favoriteTranslation ? 'selected' : '' %>>
+                        <%= edition.author %>
+                      </option>
+                    <% }); %>
+                  </optgroup>
+                <% }); %>
+              </select>
+              <label for="edition">Preferred Quran Edition:</label>
+            </div>
             <button type="submit" class="add btn btn-primary" style="margin-left: 8px;" value="add" name="add">Save</button>
           </div>
         </form>
