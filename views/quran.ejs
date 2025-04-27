@@ -7,14 +7,22 @@
         
         <br>
         <h5>Surahs</h5>
-            <!-- search -->
-            <div class="form-floating">
-                <input class="form-control" type="text" required id="text" placeholder="text" name="text">
-                <label for="text">Search</label>
-            </div>
-            <!-- <div class="new-task">
-                <button type="submit" class="add btn btn-primary" value="add" name="add">Save</button>
-            </div> -->
+
+            <!-- ayah of the day -->
+            <div class="container1">
+                <p>Ayah of the day: </p>
+                <a href="/surah/<%= lastRead %>">
+                   <div class="surah-item">
+                       <p class="surah-name"><%= lastRead %>. <%= surahs[lastRead-1].surahName %> ( <%= surahs[lastRead-1].surahNameArabic %> )</p>
+                       <p class="surah-translation"><%= surahs[lastRead-1].surahNameTranslation %></p>
+                       <p>Revelation Place: <%= surahs[lastRead-1].revelationPlace %></p>
+                       <p>Total Ayah: <%= surahs[lastRead-1].totalAyah %></p>
+                   </div>
+               </a>
+             </div>
+             <br>
+ 
+
             <!-- last read -->
             <div class="container1">
                 <p>Last Read: </p>
@@ -27,26 +35,105 @@
                    </div>
                </a>
              </div>
+             <br>
+
+
+
+            <!-- search -->
+            
+            <div class="container1" style="padding-bottom: 25px; position: relative; top: 10px; border-bottom-left-radius: 0%; border-bottom-right-radius: 0%; padding-top: 35px;">
+                <div class="d-flex align-items-center w-95 gap-2" style="margin: 0 2.5%; position: relative;">
+                <div class="form-floating flex-grow-1" style="margin: auto; position: relative;">
+                  <!-- Fake select -->
+                  <input type="text" id="selectedSurah" class="form-control" placeholder="Select Surah" readonly required>
+                  <label for="selectedSurah">Select Surah</label>
+              
+                  <!-- Dropdown Container -->
+                  <div id="surahDropdownContainer" class="bg-white border rounded shadow-sm position-absolute w-100 mt-1" style="display: none; z-index: 1000; max-height: 350px; overflow-y: auto;">
+                    <!-- Search inside dropdown -->
+                    <input type="text" id="searchSurah" class="form-control border-0 border-bottom rounded-0" placeholder="Search Surah Number or Name..." style="border-radius: 0;">
+              
+                    <!-- Surah List -->
+                    <div id="surahOptions" style="max-height: 300px; overflow-y: auto; text-align: left;">
+                      <% surahs.forEach(function(surah, index) { %>
+                        <div class="p-2 surah-option" 
+                          data-surahid="<%= index + 1 %>" 
+                          data-name="<%= surah.surahName %>">
+                          <%= index + 1 %>.
+                          <%= surah.surahName %>
+                        </div>
+                      <% }); %>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+              
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                  const selectedInput = document.getElementById('selectedSurah');
+                  const dropdown = document.getElementById('surahDropdownContainer');
+                  const searchInput = document.getElementById('searchSurah');
+                  const optionsContainer = document.getElementById('surahOptions');
+              
+                  selectedInput.addEventListener('click', function() {
+                    dropdown.style.display = 'block';
+                    searchInput.focus();
+                  });
+              
+                  optionsContainer.addEventListener('click', function(e) {
+                    if (e.target.classList.contains('surah-option')) {
+                      const surahId = e.target.getAttribute('data-surahid');
+                      if (surahId) {
+                        window.location.href = "/surah/" + surahId;
+                      }
+                    }
+                  });
+              
+                  searchInput.addEventListener('input', function() {
+                    const searchTerm = this.value.trim().toLowerCase();
+                    const options = optionsContainer.getElementsByClassName('surah-option');
+              
+                    Array.from(options).forEach(function(option) {
+                      const surahName = option.getAttribute('data-name').toLowerCase();
+                      const surahNumber = option.getAttribute('data-surahid').toLowerCase();
+              
+                      if (surahName.includes(searchTerm) || surahNumber.includes(searchTerm)) {
+                        option.style.display = 'block';
+                      } else {
+                        option.style.display = 'none';
+                      }
+                    });
+                  });
+              
+                  document.addEventListener('click', function(e) {
+                    if (!dropdown.contains(e.target) && e.target !== selectedInput) {
+                      dropdown.style.display = 'none';
+                    }
+                  });
+                });
+              </script>
+              
+              
+              
+  
+  
+
+
+
              <!-- display all surahs -->
-            <div class="container1">
-                <!-- <% surahs.forEach(function(surah) { %>
-                    <a href="/<">
-                      <div class="surah-item">
-                        <p class="surah-name"><%= surah.surahName %> ( <%= surah.surahNameArabic %> )</p>
-                        <p class="surah-translation"><%= surah.surahNameTranslation %></p>
-                        <p>Revelation Place: <%= surah.revelationPlace %></p>
-                        <p>Total Ayah: <%= surah.totalAyah %></p>
-                      </div>
-                    </a>
-                <% }); %> -->
+            <div class="container1" style="padding-top: 40px;">
                 <% for (let i = 0; i < surahs.length; i++) { 
                     const surah = surahs[i]; %>
-                   <a href="/surah/<%= i + 1 %>">
-                       <div class="surah-item">
+                    <a href="/surah/<%= i + 1 %>">
+                        <div class="surah-item" id="<%= i+1 %>">
                            <p class="surah-name"><%= i+1 %>. <%= surah.surahName %> ( <%= surah.surahNameArabic %> )</p>
                            <p class="surah-translation"><%= surah.surahNameTranslation %></p>
                            <p>Revelation Place: <%= surah.revelationPlace %></p>
                            <p>Total Ayah: <%= surah.totalAyah %></p>
+                           <% if (i<surahs.length-1) { %>
+                                <hr>
+                           <% } %>
                        </div>
                    </a>
                <% } %>
@@ -54,17 +141,46 @@
             <br>
             <br>
             
-            <!-- display surah number -->
-            <!-- search option or filter option with surah number, name -->
-            <!-- back option on surah to, go to quran page -->
-            <!-- make translation option, on settings -> to get translatio -> to be on hindi, eng, urdu -->
-             <!-- also, reciter to set on settings -->
-              <!-- also, to show which arabic format -->
-            <!-- Make the change to store the reciter, and display that reciter, also store the last read surah, -->
-
-            <!-- also, add formatting and styling -->
+            <!-- Go to Top Button -->
+            <button onclick="topFunction()" id="myBtn" title="Go to Top" style="display: none; position: fixed; bottom: 20px; right: 30px; z-index: 99; border: none; outline: none; cursor: pointer; border-radius: 50%;">
+                <span class="nav-icon material-symbols-rounded">keyboard_arrow_up</span>
+            </button>
+            
+            <!-- Script to handle scroll and top function -->
+            <script type="text/javascript">
+              let mybutton = document.getElementById("myBtn");
+            
+              window.onscroll = function() { scrollFunction() };
+            
+              function scrollFunction() {
+                if (document.body.scrollTop > 20 || document.documentElement.scrollTop > 20) {
+                  mybutton.style.display = "block";
+                } else {
+                  mybutton.style.display = "none";
+                }
+              }
+            
+              function topFunction() {
+                document.body.scrollTop = 0; // For Safari
+                document.documentElement.scrollTop = 0; // For Chrome, Firefox, IE and Opera
+              }
+            </script>
 
     <style>
+        #myBtn {
+          display: none;
+          position: fixed;
+          bottom: 30px;
+          right: 20px;
+          z-index: 99;
+          border: none;
+          background: var(--secondary-color);
+          box-shadow: rgba(0, 0, 0, 0.7) 0px 22px 80px 4px;
+          cursor: pointer;
+          padding: 8px 8px 4px 9px;
+          border-radius: 50%;
+          font-size: 15px;
+        }  
         body{
             text-align: center;
             align-items: center;
@@ -73,11 +189,14 @@
             text-decoration: none;
             text-emphasis: none;
         }
+        /* hr{
+          margin: 23px 20px 0 20px;
+        } */
         .container1 {
             max-width: 800px;
             margin: 0 auto;
             background-color: #ffffff;
-            padding: 30px 15px;
+            padding: 30px 20px 10px 20px;
             border-radius: 10px;
             box-shadow: 0 8px 16px rgba(0, 0, 0, 0.05);
         }

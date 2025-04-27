@@ -74,29 +74,29 @@
 
 
             <!-- Go to Top Button -->
-<button onclick="topFunction()" id="myBtn" title="Go to Top" style="display: none; position: fixed; bottom: 20px; right: 30px; z-index: 99; border: none; outline: none; cursor: pointer; border-radius: 50%;">
-    <span class="nav-icon material-symbols-rounded">keyboard_arrow_up</span>
-</button>
-
-<!-- Script to handle scroll and top function -->
-<script type="text/javascript">
-  let mybutton = document.getElementById("myBtn");
-
-  window.onscroll = function() { scrollFunction() };
-
-  function scrollFunction() {
-    if (document.body.scrollTop > 20 || document.documentElement.scrollTop > 20) {
-      mybutton.style.display = "block";
-    } else {
-      mybutton.style.display = "none";
-    }
-  }
-
-  function topFunction() {
-    document.body.scrollTop = 0; // For Safari
-    document.documentElement.scrollTop = 0; // For Chrome, Firefox, IE and Opera
-  }
-</script>
+            <button onclick="topFunction()" id="myBtn" title="Go to Top" style="display: none; position: fixed; bottom: 20px; right: 30px; z-index: 99; border: none; outline: none; cursor: pointer; border-radius: 50%;">
+                <span class="nav-icon material-symbols-rounded">keyboard_arrow_up</span>
+            </button>
+            
+            <!-- Script to handle scroll and top function -->
+            <script type="text/javascript">
+              let mybutton = document.getElementById("myBtn");
+            
+              window.onscroll = function() { scrollFunction() };
+            
+              function scrollFunction() {
+                if (document.body.scrollTop > 20 || document.documentElement.scrollTop > 20) {
+                  mybutton.style.display = "block";
+                } else {
+                  mybutton.style.display = "none";
+                }
+              }
+            
+              function topFunction() {
+                document.body.scrollTop = 0; // For Safari
+                document.documentElement.scrollTop = 0; // For Chrome, Firefox, IE and Opera
+              }
+            </script>
 
             <script>
                 const select = document.getElementById('reciterSelect');
@@ -164,7 +164,7 @@
             max-width: 800px;
             margin: 0 auto;
             background-color: #ffffff;
-            padding: 30px 25px;
+            padding: 30px 20px;
             border-radius: 10px;
             box-shadow: 0 8px 16px rgba(0, 0, 0, 0.05);
         }
