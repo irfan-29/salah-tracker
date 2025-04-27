@@ -53,22 +53,16 @@
 
 
         <!-- Edition(Translation) -->
-        <!-- Editions Form -->
+        <h5 style="text-align: left; margin-left: 2.5%;">Translation:</h5>
         <form action="/set-edition" method="POST">
           <div class="d-flex align-items-center w-95 gap-2" style="margin: 0 2.5%; position: relative;">
-          
             <div class="form-floating flex-grow-1" style="margin: auto; position: relative;">
-            
               <!-- Fake select that opens custom dropdown -->
               <input type="text" id="selectedEdition" class="form-control" placeholder="Select Preferred Quran Edition" readonly required>
-              <label for="selectedEdition">Preferred Quran Edition</label>
-            
+              <label for="selectedEdition">Preferred Quran Edition</label>        
               <!-- Actual dropdown hidden by default -->
-              <div id="dropdownContainer" class="bg-white border rounded shadow-sm position-absolute w-100 mt-1" style="display: none; z-index: 1000; max-height: 350px; overflow-y: auto;">
-              
-                <!-- Search inside dropdown -->
+              <div id="dropdownContainer" class="bg-white border rounded shadow-sm position-absolute w-100 mt-1" style="display: none; z-index: 1000; max-height: 350px; overflow-y: auto;">              
                 <input type="text" id="searchEdition" class="form-control border-0 border-bottom rounded-0" placeholder="Search Language or Author..." style="border-radius: 0;">
-              
                 <!-- Options list -->
                 <div id="editionOptions" style="max-height: 300px; overflow-y: auto; text-align: left;">
                   <% Object.keys(editions).forEach(function(language) { %>

@@ -92,7 +92,8 @@ app.get("/quran", async(req, res) => {
 
 app.get("/surah/:surahNo", async(req, res) => {
     // default reciter is 1
-    let reciter = 1; 
+    let reciter = 1;
+    // default edition is null 
     let favoriteEdition = "";
      // wait for settings to be fetched
     const settings = await Settings.findOne({});
@@ -102,11 +103,16 @@ app.get("/surah/:surahNo", async(req, res) => {
         if(settings.favoriteEdition)
             favoriteEdition = settings.favoriteEdition;
     }
+    favoriteEdition = favoriteEdition.replace(/\s*\(.*?\)\s*$/, '');
+
     const surahNo = req.params.surahNo;
     const response = await fetch(`https://quranapi.pages.dev/api/${surahNo}.json`);
-    const translation = await fetch(`https://cdn.jsdelivr.net/gh/fawazahmed0/quran-api@1/editions/${favoriteEdition}/${surahNo}.json`);
     const data = await response.json();
-    const translated = await translation.json();
+    let translationJson = {};
+    if(favoriteEdition != ""){
+        const translation = await fetch(`https://cdn.jsdelivr.net/gh/fawazahmed0/quran-api@1/editions/${favoriteEdition}/${surahNo}.json`);
+        translationJson = await translation.json();
+    }
 
     // to update for last read
     Settings.findOneAndUpdate({}, { lastRead: surahNo }, { sort: { _id: -1 }, upsert: true })
@@ -114,7 +120,7 @@ app.get("/surah/:surahNo", async(req, res) => {
             console.error(err);
             res.status(500).send("Error updating lsat read.");
         });
-    res.render("surah", {surah: data, translation: translated, favoriteReciter: String(reciter), lastRead: surahNo});
+    res.render("surah", {surah: data, translation: translationJson, favoriteReciter: String(reciter), lastRead: surahNo});
 });
 
 
@@ -262,7 +268,6 @@ app.post("/salah", function(req, res){
 
 app.post("/add-challenge", function(req, res){
     const challenge = req.body.challenge;
-
     const newChallenge = new Challenges({
         challenge: challenge
     });
@@ -300,6 +305,7 @@ app.post('/update-streaks', async (req, res) => {
 
 app.post("/default-home", function(req,res){
     const defaultHome = req.body.defaultHome;
+
     Settings.findOneAndUpdate({}, { defaultHome: defaultHome }, { sort: { _id: -1 }, upsert: true })
         .then(() => {
             res.redirect("/settings");
@@ -342,7 +348,7 @@ app.post("/reciter", function(req, res){
 
 app.post("/set-edition", function(req, res){
     const selectedEdition = req.body.edition;
-    console.log(selectedEdition);
+
     Settings.findOneAndUpdate({}, { favoriteEdition: selectedEdition }, { sort: { _id: -1 }, upsert: true })
         .then(() => {
             res.redirect("/settings"); 

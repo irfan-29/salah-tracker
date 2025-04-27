@@ -42,18 +42,61 @@
                   </audio>
                 </div>
               <% } %>
-               
-               <% for (let i = 0; i < surah.arabic1.length; i++) { %>
-                    <p><%= i+1 %></p>
+              <hr>
+
+                <!-- Input field to go to a specific Ayah -->
+                <div class="d-flex flex-column align-items-center w-100 my-4">
+                  <label for="ayahRange" class="form-label" style="font-weight: bold;">Go to Ayah</label>
+                  <input type="range" id="ayahRange" class="form-range" min="1" max="<%= surah.arabic1.length %>" value="1" oninput="updateAyahLabel()" style="width: 300px;">
+                  <div class="d-flex align-items-center gap-2 mt-2">
+                    <span>Selected Ayah:</span>
+                    <span id="selectedAyah" style="font-weight: bold;">1</span>
+                    <button class="btn btn-primary btn-sm" onclick="goToAyah()">Go</button>
+                  </div>
+                </div>
+                <hr>
+                
+                <% for (let i = 0; i < surah.arabic1.length; i++) { %>
+                    <p id="<%= i+1 %>"><%= i+1 %></p>
                     <p class="surah-name" style="font-size: 24px;"><%= surah.arabic1[i] %></p>
                     <p class="surah-translation" style="font-size: 24px; color: #333;"><%= surah.arabic2[i] %></p>
                     <p class="surah-translation"><%= surah.english[i] %></p>
-                    <p class="surah-translation"><%= translation.chapter[i].text %></p>
+                    <% if (Object.keys(translation).length > 0){ %>
+                      <p class="surah-translation"><%= translation.chapter[i].text %></p>
+                    <% } %>
+                    <% if (i<surah.arabic1.length-1){ %> 
+                      <hr>
+                    <% } %>
                 <% } %>
           </div>
             <br>
             <br>
 
+
+            <!-- Go to Top Button -->
+<button onclick="topFunction()" id="myBtn" title="Go to Top" style="display: none; position: fixed; bottom: 20px; right: 30px; z-index: 99; border: none; outline: none; cursor: pointer; border-radius: 50%;">
+    <span class="nav-icon material-symbols-rounded">keyboard_arrow_up</span>
+</button>
+
+<!-- Script to handle scroll and top function -->
+<script type="text/javascript">
+  let mybutton = document.getElementById("myBtn");
+
+  window.onscroll = function() { scrollFunction() };
+
+  function scrollFunction() {
+    if (document.body.scrollTop > 20 || document.documentElement.scrollTop > 20) {
+      mybutton.style.display = "block";
+    } else {
+      mybutton.style.display = "none";
+    }
+  }
+
+  function topFunction() {
+    document.body.scrollTop = 0; // For Safari
+    document.documentElement.scrollTop = 0; // For Chrome, Firefox, IE and Opera
+  }
+</script>
 
             <script>
                 const select = document.getElementById('reciterSelect');
@@ -69,14 +112,59 @@
                 select.addEventListener('change', showSelectedReciter);
                 // Show the first one by default
                 showSelectedReciter();
-              </script>
+            </script>
+            <script>
+              function updateAyahLabel() {
+                const ayahRange = document.getElementById('ayahRange');
+                const selectedAyah = document.getElementById('selectedAyah');
+                selectedAyah.textContent = ayahRange.value;
+              }
+            
+              function goToAyah() {
+                const ayahNumber = parseInt(document.getElementById('ayahRange').value, 10);
+                const ayahElement = document.getElementById(ayahNumber);
+            
+                if (ayahElement) {
+                  ayahElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  // Highlight the ayah
+                  ayahElement.style.backgroundColor = "#ffe58f";
+                  setTimeout(() => {
+                    ayahElement.style.backgroundColor = "";
+                  }, 2000);
+                } else {
+                  alert("Ayah number not found!");
+                }
+              }
+            </script>
 
     <style>
+        #myBtn {
+          display: none;
+          position: fixed;
+          bottom: 30px;
+          right: 20px;
+          z-index: 99;
+          border: none;
+          background: var(--secondary-color);
+          box-shadow: rgba(0, 0, 0, 0.7) 0px 22px 80px 4px;
+          cursor: pointer;
+          padding: 8px 8px 4px 9px;
+          border-radius: 50%;
+          font-size: 15px;
+        }       
+        body{
+          text-align: center;
+          align-items: center;
+        }
+        hr{
+          margin: 22px 0;
+        }
         .container1 {
+            text-align: left;
             max-width: 800px;
             margin: 0 auto;
             background-color: #ffffff;
-            padding: 30px 15px;
+            padding: 30px 25px;
             border-radius: 10px;
             box-shadow: 0 8px 16px rgba(0, 0, 0, 0.05);
         }
