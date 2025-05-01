@@ -15,10 +15,11 @@
             <div style="width: 60%; margin: auto;">
               <% keyChallenge.forEach(function(challenge, i) { %>
                   <input type="checkbox" name="completed[]" value="<%= challenge._id %>" id="challenge_<%= i %>">
-                  <label style="margin-bottom: 4px;" for="challenge_<%= i %>">
+                  <label style="margin-bottom: 7px;" for="challenge_<%= i %>">
                     <strong><%= challenge.challenge %></strong>
                   </label>
-                  <p style="margin-bottom: 4px;">Current Streak: <%= challenge.streak %> days🔥</p>
+                  <p style="margin-bottom: 5px;">Current Streak: <span style="font-weight: bold; font-size: 1.25rem;"><%= challenge.currentStreak %></span>🔥</p>
+                  <p style="margin-bottom: 8px;">Max Streak: <span style="font-weight: bold; font-size: 1.05rem;;"><%= challenge.maxStreak %></span> <%= challenge.currentStreak > 1 ? 'days🔥' : 'day🔥' %></p>
                   <p>Last updated: <%= challenge.lastUpdated %></p>
                   <br>
               <% }); %>

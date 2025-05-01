@@ -1,31 +1,131 @@
 <%- include("navbar") -%>
 
 
+
+
+<style>
+body {
+  font-family: 'Segoe UI', sans-serif;
+  background-color: #f7f9fb;
+  margin: 0;
+  padding: 2rem;
+}
+
+.calendar-container {
+  max-width: 800px;
+  margin: auto;
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+}
+
+.calendar-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+
+.calendar-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+}
+
+.calendar-table th {
+  background-color: #007bff;
+  color: white;
+  padding: 0.75rem;
+}
+
+.calendar-table td {
+  height: 100px;
+  vertical-align: top;
+  border: 1px solid #e0e0e0;
+  text-align: left;
+  padding: 0.25rem;
+}
+
+.date-box {
+  text-align: center;
+  padding: 0.25rem;
+  border-radius: 6px;
+}
+
+.greg {
+  font-size: 1.1rem;
+  color: #007bff;
+}
+
+.hijri {
+  font-size: 0.9rem;
+  color: #444;
+}
+
+
+  </style>
+
+
+    <div class="container1">    
+        <div class="calendar-container">
+            <h2><%= gregorianMonth %> <%= gregorianYear %></h2>
+            <h3><%= hijriMonthName %> <%= year %></h3>
+        
+            <form action="/calendar" method="get" class="calendar-controls">
+              <button type="submit" name="month" value="<%= hijriMonth === 1 ? 12 : hijriMonth - 1 %>">
+                ←
+              </button>
+              <select name="month">
+                <% for (let i = 1; i <= 12; i++) { %>
+                  <option value="<%= i %>" <%= i === hijriMonth ? 'selected' : '' %>><%= i %></option>
+                <% } %>
+              </select>
+              <input type="number" name="year" value="<%= year %>">
+              <button type="submit">Go</button>
+              <button type="submit" name="month" value="<%= hijriMonth === 12 ? 1 : hijriMonth + 1 %>">
+                →
+              </button>
+            </form>
+        
+            <table class="calendar-table">
+              <thead>
+                <tr>
+                  <th>Sun</th><th>Mon</th><th>Tue</th><th>Wed</th>
+                  <th>Thu</th><th>Fri</th><th>Sat</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% weeks.forEach(week => { %>
+                  <tr>
+                    <% week.forEach(day => { %>
+                      <% if (day) { %>
+                        <td>
+                          <div class="date-box">
+                            <div class="greg"><%= day.gregorian %>/<%= gregorianMonth %></gregorianMonth></div>
+                            <div class="hijri"><%= day.hijri %></div>
+                          </div>
+                        </td>
+                      <% } else { %>
+                        <td></td>
+                      <% } %>
+                    <% }) %>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+    </div>
+
+        
+
         <h4>Special Islamic Days</h4>
         
         <!-- <iframe style="width: 240px; height: 460px; border: 1px solid #ddd;" scrolling="no" src="https://www.islamicfinder.org/specialislamicdays"> </iframe> -->
         
         <br>
-        <div class="container">
-            <table class="table table-hover table-striped table-bordered">
-                <thead class="table-dark">
-                    <tr>
-                        <th>Date</th>
-                        <th>Event</th>
-                        <th>Hijri Date</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <% specialDays.forEach(function(day) { %>
-                        <tr>
-                            <td><%= day.date %><br><span class="badge bg-info text-dark"><%= day.weekday %></span</td>
-                            <td><strong><%= day.event %></strong></td>
-                            <td><em><%= day.hijriDate %><br><%= day.hijriYear %></em></td>
-                        </tr>
-                    <% }); %>
-                </tbody>
-            </table>
-        </div>
+        <!--  -->
             <br>
             <br>
 

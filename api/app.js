@@ -32,7 +32,8 @@ const Salah = mongoose.model("Salah", salahSchema);
 
 const challengesSchema = new mongoose.Schema({
     challenge: String,
-    streak: Number,
+    currentStreak: Number,
+    maxStreak: Number,
     lastUpdated: String
 });
 const Challenges = mongoose.model("Challenges", challengesSchema);
@@ -169,6 +170,69 @@ app.get("/salah-timings", async(req, res)=>{
 });
 
 
+// Helper function to get current Hijri date
+async function getCurrentHijriDate() {
+    const response = await fetch('https://api.aladhan.com/v1/gToH');
+    const data = await response.json();
+    return {
+      hijriMonth: parseInt(data.data.hijri.month.number),
+      hijriYear: parseInt(data.data.hijri.year),
+    };
+  }
+
+
+
+  app.get('/calendar', async (req, res) => {
+    const hijriMonth = parseInt(req.query.month) || 1;
+    const year = parseInt(req.query.year) || 1446;
+
+    const apiUrl = `https://api.aladhan.com/v1/hToGCalendar/${hijriMonth}/${year}`;
+    const response = await fetch(apiUrl);
+    const json = await response.json();
+    console.log(json);
+
+    const hijriMonthName = json.data[0].hijri.month.en;
+    const gregorianMonth = json.data[0].gregorian.month.en;
+    const gregorianYear = json.data[0].gregorian.year;
+
+    // Map dates into weeks
+    const days = json.data.map(d => ({
+        hijri: d.hijri.day,
+        gregorian: d.gregorian.day,
+        weekday: d.gregorian.weekday.en,
+        date: d.gregorian.date,
+        fullHijri: `${d.hijri.day} ${d.hijri.month.en} ${d.hijri.year}`,
+    }));
+
+    let firstValidDate = json.data.find(d => d && d.gregorian && d.gregorian.date);
+    let firstWeekday = 0;
+    
+    if (firstValidDate) {
+        const date = new Date(firstValidDate.gregorian.date);
+        firstWeekday = isNaN(date.getDay()) ? 0 : date.getDay();
+    }
+
+const paddedDays = Array(firstWeekday).fill(null).concat(days);
+
+
+    const weeks = [];
+    for (let i = 0; i < paddedDays.length; i += 7) {
+        weeks.push(paddedDays.slice(i, i + 7));
+    }
+
+    res.render('special-days', {
+        hijriMonthName,
+        hijriMonth,
+        year,
+        gregorianMonth,
+        gregorianYear,
+        weeks
+    });
+});
+
+
+
+
 app.get("/special-days", async(req, res) => {
     const response = await fetch(`https://www.islamicfinder.org/specialislamicdays`);
     const data = await response.text();
@@ -194,7 +258,7 @@ app.get("/special-days", async(req, res) => {
                 hijriYear,
             });
         }
-        res.render('special-days', {specialDays});
+        res.render('special-days', {calendarData: "", specialDays});
     });
 });
 
@@ -289,10 +353,14 @@ app.post('/update-streaks', async (req, res) => {
   
       if (isCompleted) {
         // increment streak if completed
-        challenge.streak = (challenge.streak || 0) + 1;
+        challenge.currentStreak = (challenge.currentStreak || 0) + 1;
+
+        if(challenge.currentStreak > (challenge.maxStreak || 0)) {
+            challenge.maxStreak = challenge.currentStreak;
+        }
       } else {
         // reset if not completed
-        challenge.streak = 0;
+        challenge.currentStreak = 0;
       }
   
       challenge.lastUpdated = formattedDate; // optional: track when it was last updated
