@@ -69,9 +69,9 @@ body {
 
 
     <div class="container1">    
-        <div class="calendar-container">
+        <!-- <div class="calendar-container"> -->
             <h2><%= gregorianMonth %> <%= gregorianYear %></h2>
-            <h3><%= hijriMonthName %> <%= year %></h3>
+            <h3><%= hijriMonthName %> <%= hijriYear %></h3>
         
             <form action="/calendar" method="get" class="calendar-controls">
               <button type="submit" name="month" value="<%= hijriMonth === 1 ? 12 : hijriMonth - 1 %>">
@@ -82,7 +82,7 @@ body {
                   <option value="<%= i %>" <%= i === hijriMonth ? 'selected' : '' %>><%= i %></option>
                 <% } %>
               </select>
-              <input type="number" name="year" value="<%= year %>">
+              <input type="number" name="year" value="<%= hijriYear %>">
               <button type="submit">Go</button>
               <button type="submit" name="month" value="<%= hijriMonth === 12 ? 1 : hijriMonth + 1 %>">
                 →
@@ -103,7 +103,7 @@ body {
                       <% if (day) { %>
                         <td>
                           <div class="date-box">
-                            <div class="greg"><%= day.gregorian %>/<%= gregorianMonth %></gregorianMonth></div>
+                            <div class="greg"><%= day.gregorian %></gregorianMonth></div>
                             <div class="hijri"><%= day.hijri %></div>
                           </div>
                         </td>
@@ -115,17 +115,36 @@ body {
                 <% }) %>
               </tbody>
             </table>
-          </div>
+          <!-- </div> -->
     </div>
 
-        
+        <br>
+        <br>
 
         <h4>Special Islamic Days</h4>
         
         <!-- <iframe style="width: 240px; height: 460px; border: 1px solid #ddd;" scrolling="no" src="https://www.islamicfinder.org/specialislamicdays"> </iframe> -->
-        
-        <br>
-        <!--  -->
+
+        <div class="container mt-5">
+          <table class="table table-bordered table-hover table-striped text-center shadow-sm">
+              <thead class="table-dark">
+                  <tr>
+                      <th>Date</th>
+                      <th>Event</th>
+                      <th>Hijri Date</th>
+                  </tr>
+              </thead>
+              <tbody>
+                  <% specialDays.forEach(function(day) { %>
+                      <tr>
+                          <td><%= day.date %><br><span class="badge bg-info text-dark"><%= day.weekday %></span</td>
+                          <td><strong><%= day.event %></strong></td>
+                          <td><em><%= day.hijriDate %><br><%= day.hijriYear %></em></td>
+                      </tr>
+                  <% }); %>
+              </tbody>
+          </table>
+      </div>
             <br>
             <br>
 

@@ -184,13 +184,23 @@ async function getCurrentHijriDate() {
 
   app.get('/calendar', async (req, res) => {
     try{
-        const hijriMonth = parseInt(req.query.month) || 1;
-        const year = parseInt(req.query.year) || 1446;
+        let hijriMonth = parseInt(req.query.month);
+        let hijriYear = parseInt(req.query.year);
 
-        const apiUrl = `https://api.aladhan.com/v1/hToGCalendar/${hijriMonth}/${year}`;
+        if(!hijriMonth){
+            const responseMonth = await fetch(`https://api.aladhan.com/v1/currentIslamicMonth`);
+            const json1 = await responseMonth.json();
+            hijriMonth = json1.data;
+        }
+        if(!hijriYear){
+            const responseYear = await fetch(`https://api.aladhan.com/v1/currentIslamicYear`);
+            const json2 = await responseYear.json();
+            hijriYear = json2.data;
+        }
+
+        const apiUrl = `https://api.aladhan.com/v1/hToGCalendar/${hijriMonth}/${hijriYear}`;
         const response = await fetch(apiUrl);
         const json = await response.json();
-        console.log(json);
 
         const hijriMonthName = json.data[0].hijri.month.en;
         const gregorianMonth = json.data[0].gregorian.month.en;
@@ -221,13 +231,43 @@ async function getCurrentHijriDate() {
             weeks.push(paddedDays.slice(i, i + 7));
         }
 
+
+        // special days
+
+        const response2 = await fetch(`https://www.islamicfinder.org/specialislamicdays`);
+        const data = await response2.text();
+    
+        const $ = cheerio.load(data);
+        const specialDays = [];
+
+        // Loop through each row of special days
+        $("#special-days-table tr").each((index, element) => {
+            const month = $(element).find(".date-box .title span").text().trim();
+            const day = $(element).find(".date-box .date span").text().trim();
+            const event = $(element).find(".day-details h2 a").text().trim();
+            const weekday = $(element).find(".day-details h4").text().split(",")[0].trim();
+            const hijriDate = $(element).find(".day-details h4").text().split(",")[1].trim();
+            const hijriYear = $(element).find(".day-details h4").text().split(",")[2].trim();
+
+            if (month && day && event) {
+                specialDays.push({
+                    date: `${month} ${day}`,
+                    event,
+                    weekday,
+                    hijriDate,
+                    hijriYear,
+                });
+            }
+        });
+
         res.render('calendar', {
             hijriMonthName,
             hijriMonth,
-            year,
+            hijriYear,
             gregorianMonth,
             gregorianYear,
-            weeks
+            weeks,
+            calendarData: "", specialDays
         });
     }catch(err){
         res.render("error", {err});
