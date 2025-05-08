@@ -1,0 +1,68 @@
+    
+    
+    
+
+
+
+    
+    
+    <% if (!hideAudioPlayer && globalFavoriteReciter && globalAudioUrl) { %>
+        <div id="global-audio-player" class="container1" style="position: fixed; bottom: 10px; left: 0; right: 0; width: 100%; z-index: 9999; background: #f8f9fa; border-top: 1px solid #ddd; padding: 15px 25px 5px 25px; box-shadow: 0 -2px 5px rgba(0,0,0,0.1);">
+          <form action="/hide-audio" method="POST" style="position: absolute; top: 5px; right: 10px;">
+            <button type="submit" style="border: none; background: none; font-size: 16px; cursor: pointer;">✕</button>
+          </form>
+          <audio controls style="width: 100%;" id="globalAudio">
+            <source src="<%= globalAudioUrl %>" type="audio/mpeg">
+            Your browser does not support the audio element.
+          </audio>
+        </div>
+
+      <% } %>
+
+      
+    
+      <script>
+        const audio = document.getElementById('globalAudio');
+    
+        if (audio) {
+          // Resume saved time
+          const savedTime = parseFloat(localStorage.getItem('audioTime'));
+          if (!isNaN(savedTime)) {
+            audio.addEventListener('loadeddata', () => {
+              audio.currentTime = savedTime;
+            });
+          }
+    
+          // Save time
+          audio.addEventListener('timeupdate', () => {
+            localStorage.setItem('audioTime', audio.currentTime);
+          });
+    
+          // Autoplay (wait for load or user interaction)
+          const tryPlay = () => {
+            audio.play().catch(err => {
+              console.log("Autoplay blocked:", err.message);
+            });
+          };
+    
+          if (document.readyState === 'complete') {
+            tryPlay();
+          } else {
+            window.addEventListener('load', tryPlay);
+          }
+        }
+      </script>
+      
+      
+      
+      
+
+
+    
+    
+    
+    
+    
+    
+    </body>
+</html>

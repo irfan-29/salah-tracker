@@ -6,6 +6,7 @@ const mongoose = require("mongoose");
 const ejs = require("ejs");
 const fetch = require("node-fetch");
 const cheerio = require("cheerio");
+const session = require('express-session');
 
 const app=express();
 
@@ -18,6 +19,17 @@ app.set("views", path.join(__dirname, "../views"));
 
 mongoose.set({strictQuery: true});
 mongoose.connect("mongodb+srv://admin-irfan:Irf6360944@cluster0.jo7etur.mongodb.net/salahDB");
+
+
+// Set up session (place this near the top, before your routes)
+app.use(session({
+    secret: 'yourSecretKey',   // Replace with a secure secret
+    resave: false,
+    saveUninitialized: true
+  }));
+
+
+
 
 
 
@@ -62,6 +74,42 @@ const locationMap = new Map([
 
 
 
+
+
+// Global methods
+
+app.use((req, res, next) => {
+
+    // Ensure session is initialized
+    req.session.audioActive = req.session.audioActive ?? false;
+
+    // Default: hide audio player unless session says it's active
+    res.locals.hideAudioPlayer = !req.session.audioActive;
+  
+    res.locals.globalFavoriteReciter = req.session.favoriteReciterName || "1";
+    res.locals.globalAudioUrl = req.session.favoriteReciterUrl || null;
+  
+    next();
+});
+
+
+app.post("/hide-audio", (req, res) => {
+    req.session.audioActive = false;
+  
+    const referer = req.get("Referer") || "/";
+    res.redirect(referer);
+  });
+
+  app.post('/play-surah', (req, res) => {
+    req.session.favoriteReciterName = req.body.reciterName;
+    req.session.favoriteReciterUrl = req.body.audioUrl;
+    req.session.audioActive = true;
+    
+    const referer = req.get("Referer") || "/";
+    res.redirect(referer);
+  });
+
+
 // GET methods
 
 app.get("/", async (req, res) => {
@@ -92,6 +140,7 @@ app.get("/quran", async(req, res) => {
 
 
 app.get("/surah/:surahNo", async(req, res) => {
+
     // default reciter is 1
     let reciter = 1;
     // default edition is null 
@@ -114,6 +163,15 @@ app.get("/surah/:surahNo", async(req, res) => {
         const translation = await fetch(`https://cdn.jsdelivr.net/gh/fawazahmed0/quran-api@1/editions/${favoriteEdition}/${surahNo}.json`);
         translationJson = await translation.json();
     }
+
+    
+
+    req.session.audioActive = true;
+    req.session.favoriteReciterName = String(reciter);
+    req.session.favoriteReciterUrl = data.audio[String(reciter)].originalUrl;
+    
+
+
 
     // to update for last read
     Settings.findOneAndUpdate({}, { lastRead: surahNo }, { sort: { _id: -1 }, upsert: true })

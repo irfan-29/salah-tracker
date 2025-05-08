@@ -33,7 +33,7 @@
                 </div>
               </form>
 
-              <% if (surah.audio[favoriteReciter]) { %>
+              <% if (surah.audio[favoriteReciter] && hideAudioPlayer) { %>
                 <div class="audio-player" style="margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 8px; background: #fff;">
                   <h5 style="margin-bottom: 10px;"><%= surah.audio[favoriteReciter].reciter %></h5>
                   <audio controls style="width: 100%;">
@@ -42,6 +42,12 @@
                   </audio>
                 </div>
               <% } %>
+              <form action="/play-surah" method="POST">
+                <input type="hidden" name="reciterName" value="<%= surah.audio[favoriteReciter].reciter %>">
+                <input type="hidden" name="audioUrl" value="<%= surah.audio[favoriteReciter].originalUrl %>">
+                <button type="submit" class="btn btn-primary">Play Surah</button>
+              </form> 
+
               <hr>
 
                 <!-- Input field to go to a specific Ayah -->
@@ -190,5 +196,6 @@
         }
     </style>
 
-    </body>
-</html>
+
+
+<%- include('footer') %>
