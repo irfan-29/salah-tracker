@@ -11,7 +11,7 @@ const session = require('express-session');
 const app=express();
 
 app.set('view engine', 'ejs');
-
+app.use(express.json());
 app.use(bodyParser.urlencoded({extended: true}));
 // app.use(express.static("public"));
 app.use(express.static(path.join(__dirname, "../public")));
@@ -55,7 +55,12 @@ const settingsSchema = new mongoose.Schema({
     location: String,
     favoriteReciter: Number,
     favoriteEdition: String,
-    lastRead: String
+    lastRead: String,
+    audioProgress: [{
+        surahNo: Number,
+        surahName: String,
+        time: Number
+    }]
 });
 const Settings = mongoose.model("Settings", settingsSchema);
 
@@ -78,20 +83,50 @@ const locationMap = new Map([
 
 // Global methods
 
-app.use((req, res, next) => {
+// app.use((req, res, next) => {
 
-    // Ensure session is initialized
-    req.session.audioActive = req.session.audioActive ?? false;
+//     // Ensure session is initialized
+//     req.session.audioActive = req.session.audioActive ?? false;
 
-    // Default: hide audio player unless session says it's active
-    res.locals.hideAudioPlayer = !req.session.audioActive;
+//     // Default: hide audio player unless session says it's active
+//     res.locals.hideAudioPlayer = !req.session.audioActive;
   
-    res.locals.globalFavoriteReciter = req.session.favoriteReciterName || "1";
-    res.locals.globalAudioUrl = req.session.favoriteReciterUrl || null;
+//     res.locals.globalFavoriteReciter = req.session.favoriteReciterName || "1";
+//     res.locals.globalAudioUrl = req.session.favoriteReciterUrl || null;
   
+//     next();
+// });
+
+
+app.use(async (req, res, next) => {
+    // if (req.session.userId) {
+      const settings = await Settings.findOne({});
+      if (settings && settings.audioProgress) {
+        // console.log(settings.audioProgress[0].surahNo);
+        const response = await fetch(`https://quranapi.pages.dev/api/${settings.lastRead}.json`);
+        const surah = await response.json();
+        res.locals.globalAudioUrl = surah.audio[settings.favoriteReciter].originalUrl; // implement this
+        res.locals.globalAudioTime = settings.audioProgress[0].time;
+        res.locals.globalSurahNo = settings.audioProgress[0].surahNo;
+        res.locals.globalSurahName = settings.audioProgress[0].surahName;
+        res.locals.globalFavoriteReciter = surah.audio[settings.favoriteReciter].reciter;
+      }
+    // }
     next();
-});
-
+  });
+  
+  
+  app.get('/audio-time', async (req, res) => {
+    const { surahNo } = req.query;
+    const settings = await Settings.findOne({});
+    const progress = settings?.audioProgress?.find(p => p.surahNo == surahNo);
+    if (progress) {
+      res.json({ time: progress.time });
+    } else {
+      res.json({ time: 0 });
+    }
+  });
+  
 
 app.post("/hide-audio", (req, res) => {
     req.session.audioActive = false;
@@ -108,6 +143,27 @@ app.post("/hide-audio", (req, res) => {
     const referer = req.get("Referer") || "/";
     res.redirect(referer);
   });
+
+  app.post('/update-audio-time', async (req, res) => {
+    const { surahNo, surahName, time } = req.body;
+    // console.log(surahNo);
+    // console.log(surahName);
+    // console.log(time);
+    // if (req.session.userId) {
+      await Settings.findOneAndUpdate(
+        // { userId: req.session.userId },
+        {},
+        { audioProgress: { surahNo, surahName, time } },
+        { sort: { _id: -1 }, upsert: true }
+      );
+    // }
+    res.sendStatus(200);
+  });
+  
+
+
+
+
 
 
 // GET methods
@@ -139,48 +195,92 @@ app.get("/quran", async(req, res) => {
 });
 
 
-app.get("/surah/:surahNo", async(req, res) => {
-
-    // default reciter is 1
+app.get("/surah/:surahNo", async (req, res) => {
+    res.locals.hideAudioPlayer = true;
+  
     let reciter = 1;
-    // default edition is null 
     let favoriteEdition = "";
-     // wait for settings to be fetched
+    let audioTime = 0;
+  
+    const surahNo = parseInt(req.params.surahNo);
     const settings = await Settings.findOne({});
+  
     if (settings) {
-        if(settings.favoriteReciter)
-            reciter = settings.favoriteReciter;
-        if(settings.favoriteEdition)
-            favoriteEdition = settings.favoriteEdition;
+      if (settings.favoriteReciter) reciter = settings.favoriteReciter;
+      if (settings.favoriteEdition) favoriteEdition = settings.favoriteEdition;
+  
+      // Get audio time for this surah
+      const progress = settings.audioProgress?.find(p => p.surahNo === surahNo);
+      if (progress) audioTime = progress.time || 0;
     }
+  
     favoriteEdition = favoriteEdition.replace(/\s*\(.*?\)\s*$/, '');
-
-    const surahNo = req.params.surahNo;
+  
     const response = await fetch(`https://quranapi.pages.dev/api/${surahNo}.json`);
     const data = await response.json();
+  
     let translationJson = {};
-    if(favoriteEdition != ""){
-        const translation = await fetch(`https://cdn.jsdelivr.net/gh/fawazahmed0/quran-api@1/editions/${favoriteEdition}/${surahNo}.json`);
-        translationJson = await translation.json();
+    if (favoriteEdition !== "") {
+      const translation = await fetch(`https://cdn.jsdelivr.net/gh/fawazahmed0/quran-api@1/editions/${favoriteEdition}/${surahNo}.json`);
+      translationJson = await translation.json();
     }
+  
+    await Settings.findOneAndUpdate({}, { lastRead: surahNo }, { sort: { _id: -1 }, upsert: true });
+  
+    res.render("surah", {
+      surah: data,
+      translation: translationJson,
+      favoriteReciter: String(reciter),
+      lastRead: surahNo,
+      audioTime: audioTime
+    });
+  });
+  
+  
+
+
+// app.get("/surah/:surahNo", async(req, res) => {
+
+//     // default reciter is 1
+//     let reciter = 1;
+//     // default edition is null 
+//     let favoriteEdition = "";
+//      // wait for settings to be fetched
+//     const settings = await Settings.findOne({});
+//     if (settings) {
+//         if(settings.favoriteReciter)
+//             reciter = settings.favoriteReciter;
+//         if(settings.favoriteEdition)
+//             favoriteEdition = settings.favoriteEdition;
+//     }
+//     favoriteEdition = favoriteEdition.replace(/\s*\(.*?\)\s*$/, '');
+
+//     const surahNo = req.params.surahNo;
+//     const response = await fetch(`https://quranapi.pages.dev/api/${surahNo}.json`);
+//     const data = await response.json();
+//     let translationJson = {};
+//     if(favoriteEdition != ""){
+//         const translation = await fetch(`https://cdn.jsdelivr.net/gh/fawazahmed0/quran-api@1/editions/${favoriteEdition}/${surahNo}.json`);
+//         translationJson = await translation.json();
+//     }
 
     
 
-    req.session.audioActive = true;
-    req.session.favoriteReciterName = String(reciter);
-    req.session.favoriteReciterUrl = data.audio[String(reciter)].originalUrl;
+//     req.session.audioActive = true;
+//     req.session.favoriteReciterName = String(reciter);
+//     req.session.favoriteReciterUrl = data.audio[String(reciter)].originalUrl;
     
 
 
 
-    // to update for last read
-    Settings.findOneAndUpdate({}, { lastRead: surahNo }, { sort: { _id: -1 }, upsert: true })
-        .catch((err) => {
-            console.error(err);
-            res.status(500).send("Error updating lsat read.");
-        });
-    res.render("surah", {surah: data, translation: translationJson, favoriteReciter: String(reciter), lastRead: surahNo});
-});
+//     // to update for last read
+//     Settings.findOneAndUpdate({}, { lastRead: surahNo }, { sort: { _id: -1 }, upsert: true })
+//         .catch((err) => {
+//             console.error(err);
+//             res.status(500).send("Error updating lsat read.");
+//         });
+//     res.render("surah", {surah: data, translation: translationJson, favoriteReciter: String(reciter), lastRead: surahNo});
+// });
 
 
 app.get("/salah", function(req, res){

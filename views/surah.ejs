@@ -48,6 +48,66 @@
                 <button type="submit" class="btn btn-primary">Play Surah</button>
               </form> 
 
+
+
+              <% if (surah.audio[favoriteReciter]) { %>
+                <div class="audio-player" style="margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 8px; background: #fff;">
+                  <h5 style="margin-bottom: 10px;"><%= surah.audio[favoriteReciter].reciter %></h5>
+                  <audio id="surahAudio" controls style="width: 100%;">
+                    <source src="<%= surah.audio[favoriteReciter].originalUrl %>" type="audio/mpeg">
+                    Your browser does not support the audio element.
+                  </audio>
+                </div>
+              
+
+                <script>
+                  const audio = document.getElementById('surahAudio');
+                
+                  if (audio) {
+                    // Set saved time from server safely
+                    const savedTime = <%= JSON.stringify(audioTime || 0) %>;
+                    if (savedTime) {
+                      audio.currentTime = savedTime;
+                    }
+                    // Save time to DB periodically
+                    setInterval(() => {
+                        if (audio && !isNaN(audio.currentTime)) {
+                          fetch('/update-audio-time', {
+                            method: 'POST',
+                            headers: {
+                              'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                              surahNo: "<%= lastRead %>",
+                              surahName: "<%= surah.surahName %>",
+                              time: audio.currentTime
+                            })
+                          })
+                          .then(res => res.json())
+                          .then(data => console.log('Saved time:', data))
+                          .catch(err => console.error('Failed to update time:', err));
+                        }
+                    }, 5000); // every 5 seconds
+                  }
+                </script>
+                
+              <% } %>
+              
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
               <hr>
 
                 <!-- Input field to go to a specific Ayah -->
