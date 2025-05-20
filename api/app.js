@@ -64,7 +64,13 @@ const settingsSchema = new mongoose.Schema({
 });
 const Settings = mongoose.model("Settings", settingsSchema);
 
-
+const postsSchema = new mongoose.Schema({
+    // user:,
+    content: String,
+    reference: String,
+    postedDate: String
+});
+const Posts = mongoose.model("Posts", postsSchema);
 
 // global constants
 
@@ -160,6 +166,46 @@ app.post("/hide-audio", (req, res) => {
     res.sendStatus(200);
   });
   
+  app.get("/posts", async(req, res) => {
+    Posts.find({}).then((post) => {
+        res.render('posts', { post });
+    });
+    // res.render("posts");
+  });
+
+  app.get("/add-post", async(req, res) => {
+    res.render("add-post");
+  });
+
+
+  app.post("/add-post", async(req, res) => {
+    let date = new Date(req.query.date);
+    if(isNaN(date.getTime())) date = new Date();
+    const options = { weekday: "long", month: "short", day: "2-digit", year: "numeric" };
+    const formattedDate = date.toLocaleDateString("en-US", options);
+    // const user=;
+    const content=req.body.content;
+    const reference=req.body.reference;
+    const post = new Posts({
+        postedDate: formattedDate,
+        // user: name,
+        content: content,
+        reference: reference
+    });
+    post.save();
+    res.redirect("/posts");
+  });
+
+
+
+
+
+
+
+
+
+
+
 
 
 

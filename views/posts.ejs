@@ -1,0 +1,42 @@
+<%- include("navbar") -%>
+
+
+    <h3 style="text-align: center;">Posts</h3>
+
+    <!-- <div class="container1"> -->
+        <br>
+        <form action="/add-post" method="get">
+            <button type="submit" class="add btn btn-primary">Add Post</button>
+        </form>
+        
+        <div style="width: 90%; margin: auto;">
+            <% post.forEach(function(post) { %>
+                <div class="container1">
+                    <p style="margin-bottom: 5px;"><%= post.content %></p>
+                    <p style="margin-bottom: 10px;">Reference: <%= post.reference %></p>
+                    <p style="font-size: 15px; color: #888; font-style: italic;"><%= post.postedDate %></p>
+                </div>
+            <% }); %>
+        
+        </div>
+
+    <!-- </div> -->
+        
+        <br>
+        <br>
+        <br>
+        <br>
+        <br>
+
+
+        <style>
+            .container1 {
+            /* text-align: left; */
+            max-width: 550px;
+            margin: 25px auto;
+            background-color: #ffffff;
+            padding: 25px 20px 15px 20px;
+            border-radius: 10px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.05);
+        }
+        </style>

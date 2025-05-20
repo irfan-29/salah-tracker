@@ -1,0 +1,29 @@
+<%- include("navbar") -%>
+
+
+    <h3 style="text-align: center;">Add Post</h3>
+
+        
+
+
+    <div class="container1">
+        <form action="/add-post" method="POST">
+              <div class="form-floating">
+                <input class="form-control" type="text" required placeholder="content" id="content" name="content">
+                <label for="content">Content</label>
+              </div>
+              <div class="form-floating">
+                <input class="form-control" type="text" placeholder="reference" id="reference" name="reference">
+                <label for="reference">Reference</label>
+              </div>
+              <div class="new-task">
+                <button type="submit" class="add btn btn-outline-primary" value="add" name="add">Save</button>
+              </div>
+        </form>
+    </div>
+        
+        <br>
+        <br>
+        <br>
+        <br>
+        <br>
