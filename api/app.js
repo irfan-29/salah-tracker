@@ -92,10 +92,10 @@ const locationMap = new Map([
 // app.use((req, res, next) => {
 
 //     // Ensure session is initialized
-//     req.session.audioActive = req.session.audioActive ?? false;
+//     req.session.canShowAudio = req.session.canShowAudio ?? false;
 
 //     // Default: hide audio player unless session says it's active
-//     res.locals.hideAudioPlayer = !req.session.audioActive;
+//     res.locals.hideAudioPlayer = !req.session.canShowAudio;
   
 //     res.locals.globalFavoriteReciter = req.session.favoriteReciterName || "1";
 //     res.locals.globalAudioUrl = req.session.favoriteReciterUrl || null;
@@ -107,8 +107,7 @@ const locationMap = new Map([
 app.use(async (req, res, next) => {
     // if (req.session.userId) {
       const settings = await Settings.findOne({});
-      if (settings && settings.audioProgress) {
-        // console.log(settings.audioProgress[0].surahNo);
+      if (settings && settings.audioProgress && settings.audioProgress.length > 0) {
         const response = await fetch(`https://quranapi.pages.dev/api/${settings.lastRead}.json`);
         const surah = await response.json();
         res.locals.globalAudioUrl = surah.audio[settings.favoriteReciter].originalUrl; // implement this
@@ -116,6 +115,9 @@ app.use(async (req, res, next) => {
         res.locals.globalSurahNo = settings.audioProgress[0].surahNo;
         res.locals.globalSurahName = settings.audioProgress[0].surahName;
         res.locals.globalFavoriteReciter = surah.audio[settings.favoriteReciter].reciter;
+        res.locals.canShowAudio = true;
+      }else{
+        res.locals.canShowAudio = false;
       }
     // }
     next();
@@ -134,9 +136,14 @@ app.use(async (req, res, next) => {
   });
   
 
-app.post("/hide-audio", (req, res) => {
-    req.session.audioActive = false;
-  
+app.post("/hide-audio", async (req, res) => {
+    res.locals.canShowAudio = false;  // update it here as well, instead of app.use alone, to hide audio immediately
+    await Settings.findOneAndUpdate(
+        // { userId: req.session.userId },
+        {},
+        { $set: { audioProgress: [] } },
+        { sort: { _id: -1 }, upsert: true }
+    );
     const referer = req.get("Referer") || "/";
     res.redirect(referer);
   });
@@ -144,7 +151,7 @@ app.post("/hide-audio", (req, res) => {
   app.post('/play-surah', (req, res) => {
     req.session.favoriteReciterName = req.body.reciterName;
     req.session.favoriteReciterUrl = req.body.audioUrl;
-    req.session.audioActive = true;
+    req.session.canShowAudio = true;
     
     const referer = req.get("Referer") || "/";
     res.redirect(referer);
@@ -152,9 +159,6 @@ app.post("/hide-audio", (req, res) => {
 
   app.post('/update-audio-time', async (req, res) => {
     const { surahNo, surahName, time } = req.body;
-    // console.log(surahNo);
-    // console.log(surahName);
-    // console.log(time);
     // if (req.session.userId) {
       await Settings.findOneAndUpdate(
         // { userId: req.session.userId },
@@ -312,7 +316,7 @@ app.get("/surah/:surahNo", async (req, res) => {
 
     
 
-//     req.session.audioActive = true;
+//     req.session.canShowAudio = true;
 //     req.session.favoriteReciterName = String(reciter);
 //     req.session.favoriteReciterUrl = data.audio[String(reciter)].originalUrl;
     

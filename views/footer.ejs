@@ -1,7 +1,66 @@
     
     
-    <% if (globalAudioUrl) { %>
+    <% if (canShowAudio) { %>
+      <% if(globalAudioUrl) { %>
+        <div class="container1" style="position: fixed; bottom: 0; left: 0; right: 0; margin: 0 auto; width: 100%; background: #ffffff; border-top: 1px solid #ddd; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); padding: 12px; z-index: 100; text-align: left;">
+          <div class="audio-container" style="display: flex; align-items: center; justify-content: space-between; margin: 0 auto; gap: 10px; padding: 10px 5px 0 5px;">
       
+            <!-- Surah Info + Reciter -->
+            <div style="display: flex; align-items: center; gap: 10px; flex: 1 1 auto; min-width: 100px; position: relative; bottom: 4px; left: 5px;">
+              <img src="images/audio-player.webp" id="audioIcon" alt="Quran Audio" class="rotating-icon" />
+              <div style="position: relative; left: 5px;">
+                <div style="font-size: 14px; color: #444; font-weight: 500;"><%= globalSurahNo %>. <%= globalSurahName %></div>
+                <div style="font-size: 13px; color: #888;"><%= globalFavoriteReciter %></div>
+              </div>
+              <div style="position: relative; left: 17px;">
+                <img src="images/back.png" width="21px" style="margin-right: 8px;"/>
+                <img src="images/next-button.png" width="21px"/>
+              </div>
+             
+            </div>
+            
+            <!-- Audio Player with loader -->
+            <div class="audio-player" style="flex: 10 1 auto; min-width: 220px;">
+              <div id="audioLoader" style="display: flex; align-items: center; justify-content: center; height: 45px;">
+                <img src="/images/40.gif" alt="Loading..." style="height: 14px;" />
+              </div>
+              <audio id="globalAudio" controls style="width: 100%; height: 45px; display: none;">
+                <source src="<%= globalAudioUrl %>" type="audio/mpeg" />
+                Your browser does not support the audio element.
+              </audio>
+            </div>
+      
+            <!-- Close Button -->
+            <form action="/hide-audio" method="POST" class="close-mobile" style="flex: 0 0 auto; margin: 0;">
+              <button type="submit" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #999;">✕</button>
+            </form>
+      
+          </div>
+        </div>
+      <!-- </div> -->
+      
+      <script>
+        const audio = document.getElementById('globalAudio');
+        const loader = document.getElementById('audioLoader');
+      
+        // Show loader initially
+        loader.style.display = 'flex';
+        audio.style.display = 'none';
+      
+        // Hide loader when audio is ready
+        audio.addEventListener('canplaythrough', () => {
+          loader.style.display = 'none';
+          audio.style.display = 'block';
+        });
+      
+        // Optional: handle error
+        audio.addEventListener('error', () => {
+          loader.innerHTML = '<span style="color: red;">Failed to load audio</span>';
+        });
+      </script>
+      
+
+
       <style>
         .rotating-icon {
           width: 48px;
@@ -40,50 +99,6 @@
         }
         
       </style>
-
-      
-        <div class="container1" style="position: fixed; bottom: 0; left: 0; right: 0; margin: 0 auto; width: 100%; background: #ffffff; border-top: 1px solid #ddd; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); padding: 12px; z-index: 100; text-align: left;">
-          <div class="audio-container" style="display: flex; align-items: center; justify-content: space-between; margin: 0 auto; gap: 10px; padding: 10px 5px 0 5px;">
-      
-            <!-- Surah Info + Reciter -->
-            <div style="display: flex; align-items: center; gap: 10px; flex: 1 1 auto; min-width: 100px; position: relative; bottom: 4px; left: 5px;">
-              <img src="images/audio-player.webp" id="audioIcon" alt="Quran Audio" class="rotating-icon" />
-              <div style="position: relative; left: 5px;">
-                <div style="font-size: 14px; color: #444; font-weight: 500;"><%= globalSurahNo %>. <%= globalSurahName %></div>
-                <div style="font-size: 13px; color: #888;"><%= globalFavoriteReciter %></div>
-              </div>
-              <div style="position: relative; left: 17px;">
-                <img src="images/back.png" width="21px" style="margin-right: 8px;"/>
-                <img src="images/next-button.png" width="21px"/>
-              </div>
-             
-            </div>
-      
-            <!-- Audio Player -->
-            <div class="audio-player" style="flex: 10 1 auto; min-width: 220px;">
-              <audio id="globalAudio" controls style="width: 100%; height: 45px;">
-                <source src="<%= globalAudioUrl %>" type="audio/mpeg" />
-                Your browser does not support the audio element.
-              </audio>
-            </div>
-      
-            <!-- Close Button -->
-            <form action="/hide-audio" method="POST" class="close-mobile" style="flex: 0 0 auto; margin: 0;">
-              <button type="submit" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #999;">✕</button>
-            </form>
-      
-          </div>
-        </div>
-      <!-- </div> -->
-      
-
-
-
-      
-      
-
-
-      
       
     
       <script>
@@ -152,6 +167,7 @@
       </script>
       
     <% } %>
+  <% } %>
     
     
 
@@ -160,25 +176,7 @@
 
 
 
-
-
-
-
-
-
-
-
-
-    
-    
-    
-
-      
-    
-
-      
-      
-      
+     
       
 
 
