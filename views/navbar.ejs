@@ -130,6 +130,9 @@
 
 
   <br>
+  <br>
+  <br>
+  <br>
         <h3>Welcome, to salah tracker</h3>
         <br>
  
@@ -283,15 +286,23 @@ body {
   bottom: 30px;
   width: 100%;
 }
+
 /* Responsive media query code for small screens */
 @media (max-width: 1024px) {
   .sidebar {
-    height: 56px;
-    margin: 13px;
+    height: 70px;
+    /* margin: 13px; */
+    /* padding: 10px 0; */
+    margin: 0;
     overflow-y: hidden;
     scrollbar-width: none;
-    width: calc(100% - 26px);
-    max-height: calc(100vh - 26px);
+    width: 100%;
+    border-radius: 0;
+    
+    /* border-radius: 15px; */
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.08);
+    /* width: calc(100% - 26px); */
+    max-height: calc(100vh - 35px);
   }
   .sidebar.menu-active {
     overflow-y: auto;
@@ -300,9 +311,8 @@ body {
     position: sticky;
     top: 0;
     z-index: 999;
-    border-radius: 16px;
     background: #151A2D;
-    padding: 8px 10px;
+    padding: 20px 11px;
   }
   .sidebar-header .header-logo img {
     width: 40px;
@@ -347,7 +357,7 @@ body {
 const sidebarToggler = document.querySelector(".sidebar-toggler");
 const menuToggler = document.querySelector(".menu-toggler");
 // Ensure these heights match the CSS sidebar height values
-let collapsedSidebarHeight = "56px"; // Height in mobile view (collapsed)
+let collapsedSidebarHeight = "70px"; // Height in mobile view (collapsed)
 let fullSidebarHeight = "calc(100vh - 32px)"; // Height in larger screen
 // Toggle sidebar's collapsed state
 sidebarToggler.addEventListener("click", () => {
