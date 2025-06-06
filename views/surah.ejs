@@ -51,8 +51,12 @@
 
 
               <% if (surah.audio[favoriteReciter]) { %>
+                <!-- Audio Player with loader -->
                 <div class="audio-player" style="margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 8px; background: #fff;">
                   <h5 style="margin-bottom: 10px;"><%= surah.audio[favoriteReciter].reciter %></h5>
+                  <div id="audioLoader" style="display: flex; align-items: center; justify-content: center; height: 45px;">
+                    <img src="/images/40.gif" alt="Loading..." style="height: 14px;" />
+                  </div>
                   <audio id="surahAudio" controls style="width: 100%;">
                     <source src="<%= surah.audio[favoriteReciter].originalUrl %>" type="audio/mpeg">
                     Your browser does not support the audio element.
@@ -62,13 +66,23 @@
 
                 <script>
                   const audio = document.getElementById('surahAudio');
-                
+                  const loader = document.getElementById('audioLoader');
+                  const savedTime = <%= JSON.stringify(audioTime || 0) %>;
+
                   if (audio) {
                     // Set saved time from server safely
-                    const savedTime = <%= JSON.stringify(audioTime || 0) %>;
+                    // Show loader initially
+                    loader.style.display = 'flex';
+                    audio.style.display = 'none';
                     if (savedTime) {
                       audio.currentTime = savedTime;
                     }
+
+                    audio.addEventListener('canplaythrough', () => {
+                        loader.style.display = 'none';
+                        audio.style.display = 'block';
+                    });
+
                     // Save time to DB periodically
                     setInterval(() => {
                         if (audio && !isNaN(audio.currentTime)) {
@@ -92,18 +106,7 @@
                 </script>
                 
               <% } %>
-              
-
-
-
-
-
-
-
-
-
-
-
+            
 
 
 

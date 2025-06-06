@@ -38,91 +38,38 @@
           </div>
         </div>
       <!-- </div> -->
-      
+    
       <script>
         const audio = document.getElementById('globalAudio');
         const loader = document.getElementById('audioLoader');
-      
-        // Show loader initially
-        loader.style.display = 'flex';
-        audio.style.display = 'none';
-      
-        // Hide loader when audio is ready
-        audio.addEventListener('canplaythrough', () => {
-          loader.style.display = 'none';
-          audio.style.display = 'block';
-        });
-      
-        // Optional: handle error
-        audio.addEventListener('error', () => {
-          loader.innerHTML = '<span style="color: red;">Failed to load audio</span>';
-        });
-      </script>
-      
-
-
-      <style>
-        .rotating-icon {
-          width: 48px;
-          height: 48px;
-          border-radius: 50%;
-          object-fit: cover;
-          border: 2px solid #e0e0e0;
-          padding: 1.5px;
-          background: #fff;
-        }
-      
-        .rotate {
-          animation: spin 4s linear infinite;
-        }
-      
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-
-        @media (max-width: 600px) {
-          .audio-container {
-            flex-wrap: wrap;
-          }
-      
-          .close-mobile {
-            position: absolute;
-            top: 10px;
-            right: 15px;
-          }
-    
-      
-          .audio-player {
-            flex: 1 1 100%;
-          }
-        }
-        
-      </style>
-      
-    
-      <script>
-        const audio = document.getElementById('globalAudio');
         const savedTime = <%= JSON.stringify(globalAudioTime || 0) %>;
       
         if (audio) {
           let timeRestored = false;
       
+          // Show loader initially
+          loader.style.display = 'flex';
+          audio.style.display = 'none';
+
           audio.addEventListener('loadedmetadata', () => {
             if (!timeRestored && !isNaN(savedTime)) {
               audio.currentTime = savedTime;
               timeRestored = true;
             }
           });
-      
+
           // Play only after restoring time
           audio.addEventListener('canplaythrough', () => {
+            loader.style.display = 'none';
+            audio.style.display = 'block';
+
             if (timeRestored) {
               audio.play().catch(err => {
                 console.error("Autoplay failed:", err);
               });
             }
           });
+
       
           // Periodically update playback time to server
           setInterval(() => {

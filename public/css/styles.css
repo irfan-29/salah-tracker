@@ -55,6 +55,45 @@ hr{
 
 
 
+  /* 
+  Audio loader -> for surah page & footer page
+  */
+  .rotating-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #e0e0e0;
+    padding: 1.5px;
+    background: #fff;
+  }
+
+  .rotate {
+    animation: spin 4s linear infinite;
+  }
+
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  @media (max-width: 600px) {
+    .audio-container {
+      flex-wrap: wrap;
+    }
+
+    .close-mobile {
+      position: absolute;
+      top: 10px;
+      right: 15px;
+    }
+
+    .audio-player {
+      flex: 1 1 100%;
+    }
+  }
+
+  /* Audio loader */
 
 
 
