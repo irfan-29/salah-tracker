@@ -3,14 +3,19 @@
 
     <h3 style="text-align: center;">Posts</h3>
 
-    <!-- <div class="container1"> -->
+  
         <br>
-        <form action="/add-post" method="get">
-            <button type="submit" class="add btn btn-primary">Add Post</button>
-        </form>
-        <form action="/add-video" method="get">
-            <button type="submit" class="add btn btn-primary">Add Video</button>
-        </form>
+        <!-- <div class="container1"> -->
+            <div class="d-flex align-items-center w-95 gap-2" style="margin: 0 4%;">
+                <form action="/add-post" method="get">
+                    <button type="submit" class="add btn btn-primary">Add Post</button>
+                </form>
+                <form action="/add-video" method="get">
+                    <button type="submit" class="add btn btn-primary">Add Video</button>
+                </form>
+            </div>
+        <!-- </div> -->
+        
         
         <div style="width: 90%; margin: auto;">
             <% post.forEach(function(post) { %>
@@ -71,12 +76,12 @@
       @media (max-width: 600px) {
           .video-container {
               width: 100%;
-              height: auto;
+              height: 180px;
           }
   
           .video-container iframe {
               width: 100%;
-              height: auto;
+              height: 100%;
           }
       }
         </style>
