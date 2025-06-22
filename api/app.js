@@ -68,7 +68,8 @@ const postsSchema = new mongoose.Schema({
     // user:,
     content: String,
     reference: String,
-    postedDate: String
+    postedDate: String,
+    isVideo: Boolean
 });
 const Posts = mongoose.model("Posts", postsSchema);
 
@@ -195,6 +196,30 @@ app.post("/hide-audio", async (req, res) => {
         // user: name,
         content: content,
         reference: reference
+    });
+    post.save();
+    res.redirect("/posts");
+  });
+
+  app.get("/add-video", async(req, res) => {
+    res.render("add-video");
+  });
+
+
+  app.post("/add-video", async(req, res) => {
+    let date = new Date(req.query.date);
+    if(isNaN(date.getTime())) date = new Date();
+    const options = { weekday: "long", month: "short", day: "2-digit", year: "numeric" };
+    const formattedDate = date.toLocaleDateString("en-US", options);
+    // const user=;
+    const link=req.body.link;
+    const description=req.body.description;
+    const post = new Posts({
+        postedDate: formattedDate,
+        // user: name,
+        content: link.split("youtu.be/")[1].split("?")[0],
+        reference: description,
+        isVideo: true
     });
     post.save();
     res.redirect("/posts");
