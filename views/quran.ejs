@@ -24,19 +24,34 @@
  
 
             <!-- last read -->
-            <div class="container1">
+             <div class="container1 scrollable-container" style="width: 100%; padding-bottom: 30px; padding-top: 25px;" >
                 <p>Last Read: </p>
-                <a href="/surah/<%= lastRead %>">
-                   <div class="surah-item">
-                       <p class="surah-name"><%= lastRead %>. <%= surahs[lastRead-1].surahName %> ( <%= surahs[lastRead-1].surahNameArabic %> )</p>
-                       <p class="surah-translation"><%= surahs[lastRead-1].surahNameTranslation %></p>
-                       <p>Revelation Place: <%= surahs[lastRead-1].revelationPlace %></p>
-                       <p>Total Ayah: <%= surahs[lastRead-1].totalAyah %></p>
-                   </div>
+              <button type="button" class="btn btn-outline-primary" style="margin: auto 5px;">
+              <a href="/surah/<%= lastRead %>" style="color: #000;">
+                  <%= lastRead %>. <%= surahs[lastRead-1].surahName %> ( <%= surahs[lastRead-1].surahNameArabic %> )
                </a>
-             </div>
-             <br>
+            </button><button type="button" class="btn btn-outline-primary" style="margin: auto 5px;">
+              <a href="/surah/<%= lastRead %>" style="color: #000;">
+                  <%= lastRead %>. <%= surahs[lastRead-1].surahName %> ( <%= surahs[lastRead-1].surahNameArabic %> )
+               </a>
+            </button><button type="button" class="btn btn-outline-primary" style="margin: auto 5px;">
+              <a href="/surah/<%= lastRead %>" style="color: #000;">
+                  <%= lastRead %>. <%= surahs[lastRead-1].surahName %> ( <%= surahs[lastRead-1].surahNameArabic %> )
+               </a>
+            </button><button type="button" class="btn btn-outline-primary" style="margin: auto 5px;">
+              <a href="/surah/<%= lastRead %>" style="color: #000;">
+                  <%= lastRead %>. <%= surahs[lastRead-1].surahName %> ( <%= surahs[lastRead-1].surahNameArabic %> )
+               </a>
+            </button><button type="button" class="btn btn-outline-primary" style="margin: auto 5px;">
+              <a href="/surah/<%= lastRead %>" style="color: #000;">
+                  <%= lastRead %>. <%= surahs[lastRead-1].surahName %> ( <%= surahs[lastRead-1].surahNameArabic %> )
+               </a>
+            </button>
 
+            
+            </div>
+            <br>
+            
 
 
             <!-- search -->
@@ -116,7 +131,6 @@
               
               
               
-  
   
 
 
@@ -219,6 +233,15 @@
         .surah-translation {
             font-size: 15px;
             color: #666;
+        }
+
+        .scrollable-container{
+          align-items: flex-start;
+            display: block;
+            max-width: -moz-fit-content;
+            margin: 0 auto;
+            overflow-x: auto;
+            white-space: nowrap;
         }
     </style>
 
