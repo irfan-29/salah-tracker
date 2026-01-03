@@ -33,24 +33,10 @@
                 </div>
               </form>
 
-              <!-- <% if (surah.audio[favoriteReciter] && hideAudioPlayer) { %>
-                <div class="audio-player" style="margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 8px; background: #fff;">
-                  <h5 style="margin-bottom: 10px;"><%= surah.audio[favoriteReciter].reciter %></h5>
-                  <audio controls style="width: 100%;">
-                    <source src="<%= surah.audio[favoriteReciter].originalUrl %>" type="audio/mpeg">
-                    Your browser does not support the audio element.
-                  </audio>
-                </div>
-              <% } %>
-              <form action="/play-surah" method="POST">
-                <input type="hidden" name="reciterName" value="<%= surah.audio[favoriteReciter].reciter %>">
-                <input type="hidden" name="audioUrl" value="<%= surah.audio[favoriteReciter].originalUrl %>">
-                <button type="submit" class="btn btn-primary">Play Surah</button>
-              </form>  -->
 
 
 
-              <% if (surah.audio[favoriteReciter]) { %>
+              <% if (surah.audio[favoriteReciter] && alwaysShowAudio) { %>
                 <!-- Audio Player with loader -->
                 <div class="audio-player" style="margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 8px; background: #fff;">
                   <h5 style="margin-bottom: 10px;"><%= surah.audio[favoriteReciter].reciter %></h5>
@@ -64,49 +50,84 @@
                 </div>
               
 
-                <script>
-                  const audio = document.getElementById('surahAudio');
-                  const loader = document.getElementById('audioLoader');
-                  const savedTime = <%= JSON.stringify(audioTime || 0) %>;
+               <script>
+                const audio = document.getElementById('surahAudio');
+                const loader = document.getElementById('audioLoader');
+                const savedTime = <%= JSON.stringify(audioTime || 0) %>;
 
-                  if (audio) {
-                    // Set saved time from server safely
-                    // Show loader initially
-                    loader.style.display = 'flex';
-                    audio.style.display = 'none';
-                    if (savedTime) {
+                if (!audio) {
+                  console.warn('Audio element not found');
+                } else {
+                  let isAudioPlaying = false;
+                  let lastSentTime = 0;
+
+                  /* Initial UI */
+                  loader.style.display = 'flex';
+                  audio.style.display = 'none';
+
+                  /* Restore time once */
+                  audio.addEventListener('loadedmetadata', () => {
+                    if (savedTime > 0 && !isNaN(savedTime)) {
                       audio.currentTime = savedTime;
                     }
+                  });
 
-                    audio.addEventListener('canplaythrough', () => {
-                        loader.style.display = 'none';
-                        audio.style.display = 'block';
+                  audio.addEventListener('canplaythrough', () => {
+                    loader.style.display = 'none';
+                    audio.style.display = 'block';
+                  });
+
+                  /* Track REAL play state */
+                  audio.addEventListener('play', () => {
+                    isAudioPlaying = true;
+                  });
+
+                  audio.addEventListener('pause', () => {
+                    isAudioPlaying = false;
+                  });
+
+                  audio.addEventListener('ended', () => {
+                    isAudioPlaying = false;
+                  });
+
+                  /* 🔥 SAFE interval (runs, but sends only when playing) */
+                  setInterval(() => {
+                    if (
+                      !isAudioPlaying ||
+                      audio.paused ||
+                      audio.ended ||
+                      audio.seeking ||
+                      isNaN(audio.currentTime) ||
+                      audio.currentTime <= 0
+                    ) {
+                      return;
+                    }
+
+                    // avoid spam
+                    if (Math.abs(audio.currentTime - lastSentTime) < 5) return;
+
+                    lastSentTime = audio.currentTime;
+
+                    fetch('/update-audio-time', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        surahNo: "<%= lastRead %>",
+                        surahName: "<%= surah.surahName %>",
+                        time: audio.currentTime
+                      })
+                    }).catch(err => {
+                      console.error('Failed to update audio time:', err);
                     });
 
-                    // Save time to DB periodically
-                    setInterval(() => {
-                        if (audio && !isNaN(audio.currentTime)) {
-                          fetch('/update-audio-time', {
-                            method: 'POST',
-                            headers: {
-                              'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({
-                              surahNo: "<%= lastRead %>",
-                              surahName: "<%= surah.surahName %>",
-                              time: audio.currentTime
-                            })
-                          })
-                          .then(res => res.json())
-                          .then(data => console.log('Saved time:', data))
-                          .catch(err => console.error('Failed to update time:', err));
-                        }
-                    }, 5000); // every 5 seconds
-                  }
-                </script>
-                
+                  }, 5000);
+                }
+               </script>
               <% } %>
-            
+
+
+
+
 
 
 

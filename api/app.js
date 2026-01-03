@@ -8,6 +8,11 @@ const fetch = require("node-fetch");
 const cheerio = require("cheerio");
 const session = require('express-session');
 
+// internal
+const { islamicFinderFetch } = require("../api/utils/islamic-finder.js");
+
+
+
 const app=express();
 
 app.set('view engine', 'ejs');
@@ -56,11 +61,11 @@ const settingsSchema = new mongoose.Schema({
     favoriteReciter: Number,
     favoriteEdition: String,
     lastRead: String,
-    audioProgress: [{
+    audioProgress: {
         surahNo: Number,
         surahName: String,
         time: Number
-    }]
+    }
 });
 const Settings = mongoose.model("Settings", settingsSchema);
 
@@ -73,6 +78,11 @@ const postsSchema = new mongoose.Schema({
 });
 const Posts = mongoose.model("Posts", postsSchema);
 
+
+
+
+
+
 // global constants
 
 //add new locations here - for support
@@ -84,6 +94,9 @@ const locationMap = new Map([
     ["Bengaluru", "1277333"]
 ]);
 
+
+
+const SKIP_MIDDLEWARE_URLS = ["/hide-audio"];
 
 
 
@@ -105,49 +118,89 @@ const locationMap = new Map([
 // });
 
 
-app.use(async (req, res, next) => {
-    // if (req.session.userId) {
-      const settings = await Settings.findOne({});
-      if (settings && settings.audioProgress && settings.audioProgress.length > 0) {
-        const response = await fetch(`https://quranapi.pages.dev/api/${settings.lastRead}.json`);
-        const surah = await response.json();
-        res.locals.globalAudioUrl = surah.audio[settings.favoriteReciter].originalUrl; // implement this
-        res.locals.globalAudioTime = settings.audioProgress[0].time;
-        res.locals.globalSurahNo = settings.audioProgress[0].surahNo;
-        res.locals.globalSurahName = settings.audioProgress[0].surahName;
-        res.locals.globalFavoriteReciter = surah.audio[settings.favoriteReciter].reciter;
-        res.locals.canShowAudio = true;
-      }else{
-        res.locals.canShowAudio = false;
+// app.use(async (req, res, next) => {
+//     if (SKIP_MIDDLEWARE_URLS.includes(req.path)) {
+//         return next();
+//       }
+//     // if (req.session.userId) {
+//       const settings = await Settings.findOne({}).lean();
+//       console.log(req.path);
+//       console.log(settings);
+//       if (settings && settings.audioProgress!=null) {
+//         // console.log(settings.audioProgress);
+//         const response = await fetch(`https://quranapi.pages.dev/api/${settings.lastRead}.json`);
+//         const surah = await response.json();
+//         res.locals.globalAudioUrl = surah.audio[settings.favoriteReciter].originalUrl; // implement this
+//         res.locals.globalAudioTime = settings.audioProgress.time;
+//         res.locals.globalSurahNo = settings.audioProgress.surahNo;
+//         res.locals.globalSurahName = settings.audioProgress.surahName;
+//         res.locals.globalFavoriteReciter = surah.audio[settings.favoriteReciter].reciter;
+//         res.locals.canShowAudio = true;
+//       }else{
+//         res.locals.canShowAudio = false;
+//       }
+//     // }
+//     next();
+//   });
+
+    app.use(async (req, res, next) => {
+      // Skip routes that should not trigger footer audio
+      if (req.path.startsWith("/surah")) {
+        return next();
       }
-    // }
-    next();
-  });
+
+      const settings = await Settings.findOne({}).lean();
+
+      if (settings && settings.audioProgress) {
+         const response = await fetch(
+            `https://quranapi.pages.dev/api/${settings.audioProgress.surahNo}.json`
+        );
+        const audioSurah = await response.json();
+
+        res.locals.footerAudio = {
+          url: audioSurah.audio[settings.favoriteReciter].originalUrl,
+          surahNo: settings.audioProgress.surahNo,
+          surahName: settings.audioProgress.surahName,
+          reciterName: audioSurah.audio[settings.favoriteReciter].reciter,
+          time: settings.audioProgress.time
+        };
+      } else {
+        res.locals.footerAudio = null;
+      }
+
+      next();
+    });
+
   
   
-  app.get('/audio-time', async (req, res) => {
-    const { surahNo } = req.query;
-    const settings = await Settings.findOne({});
-    const progress = settings?.audioProgress?.find(p => p.surahNo == surahNo);
-    if (progress) {
-      res.json({ time: progress.time });
-    } else {
-      res.json({ time: 0 });
-    }
-  });
+    app.get("/audio-time", async (req, res) => {
+      const { surahNo } = req.query;
+      const settings = await Settings.findOne({});
+      const progress = settings.audioProgress;
+      let audioTime = 0;
+      if (progress && progress.surahNo === surahNo) {
+        audioTime = progress.time || 0;
+      }
+      res.json({ time: audioTime });
+    });
   
 
-app.post("/hide-audio", async (req, res) => {
-    res.locals.canShowAudio = false;  // update it here as well, instead of app.use alone, to hide audio immediately
-    await Settings.findOneAndUpdate(
+    app.post("/hide-audio", async (req, res) => {
+      res.locals.canShowAudio = false; // update it here as well, instead of app.use alone, to hide audio immediately
+      res.locals = {};
+      await Settings.findOneAndUpdate(
         // { userId: req.session.userId },
         {},
-        { $set: { audioProgress: [] } },
-        { sort: { _id: -1 }, upsert: true }
-    );
-    const referer = req.get("Referer") || "/";
-    res.redirect(referer);
-  });
+        {
+          $set: {
+            audioProgress: null,
+          },
+        },
+        { upsert: true }
+      );
+      const referer = req.get("Referer") || "/";
+      res.redirect(referer);
+    });
 
   app.post('/play-surah', (req, res) => {
     req.session.favoriteReciterName = req.body.reciterName;
@@ -158,18 +211,49 @@ app.post("/hide-audio", async (req, res) => {
     res.redirect(referer);
   });
 
-  app.post('/update-audio-time', async (req, res) => {
+//   app.post('/update-audio-time', async (req, res) => {
+//     // if(!req.locals.canShowAudio)
+//     // {
+//     //     res.sendStatus(200);
+//     // }
+//     // console.log(req);
+//     const { surahNo, surahName, time } = req.body;
+//     // if (req.session.userId) {
+//       await Settings.findOneAndUpdate(
+//         // { userId: req.session.userId },
+//         {},
+//         { 
+//             $set: { 
+//               audioProgress: { surahNo, surahName, time } 
+//             } 
+//         },
+//         { upsert: true }
+//       );
+//     // }
+//     res.sendStatus(200);
+//   });
+
+  app.post("/update-audio-time", async (req, res) => {
     const { surahNo, surahName, time } = req.body;
-    // if (req.session.userId) {
+
+    try {
       await Settings.findOneAndUpdate(
-        // { userId: req.session.userId },
-        {},
-        { audioProgress: { surahNo, surahName, time } },
-        { sort: { _id: -1 }, upsert: true }
+        {}, // ideally use userId when session is ready
+        {
+          $set: {
+            audioProgress: { surahNo, surahName, time },
+          },
+        },
+        { upsert: true }
       );
-    // }
-    res.sendStatus(200);
+
+      res.json({ success: true });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ success: false });
+    }
   });
+
   
   app.get("/posts", async(req, res) => {
     Posts.find({}).then((post) => {
@@ -270,46 +354,92 @@ app.get("/quran", async(req, res) => {
 });
 
 
-app.get("/surah/:surahNo", async (req, res) => {
-    res.locals.hideAudioPlayer = true;
+// app.get("/surah/:surahNo", async (req, res) => {
+//     res.locals.hideAudioPlayer = true;
   
-    let reciter = 1;
-    let favoriteEdition = "";
-    let audioTime = 0;
+//     let reciter = 1;
+//     let favoriteEdition = "";
+//     let audioTime = 0;
   
-    const surahNo = parseInt(req.params.surahNo);
-    const settings = await Settings.findOne({});
+//     const surahNo = parseInt(req.params.surahNo);
+//     const settings = await Settings.findOne({});
   
-    if (settings) {
-      if (settings.favoriteReciter) reciter = settings.favoriteReciter;
-      if (settings.favoriteEdition) favoriteEdition = settings.favoriteEdition;
+//     if (settings) {
+//         if (settings.favoriteReciter) reciter = settings.favoriteReciter;
+//         if (settings.favoriteEdition) favoriteEdition = settings.favoriteEdition;
   
-      // Get audio time for this surah
-      const progress = settings.audioProgress?.find(p => p.surahNo === surahNo);
-      if (progress) audioTime = progress.time || 0;
-    }
+//         // Get audio time for this surah
+//         const progress = settings.audioProgress;
+//         if (progress && progress.surahNo === surahNo) {
+//             audioTime = progress.time || 0;
+//         }
+//     }
   
-    favoriteEdition = favoriteEdition.replace(/\s*\(.*?\)\s*$/, '');
+//     favoriteEdition = favoriteEdition.replace(/\s*\(.*?\)\s*$/, '');
   
-    const response = await fetch(`https://quranapi.pages.dev/api/${surahNo}.json`);
-    const data = await response.json();
+//     const response = await fetch(`https://quranapi.pages.dev/api/${surahNo}.json`);
+//     const data = await response.json();
   
-    let translationJson = {};
-    if (favoriteEdition !== "") {
-      const translation = await fetch(`https://cdn.jsdelivr.net/gh/fawazahmed0/quran-api@1/editions/${favoriteEdition}/${surahNo}.json`);
-      translationJson = await translation.json();
-    }
+//     let translationJson = {};
+//     if (favoriteEdition !== "") {
+//       const translation = await fetch(`https://cdn.jsdelivr.net/gh/fawazahmed0/quran-api@1/editions/${favoriteEdition}/${surahNo}.json`);
+//       translationJson = await translation.json();
+//     }
   
-    await Settings.findOneAndUpdate({}, { lastRead: surahNo }, { sort: { _id: -1 }, upsert: true });
+//     await Settings.findOneAndUpdate({}, { lastRead: surahNo }, { sort: { _id: -1 }, upsert: true });
   
-    res.render("surah", {
-      surah: data,
-      translation: translationJson,
-      favoriteReciter: String(reciter),
-      lastRead: surahNo,
-      audioTime: audioTime
+//     res.render("surah", {
+//       surah: data,
+//       translation: translationJson,
+//       favoriteReciter: String(reciter),
+//       lastRead: surahNo,
+//       audioTime: audioTime
+//     });
+//   });
+
+    app.get("/surah/:surahNo", async (req, res) => {
+      const surahNo = parseInt(req.params.surahNo);
+
+      let reciter = 1;
+      let favoriteEdition = "";
+      let audioTime = 0;
+
+      const settings = await Settings.findOne({});
+
+      if (settings) {
+        if (settings.favoriteReciter) reciter = settings.favoriteReciter;
+        if (settings.favoriteEdition)
+          favoriteEdition = settings.favoriteEdition;
+
+        if (
+          settings.audioProgress &&
+          settings.audioProgress.surahNo === surahNo
+        ) {
+          audioTime = settings.audioProgress.time || 0;
+        }
+      }
+
+      const response = await fetch(
+        `https://quranapi.pages.dev/api/${surahNo}.json`
+      );
+      const data = await response.json();
+
+      await Settings.findOneAndUpdate(
+        {},
+        { lastRead: surahNo },
+        { upsert: true }
+      );
+
+      res.render("surah", {
+        surah: data,
+        translation: {},
+        favoriteReciter: String(reciter),
+        lastRead: surahNo,
+        audioTime, // 0 if null → perfect
+        alwaysShowAudio: true, // 👈 explicit
+      });
     });
-  });
+
   
   
 
@@ -378,7 +508,7 @@ app.get("/salah-timings", async(req, res)=>{
             location = settings.location;
     }
 
-    const response = await fetch(`https://www.islamicfinder.org/prayer-widget/${locationMap.get(location)}/shafi/3/0/18.0/18.0`);
+    const response = await islamicFinderFetch(`https://www.islamicfinder.org/prayer-widget/${locationMap.get(location)}/shafi/3/0/18.0/18.0`);
     const data = await response.text();
 
     const $ = cheerio.load(data);
@@ -467,7 +597,7 @@ async function getCurrentHijriDate() {
 
         // special days
 
-        const response2 = await fetch(`https://www.islamicfinder.org/specialislamicdays`);
+        const response2 = await islamicFinderFetch(`https://www.islamicfinder.org/specialislamicdays`);
         const data = await response2.text();
     
         const $ = cheerio.load(data);
@@ -511,7 +641,7 @@ async function getCurrentHijriDate() {
 
 
 app.get("/special-days", async(req, res) => {
-    const response = await fetch(`https://www.islamicfinder.org/specialislamicdays`);
+    const response = await islamicFinderFetch(`https://www.islamicfinder.org/specialislamicdays`);
     const data = await response.text();
     
     const $ = cheerio.load(data);

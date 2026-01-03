@@ -1,97 +1,135 @@
-    
-    
-    <% if (canShowAudio) { %>
-      <% if(globalAudioUrl) { %>
-        <div class="container1" style="position: fixed; bottom: 0; left: 0; right: 0; margin: 0 auto; width: 100%; background: #ffffff; border-top: 1px solid #ddd; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); padding: 12px; z-index: 100; text-align: left;">
-          <div class="audio-container" style="display: flex; align-items: center; justify-content: space-between; margin: 0 auto; gap: 10px; padding: 10px 5px 0 5px;">
-      
-            <!-- Surah Info + Reciter -->
-            <div style="display: flex; align-items: center; gap: 10px; flex: 1 1 auto; min-width: 100px; position: relative; bottom: 4px; left: 5px;">
-              <img src="images/audio-player.webp" id="audioIcon" alt="Quran Audio" class="rotating-icon" />
-              <div style="position: relative; left: 5px;">
-                <div style="font-size: 14px; color: #444; font-weight: 500;"><%= globalSurahNo %>. <%= globalSurahName %></div>
-                <div style="font-size: 13px; color: #888;"><%= globalFavoriteReciter %></div>
-              </div>
-              <div style="position: relative; left: 17px;">
+
+    <% if (footerAudio) { %>
+  <div class="container1" style="position: fixed; bottom: 0; left: 0; right: 0; margin: 0 auto; width: 100%; background: #ffffff; border-top: 1px solid #ddd; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); padding: 12px; z-index: 100; text-align: left;">
+    <div class="audio-container" style="display: flex; align-items: center; justify-content: space-between; margin: 0 auto; gap: 10px; padding: 10px 5px 0 5px;">
+
+      <!-- Surah Info -->
+      <div style="display: flex; align-items: center; gap: 10px; flex: 1 1 auto; min-width: 100px; position: relative; bottom: 4px; left: 5px;">
+        <img src="images/audio-player.webp" id="audioIcon" alt="Quran Audio" class="rotating-icon" />
+        <div style="position: relative; left: 5px;">
+          <div style="font-size: 14px; color: #444; font-weight: 500;"><%= footerAudio.surahNo %>. <%= footerAudio.surahName %></div>
+          <div style="font-size: 13px; color: #888;"><%= footerAudio.reciterName %></div>
+        </div>
+        <div style="position: relative; left: 17px;">
                 <img src="images/back.png" width="21px" style="margin-right: 8px;"/>
                 <img src="images/next-button.png" width="21px"/>
-              </div>
-             
-            </div>
-            
-            <!-- Audio Player with loader -->
+        </div>
+      </div>
+
+      
+      <!-- Audio Player with loader -->
             <div class="audio-player" style="flex: 10 1 auto; min-width: 220px;">
               <div id="audioLoader" style="display: flex; align-items: center; justify-content: center; height: 45px;">
                 <img src="/images/40.gif" alt="Loading..." style="height: 14px;" />
               </div>
               <audio id="globalAudio" controls style="width: 100%; height: 45px; display: none;">
-                <source src="<%= globalAudioUrl %>" type="audio/mpeg" />
+                <source src="<%= footerAudio.url %>" type="audio/mpeg" />
                 Your browser does not support the audio element.
               </audio>
             </div>
-      
-            <!-- Close Button -->
-            <form action="/hide-audio" method="POST" class="close-mobile" style="flex: 0 0 auto; margin: 0;">
-              <button type="submit" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #999;">✕</button>
-            </form>
-      
-          </div>
-        </div>
-      <!-- </div> -->
+
+      <!-- Close Button -->
+        <form action="/hide-audio" method="POST" class="close-mobile" style="flex: 0 0 auto; margin: 0;">
+          <button type="submit" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #999;">✕</button>
+        </form>
+
+    </div>
+  </div>
+
     
       <script>
-        const audio = document.getElementById('globalAudio');
-        const loader = document.getElementById('audioLoader');
-        const savedTime = <%= JSON.stringify(globalAudioTime || 0) %>;
       
-        if (audio) {
-          let timeRestored = false;
-      
-          // Show loader initially
-          loader.style.display = 'flex';
-          audio.style.display = 'none';
 
-          audio.addEventListener('loadedmetadata', () => {
-            if (!timeRestored && !isNaN(savedTime)) {
-              audio.currentTime = savedTime;
-              timeRestored = true;
-            }
-          });
 
-          // Play only after restoring time
-          audio.addEventListener('canplaythrough', () => {
-            loader.style.display = 'none';
-            audio.style.display = 'block';
 
-            if (timeRestored) {
-              audio.play().catch(err => {
-                console.error("Autoplay failed:", err);
-              });
-            }
-          });
 
-      
-          // Periodically update playback time to server
-          setInterval(() => {
-            if (!audio.paused && !isNaN(audio.currentTime)) {
-              fetch('/update-audio-time', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                  surahNo: "<%= globalSurahNo %>",
-                  surahName: "<%= globalSurahName %>",
-                  time: audio.currentTime
-                })
-              }).then(res => {
-                if (!res.ok) {
-                  console.error('Server error during time update');
+
+          const audio = document.getElementById('globalAudio');
+                const loader = document.getElementById('audioLoader');
+                const savedTime = <%= JSON.stringify(footerAudio.time || 0) %>;
+
+                if (!audio) {
+                  console.warn('Audio element not found');
+                } else {
+                  let isAudioPlaying = false;
+                  let lastSentTime = 0;
+
+                  /* Initial UI */
+                  loader.style.display = 'flex';
+                  audio.style.display = 'none';
+
+                  /* Restore time once */
+                  audio.addEventListener('loadedmetadata', () => {
+                    if (savedTime > 0 && !isNaN(savedTime)) {
+                      audio.currentTime = savedTime;
+                    }
+                  });
+
+                  audio.addEventListener('canplaythrough', () => {
+                    loader.style.display = 'none';
+                    audio.style.display = 'block';
+                  });
+
+                  /* Track REAL play state */
+                  audio.addEventListener('play', () => {
+                    isAudioPlaying = true;
+                  });
+
+                  audio.addEventListener('pause', () => {
+                    isAudioPlaying = false;
+                  });
+
+                  audio.addEventListener('ended', () => {
+                    isAudioPlaying = false;
+                  });
+
+                  /* 🔥 SAFE interval (runs, but sends only when playing) */
+                  setInterval(() => {
+                    if (
+                      !isAudioPlaying ||
+                      audio.paused ||
+                      audio.ended ||
+                      audio.seeking ||
+                      isNaN(audio.currentTime) ||
+                      audio.currentTime <= 0
+                    ) {
+                      return;
+                    }
+
+                    // avoid spam
+                    if (Math.abs(audio.currentTime - lastSentTime) < 5) return;
+
+                    lastSentTime = audio.currentTime;
+
+                    fetch('/update-audio-time', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        surahNo: "<%= footerAudio.surahNo %>",
+                        surahName: "<%= footerAudio.surahName %>",
+                        time: audio.currentTime
+                      })
+                    }).catch(err => {
+                      console.error('Failed to update audio time:', err);
+                    });
+
+                  }, 5000);
                 }
-              }).catch(err => console.error('Fetch error:', err));
-            }
-          }, 5000);
-        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -114,12 +152,12 @@
       </script>
       
     <% } %>
-  <% } %>
     
     
 
 
 
+    
 
 
 
