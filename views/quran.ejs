@@ -11,12 +11,12 @@
             <!-- ayah of the day -->
             <div class="container1">
                 <p>Ayah of the day: </p>
-                <a href="/surah/<%= lastRead %>">
+                <a href="/surah/3">
                    <div class="surah-item">
-                       <p class="surah-name"><%= lastRead %>. <%= surahs[lastRead-1].surahName %> ( <%= surahs[lastRead-1].surahNameArabic %> )</p>
-                       <p class="surah-translation"><%= surahs[lastRead-1].surahNameTranslation %></p>
-                       <p>Revelation Place: <%= surahs[lastRead-1].revelationPlace %></p>
-                       <p>Total Ayah: <%= surahs[lastRead-1].totalAyah %></p>
+                       <p class="surah-name">3. <%= surahs[3-1].surahName %> ( <%= surahs[3-1].surahNameArabic %> )</p>
+                       <p class="surah-translation"><%= surahs[3-1].surahNameTranslation %></p>
+                       <p>Revelation Place: <%= surahs[3-1].revelationPlace %></p>
+                       <p>Total Ayah: <%= surahs[3-1].totalAyah %></p>
                    </div>
                </a>
              </div>
@@ -24,32 +24,26 @@
  
 
             <!-- last read -->
-             <div class="container1 scrollable-container" style="width: 100%; padding-bottom: 30px; padding-top: 25px;" >
-                <p>Last Read: </p>
-              <button type="button" class="btn btn-outline-primary" style="margin: auto 5px;">
-              <a href="/surah/<%= lastRead %>" style="color: #000;">
-                  <%= lastRead %>. <%= surahs[lastRead-1].surahName %> ( <%= surahs[lastRead-1].surahNameArabic %> )
-               </a>
-            </button><button type="button" class="btn btn-outline-primary" style="margin: auto 5px;">
-              <a href="/surah/<%= lastRead %>" style="color: #000;">
-                  <%= lastRead %>. <%= surahs[lastRead-1].surahName %> ( <%= surahs[lastRead-1].surahNameArabic %> )
-               </a>
-            </button><button type="button" class="btn btn-outline-primary" style="margin: auto 5px;">
-              <a href="/surah/<%= lastRead %>" style="color: #000;">
-                  <%= lastRead %>. <%= surahs[lastRead-1].surahName %> ( <%= surahs[lastRead-1].surahNameArabic %> )
-               </a>
-            </button><button type="button" class="btn btn-outline-primary" style="margin: auto 5px;">
-              <a href="/surah/<%= lastRead %>" style="color: #000;">
-                  <%= lastRead %>. <%= surahs[lastRead-1].surahName %> ( <%= surahs[lastRead-1].surahNameArabic %> )
-               </a>
-            </button><button type="button" class="btn btn-outline-primary" style="margin: auto 5px;">
-              <a href="/surah/<%= lastRead %>" style="color: #000;">
-                  <%= lastRead %>. <%= surahs[lastRead-1].surahName %> ( <%= surahs[lastRead-1].surahNameArabic %> )
-               </a>
-            </button>
-
+            <% if (lastReadSurahs && lastReadSurahs.length> 0) { %>
+              <div class="container1" style="padding-top: 20px; padding-bottom: 5px;">
+                <p>Last Read:</p>
             
-            </div>
+                <div class="scrollable-container" style="padding-bottom: 25px;">
+                  <% lastReadSurahs.forEach(function(surahNo) { %>
+                    <button type="button" class="btn btn-outline-primary btn-sm" style="margin: auto 5px;">
+                      <a href="/surah/<%= surahNo %>" style="color: #000;">
+                        <%= surahNo %>.
+                          <%= surahs[surahNo - 1].surahName %>
+                            (
+                            <%= surahs[surahNo - 1].surahNameArabic %>
+                              )
+                      </a>
+                    </button>
+                    <% }) %>
+                </div>
+              </div>
+              <% } %>
+
             <br>
             
 

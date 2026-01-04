@@ -17,7 +17,7 @@
                <br>
 
               <form action="/reciter" method="POST" style="margin-bottom: 20px;">
-                <input type="hidden" name="redirectTo" value="/surah/<%= lastRead %>">
+                <input type="hidden" name="redirectTo" value="/surah/<%= surahNo %>">
                 <div class="d-flex align-items-center w-100 gap-2">
                   <div class="form-floating flex-grow-1">
                     <select name="reciter" id="reciter" required class="form-control" placeholder="Select your Preferred Reciter">
@@ -112,7 +112,7 @@
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({
-                        surahNo: "<%= lastRead %>",
+                        surahNo: "<%= surahNo %>",
                         surahName: "<%= surah.surahName %>",
                         time: audio.currentTime
                       })

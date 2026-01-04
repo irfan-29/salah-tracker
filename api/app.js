@@ -60,7 +60,7 @@ const settingsSchema = new mongoose.Schema({
     location: String,
     favoriteReciter: Number,
     favoriteEdition: String,
-    lastRead: String,
+    lastReadSurahs: [String],
     audioProgress: {
         surahNo: Number,
         surahName: String,
@@ -238,6 +238,7 @@ const SKIP_MIDDLEWARE_URLS = ["/hide-audio"];
 
     try {
       await Settings.findOneAndUpdate(
+        // { userId: req.session.userId },
         {}, // ideally use userId when session is ready
         {
           $set: {
@@ -344,13 +345,10 @@ app.get("/quran", async(req, res) => {
     const response = await fetch(`https://quranapi.pages.dev/api/surah.json`);
     const data = await response.json();
 
-    let lastRead = 1;
-    const settings = await Settings.findOne({});
-    if (settings) {
-        if(settings.lastRead)
-            lastRead = settings.lastRead;
-    }
-    res.render("quran", {surahs: data, lastRead: lastRead});
+    const settings = await Settings.findOne({}).lean();
+    const lastReadSurahs = settings?.lastReadSurahs ?? [];
+
+    res.render("quran", {surahs: data, lastReadSurahs: lastReadSurahs});
 });
 
 
@@ -424,9 +422,21 @@ app.get("/quran", async(req, res) => {
       );
       const data = await response.json();
 
+      // logic to update last read
+      let lastReadSurahs = settings?.lastReadSurahs || [];
+
+      // Remove if already exists
+      lastReadSurahs = lastReadSurahs.filter((n) => n !== String(surahNo));
+
+      // Add to front
+      lastReadSurahs.unshift(String(surahNo));
+
+      // Keep only last 5
+      lastReadSurahs = lastReadSurahs.slice(0, 5);
+
       await Settings.findOneAndUpdate(
         {},
-        { lastRead: surahNo },
+        { lastReadSurahs: lastReadSurahs },
         { upsert: true }
       );
 
@@ -434,7 +444,7 @@ app.get("/quran", async(req, res) => {
         surah: data,
         translation: {},
         favoriteReciter: String(reciter),
-        lastRead: surahNo,
+        surahNo: surahNo,
         audioTime, // 0 if null → perfect
         alwaysShowAudio: true, // 👈 explicit
       });
