@@ -400,7 +400,7 @@ app.get("/quran", async(req, res) => {
 
       let reciter = 1;
       let favoriteEdition = "";
-      let audioTime = 0;
+      let time = 0;
 
       const settings = await Settings.findOne({});
 
@@ -413,7 +413,7 @@ app.get("/quran", async(req, res) => {
           settings.audioProgress &&
           settings.audioProgress.surahNo === surahNo
         ) {
-          audioTime = settings.audioProgress.time || 0;
+          time = settings.audioProgress.time || 0;
         }
       }
 
@@ -445,7 +445,7 @@ app.get("/quran", async(req, res) => {
         {}, // ideally use userId when session is ready
         {
           $set: {
-            audioProgress: { surahNo, surahName, audioTime },
+            audioProgress: { surahNo, surahName, time },
           },
         },
         { upsert: true }
@@ -456,7 +456,7 @@ app.get("/quran", async(req, res) => {
         translation: {},
         favoriteReciter: String(reciter),
         surahNo: surahNo,
-        audioTime, // 0 if null → perfect
+        audioTime: time, // 0 if null → perfect
         alwaysShowAudio: true, // 👈 explicit
       });
     });
