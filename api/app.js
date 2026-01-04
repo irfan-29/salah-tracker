@@ -420,8 +420,8 @@ app.get("/quran", async(req, res) => {
       const response = await fetch(
         `https://quranapi.pages.dev/api/${surahNo}.json`
       );
-      const data = await response.json();
-
+      const surah = await response.json();
+      const surahName = surah.surahName;
       // logic to update last read
       let lastReadSurahs = settings?.lastReadSurahs || [];
 
@@ -440,8 +440,19 @@ app.get("/quran", async(req, res) => {
         { upsert: true }
       );
 
+      await Settings.findOneAndUpdate(
+        // { userId: req.session.userId },
+        {}, // ideally use userId when session is ready
+        {
+          $set: {
+            audioProgress: { surahNo, surahName, audioTime },
+          },
+        },
+        { upsert: true }
+      );
+
       res.render("surah", {
-        surah: data,
+        surah: surah,
         translation: {},
         favoriteReciter: String(reciter),
         surahNo: surahNo,
