@@ -812,22 +812,6 @@ app.post("/default-home", function(req,res){
     });
 });
 
-
-app.post("/location", function(req, res) {
-    const location = req.body.location;
-    const redirectTo = req.body.redirectTo;
-
-    Settings.findOneAndUpdate({}, { location: location }, { sort: { _id: -1 }, upsert: true })
-        .then(() => {
-            res.redirect(redirectTo);
-        })
-        .catch((err) => {
-            console.error(err);
-            res.status(500).send("Error updating location.");
-    });
-});
-
-
 app.post("/reciter", function(req, res){
     const reciter = req.body.reciter;
     const redirectTo = req.body.redirectTo;
@@ -854,6 +838,40 @@ app.post("/set-edition", function(req, res){
             res.status(500).send("Error updating Edition.");
         });
   });
+
+app.post("/location", function(req, res) {
+    const location = req.body.location;
+    const redirectTo = req.body.redirectTo;
+
+    Settings.findOneAndUpdate({}, { location: location }, { sort: { _id: -1 }, upsert: true })
+        .then(() => {
+            res.redirect(redirectTo);
+        })
+        .catch((err) => {
+            console.error(err);
+            res.status(500).send("Error updating location.");
+    });
+});
+
+
+
+app.post("/settings", function(req, res){
+  const {defaultHome, reciter, edition, location, redirectTo} = req.body;
+
+  Settings.findOneAndUpdate({}, { defaultHome: defaultHome, favoriteReciter: reciter, favoriteEdition: edition, location: location }, { sort: { _id: -1 }, upsert: true })
+        .then(() => {
+            res.redirect(redirectTo);
+        })
+        .catch((err) => {
+            console.error(err);
+            res.status(500).send("Error updating settings.");
+    });
+
+ });
+
+
+
+
 
 
 

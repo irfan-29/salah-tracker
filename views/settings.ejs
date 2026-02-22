@@ -5,9 +5,10 @@
 
         <div class="container1">
 
-        <!-- Default Home -->
-        <h5 style="text-align: left; margin-left: 2.5%;">Default Home page:</h5>
-        <form action="/default-home" method="POST">
+        <form action="/settings" method="POST">  
+          <input type="hidden" name="redirectTo" value="/settings">
+          <!-- Default Home -->
+          <h5 style="text-align: left; margin-left: 2.5%;">Default Home page:</h5>
           <div class="d-flex align-items-center w-95 gap-2" style="margin: 0 2.5%;">
             <div class="form-floating flex-grow-1" style="margin: auto;">
             <select name="defaultHome" id="defaultHome" required class="form-control" placeholder="Choose your Default Home">
@@ -22,19 +23,14 @@
               <option value="settings" <%= "settings" === defaultHome ? 'selected' : '' %>>Settings</option>
             </select>
             <label for="defaultHome">Default Home</label>
+            </div>
           </div>
-          <!-- <div class="new-task"> -->
-            <button type="submit" class="add btn btn-primary" style="margin-left: 8px;" value="add" name="add">Save</button>
-          </div>
-        </form>
         <br>
-        <br>
+        <!-- <br> -->
 
 
         <!-- Reciter -->
         <h5 style="text-align: left; margin-left: 2.5%;">Reciter:</h5>
-        <form action="/reciter" method="POST">
-          <input type="hidden" name="redirectTo" value="/settings">
           <div class="d-flex align-items-center w-95 gap-2" style="margin: 0 2.5%;">
             <div class="form-floating flex-grow-1" style="margin: auto;">
               <select name="reciter" id="reciter" required class="form-control" placeholder="Select your Preferred Reciter">
@@ -44,17 +40,13 @@
               </select>
               <label for="reciter">Preferred Reciter</label>
             </div>
-            <!-- <div class="new-task"> -->
-            <button type="submit" class="add btn btn-primary" style="margin-left: 8px;" value="add" name="add">Save</button>
           </div>
-        </form>
         <br>
-        <br>
+        <!-- <br> -->
 
 
         <!-- Edition(Translation) -->
         <h5 style="text-align: left; margin-left: 2.5%;">Translation:</h5>
-        <form action="/set-edition" method="POST">
           <div class="d-flex align-items-center w-95 gap-2" style="margin: 0 2.5%; position: relative;">
             <div class="form-floating flex-grow-1" style="margin: auto; position: relative;">
               <!-- Fake select that opens custom dropdown -->
@@ -83,17 +75,13 @@
               <!-- Hidden real input to submit value -->
               <input type="hidden" name="edition" id="edition" required>
             </div>
-            <button type="submit" class="add btn btn-primary" style="margin-left: 8px;" value="add" name="add">Save</button>
           </div>
-        </form>
         <br>
-        <br>    
+        <!-- <br>     -->
 
 
         <!-- Location -->
         <h5 style="text-align: left; margin-left: 2.5%;">Choose your Location:</h5>
-        <form action="/location" method="post">
-          <input type="hidden" name="redirectTo" value="/settings">
           <div class="d-flex align-items-center w-95 gap-2" style="margin: 0 2.5%;">
             <div class="form-floating flex-grow-1" style="margin: auto;">
               <select name="location" id="location" required class="form-control" placeholder="Choose your Location">
@@ -106,14 +94,17 @@
                 <!-- <option value="others">others</option> -->
               </select>
               <label for="location">Location</label>
+            </div>
           </div>
-          <!-- <div class="new-task"> -->
-            <button type="submit" class="add btn btn-primary" style="margin-left: 8px;" value="add" name="add">Save</button>
-          </div>
-        </form>
         <br>
-        <br>
-              
+        <!-- <br> -->
+        
+        <button type="submit" class="add btn btn-primary" style="margin-left: 8px;" value="add" name="add">Save Settings</button>
+
+      </form>
+
+
+
         
         <!-- Challenges -->
         <h5 style="text-align: left; margin-left: 2.5%;">Challenges:</h5>
