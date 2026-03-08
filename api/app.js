@@ -59,7 +59,7 @@ const settingsSchema = new mongoose.Schema({
     defaultHome: String,
     location: String,
     favoriteReciter: Number,
-    favoriteEdition: String,
+    favoriteEdition: [String],
     lastReadSurahs: [String],
     audioProgress: {
         surahNo: Number,
@@ -395,71 +395,71 @@ app.get("/quran", async(req, res) => {
 //     });
 //   });
 
-    app.get("/surah/:surahNo", async (req, res) => {
-      const surahNo = parseInt(req.params.surahNo);
 
-      let reciter = 1;
-      let favoriteEdition = "";
-      let time = 0;
+app.get("/surah/:surahNo", async (req, res) => {
+    const surahNo = parseInt(req.params.surahNo);
+    let reciter = 1;
+    let favoriteEdition = [];
+    let time = 0;
 
-      const settings = await Settings.findOne({});
+    const settings = await Settings.findOne({});
 
-      if (settings) {
+    if (settings) {
         if (settings.favoriteReciter) reciter = settings.favoriteReciter;
-        if (settings.favoriteEdition)
-          favoriteEdition = settings.favoriteEdition;
-
-        if (
-          settings.audioProgress &&
-          settings.audioProgress.surahNo === surahNo
-        ) {
-          time = settings.audioProgress.time || 0;
+        if (settings.favoriteEdition) {
+            favoriteEdition = Array.isArray(settings.favoriteEdition)
+                ? settings.favoriteEdition
+                : [settings.favoriteEdition];
         }
-      }
+        if (settings.audioProgress && settings.audioProgress.surahNo === surahNo) {
+            time = settings.audioProgress.time || 0;
+        }
+    }
 
-      const response = await fetch(
-        `https://quranapi.pages.dev/api/${surahNo}.json`
-      );
-      const surah = await response.json();
-      const surahName = surah.surahName;
-      // logic to update last read
-      let lastReadSurahs = settings?.lastReadSurahs || [];
+    // Fetch Main Arabic/English Surah Data
+    const response = await fetch(`https://quranapi.pages.dev/api/${surahNo}.json`);
+    const surah = await response.json();
+    const surahName = surah.surahName;
 
-      // Remove if already exists
-      lastReadSurahs = lastReadSurahs.filter((n) => n !== String(surahNo));
+    // Fetch all selected translations
+    const translationData = {};
+    if (favoriteEdition.length > 0) {
+        const translationPromises = favoriteEdition.map((editionName) =>
+            fetch(`https://cdn.jsdelivr.net/gh/fawazahmed0/quran-api@1/editions/${editionName}/${surahNo}.json`)
+                .then((res) => res.json())
+                .catch((err) => {
+                    console.error(`Error fetching ${editionName}:`, err);
+                    return null;
+                })
+        );
 
-      // Add to front
-      lastReadSurahs.unshift(String(surahNo));
+        const results = await Promise.all(translationPromises);
 
-      // Keep only last 5
-      lastReadSurahs = lastReadSurahs.slice(0, 5);
+        favoriteEdition.forEach((editionName, index) => {
+            if (results[index]) {
+                translationData[editionName] = results[index];
+            }
+        });
+    }
 
-      await Settings.findOneAndUpdate(
-        {},
-        { lastReadSurahs: lastReadSurahs },
-        { upsert: true }
-      );
+    // Update Last Read
+    let lastReadSurahs = settings?.lastReadSurahs || [];
+    lastReadSurahs = lastReadSurahs.filter((n) => n !== String(surahNo));
+    lastReadSurahs.unshift(String(surahNo));
+    lastReadSurahs = lastReadSurahs.slice(0, 5);
 
-      await Settings.findOneAndUpdate(
-        // { userId: req.session.userId },
-        {}, // ideally use userId when session is ready
-        {
-          $set: {
-            audioProgress: { surahNo, surahName, time },
-          },
-        },
-        { upsert: true }
-      );
+    await Settings.findOneAndUpdate({}, { lastReadSurahs }, { upsert: true });
+    await Settings.findOneAndUpdate({}, { $set: { audioProgress: { surahNo, surahName, time } } }, { upsert: true });
 
-      res.render("surah", {
+    res.render("surah", {
         surah: surah,
-        translation: {},
+        translations: translationData,
         favoriteReciter: String(reciter),
         surahNo: surahNo,
-        audioTime: time, // 0 if null → perfect
-        alwaysShowAudio: true, // 👈 explicit
-      });
+        audioTime: time,
+        alwaysShowAudio: true,
     });
+});
 
   
   
@@ -698,7 +698,7 @@ app.get("/challenges", function(req, res){
 });
   
 
-app.get("/settings", async(req, res) => {
+app.get("/settings", async (req, res) => {
     const reciters = await fetch(`https://quranapi.pages.dev/api/reciters.json`);
     const edition = await fetch('https://cdn.jsdelivr.net/gh/fawazahmed0/quran-api@1/editions.json');
 
@@ -707,19 +707,20 @@ app.get("/settings", async(req, res) => {
     let reciter = 1; 
     let defaultHome = "salah";
     let location = "Coimbatore";
-    let favoriteEdition = "";
+    let favoriteEdition = []; // Changed to empty array by default
+
      // wait for settings to be fetched
     const settings = await Settings.findOne({});
     if (settings) {
-        if(settings.favoriteReciter)
-            reciter = settings.favoriteReciter;
-        if(settings.defaultHome)
-            defaultHome = settings.defaultHome;
-        if(settings.location)
-            location = settings.location;
-        if(settings.favoriteEdition)
-            favoriteEdition = settings.favoriteEdition;
+        if(settings.favoriteReciter) reciter = settings.favoriteReciter;
+        if(settings.defaultHome) defaultHome = settings.defaultHome;
+        if(settings.location) location = settings.location;
+        if(settings.favoriteEdition) {
+            // Ensure backward compatibility if old data is a string
+            favoriteEdition = Array.isArray(settings.favoriteEdition) ? settings.favoriteEdition : [settings.favoriteEdition];
+        }
     }
+
     // Group by language
     const editionsByLanguage = {};
     for (let key in editionsJson) {
@@ -731,10 +732,19 @@ app.get("/settings", async(req, res) => {
         author: edition.author
       });
     }
-    res.render('settings', {favoriteReciter: String(reciter), favoriteEdition: favoriteEdition, defaultHome: defaultHome, location: location, reciters: recitersJson, editions: editionsByLanguage});
+
+    console.log(favoriteEdition);
+    console.log(editionsByLanguage);
+
+    res.render('settings', {
+        favoriteReciter: String(reciter), 
+        favoriteEdition: favoriteEdition, 
+        defaultHome: defaultHome, 
+        location: location, 
+        reciters: recitersJson, 
+        editions: editionsByLanguage
+    });
 });
-
-
 
 
 
@@ -855,19 +865,44 @@ app.post("/location", function(req, res) {
 
 
 
+// app.post("/settings", function(req, res){
+//   const {defaultHome, reciter, edition, location, redirectTo} = req.body;
+
+//   Settings.findOneAndUpdate({}, { defaultHome: defaultHome, favoriteReciter: reciter, favoriteEdition: edition, location: location }, { sort: { _id: -1 }, upsert: true })
+//         .then(() => {
+//             res.redirect(redirectTo);
+//         })
+//         .catch((err) => {
+//             console.error(err);
+//             res.status(500).send("Error updating settings.");
+//     });
+
+//  });
 app.post("/settings", function(req, res){
-  const {defaultHome, reciter, edition, location, redirectTo} = req.body;
+    const {defaultHome, reciter, edition, location, redirectTo} = req.body;
 
-  Settings.findOneAndUpdate({}, { defaultHome: defaultHome, favoriteReciter: reciter, favoriteEdition: edition, location: location }, { sort: { _id: -1 }, upsert: true })
-        .then(() => {
-            res.redirect(redirectTo);
-        })
-        .catch((err) => {
-            console.error(err);
-            res.status(500).send("Error updating settings.");
+    // Parse the JSON string sent from the frontend hidden input
+    let parsedEditions = [];
+    try {
+        if (edition) parsedEditions = JSON.parse(edition);
+    } catch (e) {
+        // Fallback in case of parsing error
+        if (typeof edition === 'string') parsedEditions = [edition];
+    }
+
+    Settings.findOneAndUpdate(
+        {}, 
+        { defaultHome: defaultHome, favoriteReciter: reciter, favoriteEdition: parsedEditions, location: location }, 
+        { sort: { _id: -1 }, upsert: true }
+    )
+    .then(() => {
+        res.redirect(redirectTo || '/settings');
+    })
+    .catch((err) => {
+        console.error(err);
+        res.status(500).send("Error updating settings.");
     });
-
- });
+});
 
 
 

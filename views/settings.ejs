@@ -47,35 +47,39 @@
 
         <!-- Edition(Translation) -->
         <h5 style="text-align: left; margin-left: 2.5%;">Translation:</h5>
-          <div class="d-flex align-items-center w-95 gap-2" style="margin: 0 2.5%; position: relative;">
-            <div class="form-floating flex-grow-1" style="margin: auto; position: relative;">
-              <!-- Fake select that opens custom dropdown -->
-              <input type="text" id="selectedEdition" class="form-control" placeholder="Select Preferred Quran Edition" readonly required>
-              <label for="selectedEdition">Preferred Quran Edition</label>        
-              <!-- Actual dropdown hidden by default -->
-              <div id="dropdownContainer" class="bg-white border rounded shadow-sm position-absolute w-100 mt-1" style="display: none; z-index: 1000; max-height: 350px; overflow-y: auto;">              
-                <input type="text" id="searchEdition" class="form-control border-0 border-bottom rounded-0" placeholder="Search Language or Author..." style="border-radius: 0;">
-                <!-- Options list -->
-                <div id="editionOptions" style="max-height: 300px; overflow-y: auto; text-align: left;">
-                  <% Object.keys(editions).forEach(function(language) { %>
-                    <div class="language-group">
-                      <div class="p-2 bg-light small text-muted language-label"><%= language %></div>
-                      <% editions[language].forEach(function(edition) { %>
-                        <div class="p-2 option-item" 
-                          data-value="<%= edition.name %>" 
-                          data-author="<%= edition.author %>" 
-                          data-language="<%= language %>">
-                          <%= edition.author %>
-                        </div>
-                      <% }); %>
-                    </div>
-                  <% }); %>
-                </div>
-              </div>
-              <!-- Hidden real input to submit value -->
-              <input type="hidden" name="edition" id="edition" required>
+        <div class="d-flex align-items-center w-95 gap-2" style="margin: 0 2.5%; position: relative;">
+          <div class="flex-grow-1" style="margin: auto; position: relative;">
+        
+            <div id="selectedEditionContainer" class="form-control d-flex flex-wrap align-items-center gap-2"
+              style="min-height: 58px; cursor: pointer; padding-bottom: 8px;">
+              <span id="editionPlaceholder" class="text-muted">Select Preferred Quran Editions</span>
             </div>
+        
+            <div id="dropdownContainer" class="bg-white border rounded shadow-sm position-absolute w-100 mt-1"
+              style="display: none; z-index: 1000; max-height: 350px; overflow-y: auto;">
+              <input type="text" id="searchEdition" class="form-control border-0 border-bottom rounded-0"
+                placeholder="Search Language or Author..." style="border-radius: 0; position: sticky; top: 0; z-index: 10;">
+        
+              <div id="editionOptions" style="max-height: 300px; overflow-y: auto; text-align: left;">
+                <% Object.keys(editions).forEach(function(language) { %>
+                  <div class="language-group">
+                    <div class="p-2 bg-light small text-muted language-label">
+                      <%= language %>
+                    </div>
+                    <% editions[language].forEach(function(edition) { %>
+                      <div class="p-2 option-item" data-value="<%= edition.name %>" data-author="<%= edition.author %>"
+                        data-language="<%= language %>" style="cursor: pointer;">
+                        <%= edition.author %>
+                      </div>
+                      <% }); %>
+                  </div>
+                  <% }); %>
+              </div>
+            </div>
+        
+            <input type="hidden" name="edition" id="edition" required>
           </div>
+        </div>
         <br>
         <!-- <br>     -->
 
@@ -136,84 +140,129 @@
       </style>
 
       <!-- Script -->
-        <script>
-          document.addEventListener('DOMContentLoaded', function() {
-          const selectedInput = document.getElementById('selectedEdition');
-          const hiddenInput = document.getElementById('edition');
-          const dropdown = document.getElementById('dropdownContainer');
-          const searchInput = document.getElementById('searchEdition');
-          const optionsContainer = document.getElementById('editionOptions');
-        
-          const favoriteEdition = "<%= favoriteEdition %>"; // server-side passed
-        
-          // Prefill selected edition if exists
-          if (favoriteEdition) {
-            const favoriteKey = favoriteEdition.split(' ')[0];
-            const favoriteOption = optionsContainer.querySelector(`[data-value="${favoriteKey}"]`);
-            if (favoriteOption) {
-              const lang = favoriteOption.getAttribute('data-language');
-              const author = favoriteOption.getAttribute('data-author');
-              selectedInput.value = `${author} (${lang})`;
-              hiddenInput.value = `${favoriteOption.getAttribute('data-value')} (${lang})`; 
+      <script>
+document.addEventListener('DOMContentLoaded', function() {
+    const container = document.getElementById('selectedEditionContainer');
+    const dropdown = document.getElementById('dropdownContainer');
+    const searchInput = document.getElementById('searchEdition');
+    const hiddenInput = document.getElementById('edition');
+    const placeholder = document.getElementById('editionPlaceholder');
+    const options = document.querySelectorAll('.option-item');
+
+    // 1. SAFELY parse data from backend to prevent crashes from legacy string data
+    let rawData = <%- JSON.stringify(favoriteEdition || []) %>;
+    let selectedEditions = [];
+    
+    if (Array.isArray(rawData)) {
+        selectedEditions = rawData.filter(val => val && val.trim() !== '');
+    } else if (typeof rawData === 'string' && rawData.trim() !== '') {
+        selectedEditions = [rawData]; // Convert old string data to array
+    }
+
+    // 2. Safe look-up for author names (avoids querySelector syntax errors)
+    function getAuthorByValue(val) {
+        for (let opt of options) {
+            if (opt.getAttribute('data-value') === val) {
+                return opt.getAttribute('data-author');
             }
-          }
-        
-          selectedInput.addEventListener('click', function() {
-            dropdown.style.display = 'block';
-            searchInput.focus();
-          });
-        
-          optionsContainer.addEventListener('click', function(e) {
-            if (e.target.classList.contains('option-item')) {
-              const value = e.target.getAttribute('data-value');
-              const author = e.target.getAttribute('data-author');
-              const language = e.target.getAttribute('data-language');
-            
-              selectedInput.value = `${author} (${language})`;
-              hiddenInput.value = `${value} (${language})`;
-            
-              dropdown.style.display = 'none';
-            }
-          });
-        
-          searchInput.addEventListener('input', function() {
-            const searchTerm = this.value.trim().toLowerCase();
-            const languageGroups = optionsContainer.getElementsByClassName('language-group');
-          
-            Array.from(languageGroups).forEach(function(group) {
-              const languageLabel = group.querySelector('.language-label');
-              const optionItems = group.querySelectorAll('.option-item');
-            
-              let groupMatches = false;
-            
-              optionItems.forEach(function(item) {
-                const author = item.getAttribute('data-author').toLowerCase();
-                const language = item.getAttribute('data-language').toLowerCase();
-              
-                if (author.includes(searchTerm) || language.includes(searchTerm)) {
-                  item.style.display = 'block';
-                  groupMatches = true;
-                } else {
-                  item.style.display = 'none';
-                }
-              });
-            
-              if (groupMatches) {
-                languageLabel.style.display = 'block';
-              } else {
-                languageLabel.style.display = 'none';
-              }
+        }
+        return val;
+    }
+
+    // 3. Render the pills
+    function renderPills() {
+        // Clear existing pills
+        container.querySelectorAll('.edition-pill').forEach(pill => pill.remove());
+
+        if (selectedEditions.length === 0) {
+            placeholder.style.display = 'block';
+        } else {
+            placeholder.style.display = 'none';
+            selectedEditions.forEach(val => {
+                const author = getAuthorByValue(val);
+                const pill = document.createElement('span');
+                pill.className = 'edition-pill';
+                pill.style.cssText = 'background-color: #f1f2f6; border-radius: 6px; padding: 4px 8px; display: inline-flex; align-items: center; gap: 6px; font-size: 0.9rem; color: #333; margin: 2px;';
+                
+                pill.innerHTML = `${author} <span class="remove-pill" data-value="${val}" style="cursor: pointer; color: #888; font-size: 1.1rem; line-height: 1;">&times;</span>`;
+                container.insertBefore(pill, placeholder);
             });
-          });
+        }
+        // Update hidden input for the form POST request
+        hiddenInput.value = JSON.stringify(selectedEditions);
+    }
+
+    // Initial render
+    renderPills();
+
+    // 4. Handle clicks on the container (Toggle dropdown & Remove pills)
+    container.addEventListener('click', function(e) {
+        // If clicking the "X" on a pill
+        if (e.target.classList.contains('remove-pill')) {
+            const valToRemove = e.target.getAttribute('data-value');
+            selectedEditions = selectedEditions.filter(val => val !== valToRemove);
+            renderPills();
+            return; // Stop execution here so dropdown doesn't toggle
+        }
         
-          document.addEventListener('click', function(e) {
-            if (!dropdown.contains(e.target) && e.target !== selectedInput) {
-              dropdown.style.display = 'none';
+        // Otherwise, toggle the dropdown menu
+        const isHidden = dropdown.style.display === 'none' || dropdown.style.display === '';
+        dropdown.style.display = isHidden ? 'block' : 'none';
+        
+        if (isHidden) {
+            searchInput.focus();
+        }
+    });
+
+    // Prevent clicks inside the dropdown from closing it
+    dropdown.addEventListener('click', function(e) {
+        e.stopPropagation();
+    });
+
+    // 5. Close Dropdown when clicking anywhere outside of it
+    document.addEventListener('click', function(e) {
+        if (!container.contains(e.target) && !dropdown.contains(e.target)) {
+            dropdown.style.display = 'none';
+        }
+    });
+
+    // 6. Add a new Edition from the dropdown
+    options.forEach(option => {
+        option.addEventListener('click', function() {
+            const val = this.getAttribute('data-value');
+            if (!selectedEditions.includes(val)) {
+                selectedEditions.push(val);
+                renderPills();
             }
-          });
+            // Close and reset search
+            dropdown.style.display = 'none';
+            searchInput.value = ''; 
+            options.forEach(opt => opt.style.display = 'block');
+            document.querySelectorAll('.language-group').forEach(group => group.style.display = 'block');
         });
-      </script>
+    });
 
-
+    // 7. Search functionality
+    searchInput.addEventListener('input', function(e) {
+        const term = e.target.value.toLowerCase();
+        document.querySelectorAll('.language-group').forEach(group => {
+            let hasVisible = false;
+            group.querySelectorAll('.option-item').forEach(opt => {
+                const text = (opt.getAttribute('data-author') || '').toLowerCase();
+                const lang = (opt.getAttribute('data-language') || '').toLowerCase();
+                
+                if (text.includes(term) || lang.includes(term)) {
+                    opt.style.display = 'block';
+                    hasVisible = true;
+                } else {
+                    opt.style.display = 'none';
+                }
+            });
+            // Hide the language category header if no matches are found inside it
+            group.style.display = hasVisible ? 'block' : 'none';
+        });
+    });
+});
+</script>
 
 <%- include('footer') %>

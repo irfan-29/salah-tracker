@@ -146,18 +146,41 @@
                 </div>
                 <hr>
                 
-                <% for (let i = 0; i < surah.arabic1.length; i++) { %>
-                    <p id="<%= i+1 %>"><%= i+1 %></p>
-                    <p class="surah-name" style="font-size: 24px;"><%= surah.arabic1[i] %></p>
-                    <p class="surah-translation" style="font-size: 24px; color: #333;"><%= surah.arabic2[i] %></p>
-                    <p class="surah-translation"><%= surah.english[i] %></p>
-                    <% if (Object.keys(translation).length > 0){ %>
-                      <p class="surah-translation"><%= translation.chapter[i].text %></p>
-                    <% } %>
-                    <% if (i<surah.arabic1.length-1){ %> 
-                      <hr>
-                    <% } %>
-                <% } %>
+                <% for (let i=0; i < surah.arabic1.length; i++) { %>
+                  <p id="<%= i+1 %>" style="color: #888; font-size: 0.8rem; margin-bottom: 5px; text-align: left;">
+                    <%= i+1 %>
+                  </p>
+                
+                  <p class="surah-name"
+                    style="font-size: 28px; text-align: right; direction: rtl; margin-bottom: 20px; font-family: 'Amiri', serif;">
+                    <%= surah.arabic1[i] %>
+                  </p>
+                  <p class="surah-translation" style="font-size: 24px; color: #333;"><%= surah.arabic2[i] %></p>
+                
+                  <% Object.keys(translations).forEach(function(editionKey) { %>
+                    <% const data=translations[editionKey]; %>
+                
+                      <% if (data && data.chapter && data.chapter[i]) { %>
+                        <div style="text-align: left; margin-bottom: 25px;">
+                          <p
+                            style="color: #949b9c; font-size: 0.7rem; margin-bottom: 4px; font-family: sans-serif; text-transform: uppercase; letter-spacing: 1px; font-weight: 700;">
+                            <!-- <%= (data.edition && data.edition.language) ? data.edition.language : '' %> - -->
+                              <%= (data.edition && data.edition.author) ? data.edition.author : editionKey %>
+                          </p>
+                
+                          <p
+                            style="font-family: 'Mukta Malar', sans-serif; font-size: 1.1rem; color: #1a1a1a; line-height: 1.8; margin: 0;">
+                            <%= data.chapter[i].text %>
+                          </p>
+                        </div>
+                        <% } %>
+                          <% }); %>
+                
+                            <% if (i < surah.arabic1.length - 1) { %>
+                              <hr style="border: 0; border-top: 1px solid #eee; margin: 40px 0;">
+                              <% } %>
+                                <% } %>
+
           </div>
             <br>
             <br>
