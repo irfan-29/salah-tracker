@@ -141,85 +141,134 @@
 
       <!-- Script -->
       <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const container = document.getElementById('selectedEditionContainer');
-    const dropdown = document.getElementById('dropdownContainer');
-    const searchInput = document.getElementById('searchEdition');
-    const hiddenInput = document.getElementById('edition');
-    const placeholder = document.getElementById('editionPlaceholder');
-    const options = document.querySelectorAll('.option-item');
+        document.addEventListener('DOMContentLoaded', function () {
+          const container = document.getElementById('selectedEditionContainer');
+          const dropdown = document.getElementById('dropdownContainer');
+          const searchInput = document.getElementById('searchEdition');
+          const hiddenInput = document.getElementById('edition');
+          const placeholder = document.getElementById('editionPlaceholder');
+          const options = document.querySelectorAll('.option-item');
 
-    let rawData = <%- JSON.stringify(favoriteEdition || []) %>;
-    let selectedEditions = Array.isArray(rawData) ? rawData.filter(v => v && v.trim() !== '') : [];
+          let rawData = <%- JSON.stringify(favoriteEdition || []) %>;
+          let selectedEditions = Array.isArray(rawData) ? rawData.filter(v => v && v.trim() !== '') : [];
 
-    function renderPills() {
-        container.querySelectorAll('.edition-pill').forEach(pill => pill.remove());
-        
-        if (selectedEditions.length === 0) {
-            placeholder.style.display = 'block';
-        } else {
-            placeholder.style.display = 'none';
-            selectedEditions.forEach(val => {
-                // Split to get the author name (index 2)
-                const author = val.includes(':') ? val.split(':')[2] : val;
-                
+          function getAuthorFromValue(val) {
+            return val.includes(':') ? val.split(':')[2] : val;
+          }
+
+          function getIdFromValue(val) {
+            return val.includes(':') ? val.split(':')[0] : val;
+          }
+
+          function renderPills() {
+            // Clear current pills except placeholder
+            container.querySelectorAll('.edition-pill').forEach(pill => pill.remove());
+
+            if (selectedEditions.length === 0) {
+              placeholder.style.display = 'block';
+            } else {
+              placeholder.style.display = 'none';
+              selectedEditions.forEach(val => {
+                const author = getAuthorFromValue(val);
                 const pill = document.createElement('span');
                 pill.className = 'edition-pill';
-                pill.style.cssText = 'background-color: #f1f2f6; border-radius: 6px; padding: 4px 8px; display: inline-flex; align-items: center; gap: 6px; font-size: 0.9rem; color: #333; margin: 2px;';
-                
-                pill.innerHTML = `${author} <span class="remove-pill" data-value="${val}" style="cursor: pointer; color: #888; font-size: 1.1rem; line-height: 1;">&times;</span>`;
+                pill.style.cssText = 'background-color: #f1f2f6; border-radius: 6px; padding: 4px 8px; display: inline-flex; align-items: center; gap: 6px; font-size: 0.9rem; color: #333; margin: 2px; border: 1px solid #ddd;';
+                pill.innerHTML = `${author} <span class="remove-pill" data-value="${val}" style="cursor: pointer; color: #888; font-size: 1.1rem; font-weight: bold;">&times;</span>`;
                 container.insertBefore(pill, placeholder);
-            });
-        }
-        hiddenInput.value = JSON.stringify(selectedEditions);
-    }
-
-    renderPills();
-
-    container.addEventListener('click', function(e) {
-        if (e.target.classList.contains('remove-pill')) {
-            const valToRemove = e.target.getAttribute('data-value');
-            selectedEditions = selectedEditions.filter(val => val !== valToRemove);
-            renderPills();
-            return;
-        }
-        dropdown.style.display = (dropdown.style.display === 'none' || dropdown.style.display === '') ? 'block' : 'none';
-        if (dropdown.style.display === 'block') searchInput.focus();
-    });
-
-    options.forEach(option => {
-        option.addEventListener('click', function() {
-            const id = this.getAttribute('data-value');
-            const lan = this.getAttribute('data-language');
-            const author = this.getAttribute('data-author');
-            const combined = `${id}:${lan}:${author}`;
-
-            if (!selectedEditions.some(item => item.split(':')[0] === id)) {
-                selectedEditions.push(combined);
-                renderPills();
+              });
             }
-            dropdown.style.display = 'none';
-        });
-    });
 
-    searchInput.addEventListener('input', function(e) {
-        const term = e.target.value.toLowerCase();
-        document.querySelectorAll('.language-group').forEach(group => {
-            let hasVisible = false;
-            group.querySelectorAll('.option-item').forEach(opt => {
+            hiddenInput.value = JSON.stringify(selectedEditions);
+            updateDropdownState();
+          }
+
+          // New Function: Marks items in dropdown as selected (similar to your screenshot)
+          function updateDropdownState() {
+            const selectedIds = selectedEditions.map(val => getIdFromValue(val));
+
+            options.forEach(option => {
+              const optionId = option.getAttribute('data-value');
+              if (selectedIds.includes(optionId)) {
+                option.style.backgroundColor = "#eef5ff"; // Light blue highlight
+                option.style.color = "#0066ff"; // Blue text
+                option.style.pointerEvents = "none"; // Make unclickable
+                option.style.opacity = "0.7";
+
+                // Add checkmark if not already present
+                if (!option.querySelector('.check-mark')) {
+                  const check = document.createElement('span');
+                  check.className = 'check-mark';
+                  check.innerHTML = ' ✓';
+                  check.style.float = 'right';
+                  option.appendChild(check);
+                }
+              } else {
+                option.style.backgroundColor = "";
+                option.style.color = "";
+                option.style.pointerEvents = "auto";
+                option.style.opacity = "1";
+                const check = option.querySelector('.check-mark');
+                if (check) check.remove();
+              }
+            });
+          }
+
+          renderPills();
+
+          // Toggle Dropdown
+          container.addEventListener('click', function (e) {
+            if (e.target.classList.contains('remove-pill')) {
+              const valToRemove = e.target.getAttribute('data-value');
+              selectedEditions = selectedEditions.filter(val => val !== valToRemove);
+              renderPills();
+              return;
+            }
+            dropdown.style.display = (dropdown.style.display === 'none' || dropdown.style.display === '') ? 'block' : 'none';
+            if (dropdown.style.display === 'block') searchInput.focus();
+          });
+
+          // Close dropdown when clicking outside
+          document.addEventListener('click', function (e) {
+            if (!container.contains(e.target) && !dropdown.contains(e.target)) {
+              dropdown.style.display = 'none';
+            }
+          });
+
+          options.forEach(option => {
+            option.addEventListener('click', function () {
+              const id = this.getAttribute('data-value');
+              const lan = this.getAttribute('data-language');
+              const author = this.getAttribute('data-author');
+              const combinedVal = `${id}:${lan}:${author}`;
+
+              // Safety check against duplicates
+              if (!selectedEditions.some(item => getIdFromValue(item) === id)) {
+                selectedEditions.push(combinedVal);
+                renderPills();
+              }
+              dropdown.style.display = 'none';
+            });
+          });
+
+          // Search Logic
+          searchInput.addEventListener('input', function (e) {
+            const term = e.target.value.toLowerCase();
+            document.querySelectorAll('.language-group').forEach(group => {
+              let hasVisible = false;
+              group.querySelectorAll('.option-item').forEach(opt => {
                 const text = (opt.getAttribute('data-author') || '').toLowerCase();
                 const lang = (opt.getAttribute('data-language') || '').toLowerCase();
                 if (text.includes(term) || lang.includes(term)) {
-                    opt.style.display = 'block';
-                    hasVisible = true;
+                  opt.style.display = 'block';
+                  hasVisible = true;
                 } else {
-                    opt.style.display = 'none';
+                  opt.style.display = 'none';
                 }
+              });
+              group.style.display = hasVisible ? 'block' : 'none';
             });
-            group.style.display = hasVisible ? 'block' : 'none';
+          });
         });
-    });
-});
-</script>
+      </script>
 
 <%- include('footer') %>
