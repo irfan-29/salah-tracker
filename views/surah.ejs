@@ -1,306 +1,207 @@
 <%- include("navbar") -%>
 
-
-        <h4>Quran</h4>
-        
-        <!-- <iframe style="width: 240px; height: 460px; border: 1px solid #ddd;" scrolling="no" src="https://www.islamicfinder.org/specialislamicdays"> </iframe> -->
-        
+<div class="main-content">
+    <h4>Quran</h4>
+    <br>
+    <h5>Surah</h5>
+    <div class="container1">
+        <div class="surah-item">
+            <p class="surah-name"><%= surah.surahName %> ( <%= surah.surahNameArabic %> )</p>
+            <p class="surah-translation"><%= surah.surahNameTranslation %></p>
+            <p>Revelation Place: <%= surah.revelationPlace %></p>
+            <p>Total Ayah: <%= surah.totalAyah %></p>
+        </div>
         <br>
-        <h5>Surah</h5>
-            <div class="container1">
-                <div class="surah-item">
-                   <p class="surah-name"><%= surah.surahName %> ( <%= surah.surahNameArabic %> )</p>
-                   <p class="surah-translation"><%= surah.surahNameTranslation %></p>
-                   <p>Revelation Place: <%= surah.revelationPlace %></p>
-                   <p>Total Ayah: <%= surah.totalAyah %></p>
-               </div>
-               <br>
 
-              <form action="/reciter" method="POST" style="margin-bottom: 20px;">
-                <input type="hidden" name="redirectTo" value="/surah/<%= surahNo %>">
-                <div class="d-flex align-items-center w-100 gap-2">
-                  <div class="form-floating flex-grow-1">
+        <form action="/reciter" method="POST" style="margin-bottom: 20px;">
+            <input type="hidden" name="redirectTo" value="/surah/<%= surahNo %>">
+            <div class="d-flex align-items-center w-100 gap-2">
+                <div class="form-floating flex-grow-1">
                     <select name="reciter" id="reciter" required class="form-control" placeholder="Select your Preferred Reciter">
-                      <% Object.keys(surah.audio).forEach(function(key) { %>
-                          <option value="<%= key %>" <%= key === favoriteReciter ? 'selected' : '' %>><%= surah.audio[key].reciter %></option>
+                        <% Object.keys(surah.audio).forEach(function(key) { %>
+                            <option value="<%= key %>" <%= key === favoriteReciter ? 'selected' : '' %>><%= surah.audio[key].reciter %></option>
                         <% }); %>
                     </select>
                     <label for="reciter">Preferred Reciter</label>
-                  </div>
-                  <!-- <div class="new-task"> -->
-                    <button type="submit" class="add btn btn-primary" value="add" name="add">Save</button>
-                  <!-- </div> -->
                 </div>
-              </form>
+                <button type="submit" class="add btn btn-primary" value="add" name="add">Save</button>
+            </div>
+        </form>
 
-
-
-
-              <% if (surah.audio[favoriteReciter] && alwaysShowAudio) { %>
-                <!-- Audio Player with loader -->
-                <div class="audio-player" style="margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 8px; background: #fff;">
-                  <h5 style="margin-bottom: 10px;"><%= surah.audio[favoriteReciter].reciter %></h5>
-                  <div id="audioLoader" style="display: flex; align-items: center; justify-content: center; height: 45px;">
+        <% if (surah.audio[favoriteReciter] && alwaysShowAudio) { %>
+            <div class="audio-player" style="margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 8px; background: #fff;">
+                <h5 style="margin-bottom: 10px;"><%= surah.audio[favoriteReciter].reciter %></h5>
+                <div id="audioLoader" style="display: flex; align-items: center; justify-content: center; height: 45px;">
                     <img src="/images/40.gif" alt="Loading..." style="height: 14px;" />
-                  </div>
-                  <audio id="surahAudio" controls style="width: 100%;">
+                </div>
+                <audio id="surahAudio" controls style="width: 100%;">
                     <source src="<%= surah.audio[favoriteReciter].originalUrl %>" type="audio/mpeg">
                     Your browser does not support the audio element.
-                  </audio>
-                </div>
-              
+                </audio>
+            </div>
 
-               <script>
+            <script>
                 const audio = document.getElementById('surahAudio');
                 const loader = document.getElementById('audioLoader');
                 const savedTime = <%= JSON.stringify(audioTime || 0) %>;
 
-                if (!audio) {
-                  console.warn('Audio element not found');
-                } else {
-                  let isAudioPlaying = false;
-                  let lastSentTime = 0;
+                if (audio) {
+                    let isAudioPlaying = false;
+                    let lastSentTime = 0;
 
-                  /* Initial UI */
-                  loader.style.display = 'flex';
-                  audio.style.display = 'none';
+                    loader.style.display = 'flex';
+                    audio.style.display = 'none';
 
-                  /* Restore time once */
-                  audio.addEventListener('loadedmetadata', () => {
-                    if (savedTime > 0 && !isNaN(savedTime)) {
-                      audio.currentTime = savedTime;
-                    }
-                  });
-
-                  audio.addEventListener('canplaythrough', () => {
-                    loader.style.display = 'none';
-                    audio.style.display = 'block';
-                  });
-
-                  /* Track REAL play state */
-                  audio.addEventListener('play', () => {
-                    isAudioPlaying = true;
-                  });
-
-                  audio.addEventListener('pause', () => {
-                    isAudioPlaying = false;
-                  });
-
-                  audio.addEventListener('ended', () => {
-                    isAudioPlaying = false;
-                  });
-
-                  /* 🔥 SAFE interval (runs, but sends only when playing) */
-                  setInterval(() => {
-                    if (
-                      !isAudioPlaying ||
-                      audio.paused ||
-                      audio.ended ||
-                      audio.seeking ||
-                      isNaN(audio.currentTime) ||
-                      audio.currentTime <= 0
-                    ) {
-                      return;
-                    }
-
-                    // avoid spam
-                    if (Math.abs(audio.currentTime - lastSentTime) < 5) return;
-
-                    lastSentTime = audio.currentTime;
-
-                    fetch('/update-audio-time', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        surahNo: "<%= surahNo %>",
-                        surahName: "<%= surah.surahName %>",
-                        time: audio.currentTime
-                      })
-                    }).catch(err => {
-                      console.error('Failed to update audio time:', err);
+                    audio.addEventListener('loadedmetadata', () => {
+                        if (savedTime > 0 && !isNaN(savedTime)) {
+                            audio.currentTime = savedTime;
+                        }
                     });
 
-                  }, 5000);
+                    audio.addEventListener('canplaythrough', () => {
+                        loader.style.display = 'none';
+                        audio.style.display = 'block';
+                    });
+
+                    audio.addEventListener('play', () => { isAudioPlaying = true; });
+                    audio.addEventListener('pause', () => { isAudioPlaying = false; });
+
+                    setInterval(() => {
+                        if (!isAudioPlaying || audio.paused || audio.ended || isNaN(audio.currentTime)) return;
+                        if (Math.abs(audio.currentTime - lastSentTime) < 5) return;
+                        lastSentTime = audio.currentTime;
+
+                        fetch('/update-audio-time', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                surahNo: "<%= surahNo %>",
+                                surahName: "<%= surah.surahName %>",
+                                time: audio.currentTime
+                            })
+                        }).catch(err => console.error('Update failed:', err));
+                    }, 5000);
                 }
-               </script>
-              <% } %>
+            </script>
+        <% } %>
 
+        <hr>
 
+        <div class="d-flex flex-column align-items-center w-100 my-4">
+            <label for="ayahRange" class="form-label" style="font-weight: bold;">Go to Ayah</label>
+            <input type="range" id="ayahRange" class="form-range" min="1" max="<%= surah.arabic1.length %>" value="1" oninput="updateAyahLabel()" style="width: 300px;">
+            <div class="d-flex align-items-center gap-2 mt-2">
+                <span>Selected Ayah:</span>
+                <span id="selectedAyah" style="font-weight: bold;">1</span>
+                <button class="btn btn-primary btn-sm" onclick="goToAyah()">Go</button>
+            </div>
+        </div>
+        
+        <hr>
 
-
-
-
-
-
-              <hr>
-
-                <!-- Input field to go to a specific Ayah -->
-                <div class="d-flex flex-column align-items-center w-100 my-4">
-                  <label for="ayahRange" class="form-label" style="font-weight: bold;">Go to Ayah</label>
-                  <input type="range" id="ayahRange" class="form-range" min="1" max="<%= surah.arabic1.length %>" value="1" oninput="updateAyahLabel()" style="width: 300px;">
-                  <div class="d-flex align-items-center gap-2 mt-2">
-                    <span>Selected Ayah:</span>
-                    <span id="selectedAyah" style="font-weight: bold;">1</span>
-                    <button class="btn btn-primary btn-sm" onclick="goToAyah()">Go</button>
-                  </div>
-                </div>
-                <hr>
-                
-                <% for (let i=0; i < surah.arabic1.length; i++) { %>
-                  <p id="<%= i+1 %>" style="color: #888; font-size: 0.8rem; margin-bottom: 5px; text-align: left;">
+        <% for (let i = 0; i < surah.arabic1.length; i++) { %>
+            <div class="ayah-block" style="margin-bottom: 40px;">
+                <p id="<%= i+1 %>" style="color: #888; font-size: 0.8rem; margin-bottom: 5px; text-align: left;">
                     <%= i+1 %>
-                  </p>
+                </p>
                 
-                  <p class="surah-name"
-                    style="font-size: 28px; text-align: right; direction: rtl; margin-bottom: 20px; font-family: 'Amiri', serif;">
+                <p class="surah-name" style="font-size: 28px; text-align: right; direction: rtl; margin-bottom: 20px; font-family: 'Amiri', serif;">
                     <%= surah.arabic1[i] %>
-                  </p>
-                  <p class="surah-translation" style="font-size: 24px; color: #333;"><%= surah.arabic2[i] %></p>
-                
-                  <% Object.keys(translations).forEach(function(editionKey) { %>
-                    <% const data=translations[editionKey]; %>
-                
-                      <% if (data && data.chapter && data.chapter[i]) { %>
-                        <div style="text-align: left; margin-bottom: 25px;">
-                          <p
-                            style="color: #949b9c; font-size: 0.7rem; margin-bottom: 4px; font-family: sans-serif; text-transform: uppercase; letter-spacing: 1px; font-weight: 700;">
-                            <!-- <%= (data.edition && data.edition.language) ? data.edition.language : '' %> - -->
-                              <%= (data.edition && data.edition.author) ? data.edition.author : editionKey %>
-                          </p>
-                
-                          <p
-                            style="font-family: 'Mukta Malar', sans-serif; font-size: 1.1rem; color: #1a1a1a; line-height: 1.8; margin: 0;">
-                            <%= data.chapter[i].text %>
-                          </p>
+                </p>
+
+                <p class="surah-translation" style="font-size: 24px; color: #333; text-align: left; margin-bottom: 20px;">
+                    <%= surah.arabic2[i] %>
+                </p>
+
+                <% Object.keys(translations).forEach(function(key) { %>
+                    <% var item = translations[key]; %>
+                    <% if (item && item.chapter && item.chapter[i]) { %>
+                        <div style="text-align: left; margin-bottom: 25px; padding-left: 8px; border-left: 3px solid #eee;">
+                            <p style="color: #949b9c; font-size: 0.7rem; margin-bottom: 5px; font-family: sans-serif; text-transform: uppercase; letter-spacing: 1px; font-weight: 700;">
+                                <%= item.displayLabel %>
+                            </p>
+                            <p style="font-family: 'Mukta Malar', sans-serif; font-size: 1.1rem; color: #1a1a1a; line-height: 1.5; margin: 0;">
+                                <%= item.chapter[i].text %>
+                            </p>
                         </div>
-                        <% } %>
-                          <% }); %>
-                
-                            <% if (i < surah.arabic1.length - 1) { %>
-                              <hr style="border: 0; border-top: 1px solid #eee; margin: 40px 0;">
-                              <% } %>
-                                <% } %>
+                    <% } %>
+                <% }); %>
+            </div>
 
-          </div>
-            <br>
-            <br>
+            <% if (i < surah.arabic1.length - 1) { %>
+                <hr style="border: 0; border-top: 1px solid #eee; margin: 40px 0;">
+            <% } %>
+        <% } %>
+    </div> </div> <button onclick="topFunction()" id="myBtn" title="Go to Top">
+    <span class="nav-icon material-symbols-rounded">keyboard_arrow_up</span>
+</button>
 
+<script>
+    function updateAyahLabel() {
+        document.getElementById('selectedAyah').textContent = document.getElementById('ayahRange').value;
+    }
 
-            <!-- Go to Top Button -->
-            <button onclick="topFunction()" id="myBtn" title="Go to Top" style="display: none; position: fixed; bottom: 20px; right: 30px; z-index: 99; border: none; outline: none; cursor: pointer; border-radius: 50%;">
-                <span class="nav-icon material-symbols-rounded">keyboard_arrow_up</span>
-            </button>
-            
-            <!-- Script to handle scroll and top function -->
-            <script type="text/javascript">
-              let mybutton = document.getElementById("myBtn");
-            
-              window.onscroll = function() { scrollFunction() };
-            
-              function scrollFunction() {
-                if (document.body.scrollTop > 20 || document.documentElement.scrollTop > 20) {
-                  mybutton.style.display = "block";
-                } else {
-                  mybutton.style.display = "none";
-                }
-              }
-            
-              function topFunction() {
-                document.body.scrollTop = 0; // For Safari
-                document.documentElement.scrollTop = 0; // For Chrome, Firefox, IE and Opera
-              }
-            </script>
-
-            <script>
-                const select = document.getElementById('reciterSelect');
-                const players = document.querySelectorAll('.audio-player');
-              
-                function showSelectedReciter() {
-                  players.forEach(player => player.style.display = 'none');
-                  const selectedId = select.value;
-                  const selectedPlayer = document.getElementById(selectedId);
-                  if (selectedPlayer) selectedPlayer.style.display = 'block';
-                }
-              
-                select.addEventListener('change', showSelectedReciter);
-                // Show the first one by default
-                showSelectedReciter();
-            </script>
-            <script>
-              function updateAyahLabel() {
-                const ayahRange = document.getElementById('ayahRange');
-                const selectedAyah = document.getElementById('selectedAyah');
-                selectedAyah.textContent = ayahRange.value;
-              }
-            
-              function goToAyah() {
-                const ayahNumber = parseInt(document.getElementById('ayahRange').value, 10);
-                const ayahElement = document.getElementById(ayahNumber);
-            
-                if (ayahElement) {
-                  ayahElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                  // Highlight the ayah
-                  ayahElement.style.backgroundColor = "#ffe58f";
-                  setTimeout(() => {
-                    ayahElement.style.backgroundColor = "";
-                  }, 2000);
-                } else {
-                  alert("Ayah number not found!");
-                }
-              }
-            </script>
-
-    <style>
-        #myBtn {
-          display: none;
-          position: fixed;
-          bottom: 30px;
-          right: 20px;
-          z-index: 99;
-          border: none;
-          background: var(--secondary-color);
-          box-shadow: rgba(0, 0, 0, 0.7) 0px 22px 80px 4px;
-          cursor: pointer;
-          padding: 8px 8px 4px 9px;
-          border-radius: 50%;
-          font-size: 15px;
-        }       
-        body{
-          text-align: center;
-          align-items: center;
+    function goToAyah() {
+        const ayahNumber = document.getElementById('ayahRange').value;
+        const ayahElement = document.getElementById(ayahNumber);
+        if (ayahElement) {
+            ayahElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            ayahElement.style.backgroundColor = "#ffe58f";
+            setTimeout(() => { ayahElement.style.backgroundColor = ""; }, 2000);
         }
-        hr{
-          margin: 22px 0;
-        }
-        .container1 {
-            text-align: left;
-            max-width: 800px;
-            margin: 0 auto;
-            background-color: #ffffff;
-            padding: 30px 20px;
-            border-radius: 10px;
-            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.05);
-        }
+    }
 
-        .surah-item {
-            padding: 15px;
-            border-bottom: 1px solid #e0e0e0;
+    let mybutton = document.getElementById("myBtn");
+    window.onscroll = function() {
+        if (document.body.scrollTop > 20 || document.documentElement.scrollTop > 20) {
+            mybutton.style.display = "block";
+        } else {
+            mybutton.style.display = "none";
         }
+    };
+    function topFunction() {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+</script>
 
-        .surah-item:last-child {
-            border-bottom: none;
-        }
-
-        .surah-name {
-            font-weight: bold;
-            font-size: 17px;
-            color: #333;
-        }
-
-        .surah-translation {
-            font-size: 16px;
-            color: #666;
-        }
-    </style>
-
-
+<style>
+    #myBtn {
+        display: none;
+        position: fixed;
+        bottom: 30px;
+        right: 20px;
+        z-index: 99;
+        border: none;
+        background: #3e4e68;
+        color: white;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        cursor: pointer;
+        padding: 10px;
+        border-radius: 50%;
+    }
+    body {
+        text-align: center;
+    }
+    .container1 {
+        text-align: left;
+        max-width: 800px;
+        margin: 0 auto;
+        background-color: #ffffff;
+        padding: 30px 20px;
+        border-radius: 10px;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.05);
+    }
+    .surah-item {
+        padding: 15px;
+        border-bottom: 1px solid #e0e0e0;
+    }
+    .surah-name {
+        font-weight: bold;
+        font-size: 1.2rem;
+        color: #333;
+    }
+    .surah-translation {
+        font-size: 1rem;
+        color: #666;
+    }
+</style>

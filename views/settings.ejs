@@ -149,37 +149,20 @@ document.addEventListener('DOMContentLoaded', function() {
     const placeholder = document.getElementById('editionPlaceholder');
     const options = document.querySelectorAll('.option-item');
 
-    // 1. SAFELY parse data from backend to prevent crashes from legacy string data
     let rawData = <%- JSON.stringify(favoriteEdition || []) %>;
-    let selectedEditions = [];
-    
-    if (Array.isArray(rawData)) {
-        selectedEditions = rawData.filter(val => val && val.trim() !== '');
-    } else if (typeof rawData === 'string' && rawData.trim() !== '') {
-        selectedEditions = [rawData]; // Convert old string data to array
-    }
+    let selectedEditions = Array.isArray(rawData) ? rawData.filter(v => v && v.trim() !== '') : [];
 
-    // 2. Safe look-up for author names (avoids querySelector syntax errors)
-    function getAuthorByValue(val) {
-        for (let opt of options) {
-            if (opt.getAttribute('data-value') === val) {
-                return opt.getAttribute('data-author');
-            }
-        }
-        return val;
-    }
-
-    // 3. Render the pills
     function renderPills() {
-        // Clear existing pills
         container.querySelectorAll('.edition-pill').forEach(pill => pill.remove());
-
+        
         if (selectedEditions.length === 0) {
             placeholder.style.display = 'block';
         } else {
             placeholder.style.display = 'none';
             selectedEditions.forEach(val => {
-                const author = getAuthorByValue(val);
+                // Split to get the author name (index 2)
+                const author = val.includes(':') ? val.split(':')[2] : val;
+                
                 const pill = document.createElement('span');
                 pill.className = 'edition-pill';
                 pill.style.cssText = 'background-color: #f1f2f6; border-radius: 6px; padding: 4px 8px; display: inline-flex; align-items: center; gap: 6px; font-size: 0.9rem; color: #333; margin: 2px;';
@@ -188,61 +171,37 @@ document.addEventListener('DOMContentLoaded', function() {
                 container.insertBefore(pill, placeholder);
             });
         }
-        // Update hidden input for the form POST request
         hiddenInput.value = JSON.stringify(selectedEditions);
     }
 
-    // Initial render
     renderPills();
 
-    // 4. Handle clicks on the container (Toggle dropdown & Remove pills)
     container.addEventListener('click', function(e) {
-        // If clicking the "X" on a pill
         if (e.target.classList.contains('remove-pill')) {
             const valToRemove = e.target.getAttribute('data-value');
             selectedEditions = selectedEditions.filter(val => val !== valToRemove);
             renderPills();
-            return; // Stop execution here so dropdown doesn't toggle
+            return;
         }
-        
-        // Otherwise, toggle the dropdown menu
-        const isHidden = dropdown.style.display === 'none' || dropdown.style.display === '';
-        dropdown.style.display = isHidden ? 'block' : 'none';
-        
-        if (isHidden) {
-            searchInput.focus();
-        }
+        dropdown.style.display = (dropdown.style.display === 'none' || dropdown.style.display === '') ? 'block' : 'none';
+        if (dropdown.style.display === 'block') searchInput.focus();
     });
 
-    // Prevent clicks inside the dropdown from closing it
-    dropdown.addEventListener('click', function(e) {
-        e.stopPropagation();
-    });
-
-    // 5. Close Dropdown when clicking anywhere outside of it
-    document.addEventListener('click', function(e) {
-        if (!container.contains(e.target) && !dropdown.contains(e.target)) {
-            dropdown.style.display = 'none';
-        }
-    });
-
-    // 6. Add a new Edition from the dropdown
     options.forEach(option => {
         option.addEventListener('click', function() {
-            const val = this.getAttribute('data-value');
-            if (!selectedEditions.includes(val)) {
-                selectedEditions.push(val);
+            const id = this.getAttribute('data-value');
+            const lan = this.getAttribute('data-language');
+            const author = this.getAttribute('data-author');
+            const combined = `${id}:${lan}:${author}`;
+
+            if (!selectedEditions.some(item => item.split(':')[0] === id)) {
+                selectedEditions.push(combined);
                 renderPills();
             }
-            // Close and reset search
             dropdown.style.display = 'none';
-            searchInput.value = ''; 
-            options.forEach(opt => opt.style.display = 'block');
-            document.querySelectorAll('.language-group').forEach(group => group.style.display = 'block');
         });
     });
 
-    // 7. Search functionality
     searchInput.addEventListener('input', function(e) {
         const term = e.target.value.toLowerCase();
         document.querySelectorAll('.language-group').forEach(group => {
@@ -250,7 +209,6 @@ document.addEventListener('DOMContentLoaded', function() {
             group.querySelectorAll('.option-item').forEach(opt => {
                 const text = (opt.getAttribute('data-author') || '').toLowerCase();
                 const lang = (opt.getAttribute('data-language') || '').toLowerCase();
-                
                 if (text.includes(term) || lang.includes(term)) {
                     opt.style.display = 'block';
                     hasVisible = true;
@@ -258,7 +216,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     opt.style.display = 'none';
                 }
             });
-            // Hide the language category header if no matches are found inside it
             group.style.display = hasVisible ? 'block' : 'none';
         });
     });

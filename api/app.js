@@ -352,49 +352,6 @@ app.get("/quran", async(req, res) => {
 });
 
 
-// app.get("/surah/:surahNo", async (req, res) => {
-//     res.locals.hideAudioPlayer = true;
-  
-//     let reciter = 1;
-//     let favoriteEdition = "";
-//     let audioTime = 0;
-  
-//     const surahNo = parseInt(req.params.surahNo);
-//     const settings = await Settings.findOne({});
-  
-//     if (settings) {
-//         if (settings.favoriteReciter) reciter = settings.favoriteReciter;
-//         if (settings.favoriteEdition) favoriteEdition = settings.favoriteEdition;
-  
-//         // Get audio time for this surah
-//         const progress = settings.audioProgress;
-//         if (progress && progress.surahNo === surahNo) {
-//             audioTime = progress.time || 0;
-//         }
-//     }
-  
-//     favoriteEdition = favoriteEdition.replace(/\s*\(.*?\)\s*$/, '');
-  
-//     const response = await fetch(`https://quranapi.pages.dev/api/${surahNo}.json`);
-//     const data = await response.json();
-  
-//     let translationJson = {};
-//     if (favoriteEdition !== "") {
-//       const translation = await fetch(`https://cdn.jsdelivr.net/gh/fawazahmed0/quran-api@1/editions/${favoriteEdition}/${surahNo}.json`);
-//       translationJson = await translation.json();
-//     }
-  
-//     await Settings.findOneAndUpdate({}, { lastRead: surahNo }, { sort: { _id: -1 }, upsert: true });
-  
-//     res.render("surah", {
-//       surah: data,
-//       translation: translationJson,
-//       favoriteReciter: String(reciter),
-//       lastRead: surahNo,
-//       audioTime: audioTime
-//     });
-//   });
-
 
 app.get("/surah/:surahNo", async (req, res) => {
     const surahNo = parseInt(req.params.surahNo);
@@ -416,33 +373,40 @@ app.get("/surah/:surahNo", async (req, res) => {
         }
     }
 
-    // Fetch Main Arabic/English Surah Data
     const response = await fetch(`https://quranapi.pages.dev/api/${surahNo}.json`);
     const surah = await response.json();
     const surahName = surah.surahName;
 
-    // Fetch all selected translations
     const translationData = {};
     if (favoriteEdition.length > 0) {
-        const translationPromises = favoriteEdition.map((editionName) =>
-            fetch(`https://cdn.jsdelivr.net/gh/fawazahmed0/quran-api@1/editions/${editionName}/${surahNo}.json`)
+        const translationPromises = favoriteEdition.map((combinedStr) => {
+            const parts = combinedStr.split(':');
+            const id = parts[0];
+            const lan = parts[1] || "";
+            const author = parts[2] || id;
+
+            return fetch(`https://cdn.jsdelivr.net/gh/fawazahmed0/quran-api@1/editions/${id}/${surahNo}.json`)
                 .then((res) => res.json())
-                .catch((err) => {
-                    console.error(`Error fetching ${editionName}:`, err);
-                    return null;
+                .then((data) => {
+                    return { ...data, displayLabel: `${lan} - ${author}` };
                 })
-        );
+                .catch((err) => {
+                    console.error(`Error fetching ${id}:`, err);
+                    return null;
+                });
+        });
 
         const results = await Promise.all(translationPromises);
 
-        favoriteEdition.forEach((editionName, index) => {
+        favoriteEdition.forEach((combinedStr, index) => {
+            const id = combinedStr.split(':')[0];
             if (results[index]) {
-                translationData[editionName] = results[index];
+                translationData[id] = results[index];
             }
         });
     }
 
-    // Update Last Read
+    // Last Read/Audio Progress Logic
     let lastReadSurahs = settings?.lastReadSurahs || [];
     lastReadSurahs = lastReadSurahs.filter((n) => n !== String(surahNo));
     lastReadSurahs.unshift(String(surahNo));
@@ -459,54 +423,8 @@ app.get("/surah/:surahNo", async (req, res) => {
         audioTime: time,
         alwaysShowAudio: true,
     });
-});
-
+});  
   
-  
-
-
-// app.get("/surah/:surahNo", async(req, res) => {
-
-//     // default reciter is 1
-//     let reciter = 1;
-//     // default edition is null 
-//     let favoriteEdition = "";
-//      // wait for settings to be fetched
-//     const settings = await Settings.findOne({});
-//     if (settings) {
-//         if(settings.favoriteReciter)
-//             reciter = settings.favoriteReciter;
-//         if(settings.favoriteEdition)
-//             favoriteEdition = settings.favoriteEdition;
-//     }
-//     favoriteEdition = favoriteEdition.replace(/\s*\(.*?\)\s*$/, '');
-
-//     const surahNo = req.params.surahNo;
-//     const response = await fetch(`https://quranapi.pages.dev/api/${surahNo}.json`);
-//     const data = await response.json();
-//     let translationJson = {};
-//     if(favoriteEdition != ""){
-//         const translation = await fetch(`https://cdn.jsdelivr.net/gh/fawazahmed0/quran-api@1/editions/${favoriteEdition}/${surahNo}.json`);
-//         translationJson = await translation.json();
-//     }
-
-    
-
-//     req.session.canShowAudio = true;
-//     req.session.favoriteReciterName = String(reciter);
-//     req.session.favoriteReciterUrl = data.audio[String(reciter)].originalUrl;
-    
-
-
-
-//     // to update for last read
-//     Settings.findOneAndUpdate({}, { lastRead: surahNo }, { sort: { _id: -1 }, upsert: true })
-//         .catch((err) => {
-//             console.error(err);
-//             res.status(500).send("Error updating lsat read.");
-//         });
-//     res.render("surah", {surah: data, translation: translationJson, favoriteReciter: String(reciter), lastRead: surahNo});
-// });
 
 
 app.get("/salah", function(req, res){
@@ -732,9 +650,6 @@ app.get("/settings", async (req, res) => {
         author: edition.author
       });
     }
-
-    console.log(favoriteEdition);
-    console.log(editionsByLanguage);
 
     res.render('settings', {
         favoriteReciter: String(reciter), 
