@@ -106,6 +106,7 @@
         <button type="submit" class="add btn btn-primary" style="margin-left: 8px;" value="add" name="add">Save Settings</button>
 
       </form>
+      <br>
 
 
 
@@ -172,8 +173,8 @@
                 const author = getAuthorFromValue(val);
                 const pill = document.createElement('span');
                 pill.className = 'edition-pill';
-                pill.style.cssText = 'background-color: #f1f2f6; border-radius: 6px; padding: 4px 8px; display: inline-flex; align-items: center; gap: 6px; font-size: 0.9rem; color: #333; margin: 2px; border: 1px solid #ddd;';
-                pill.innerHTML = `${author} <span class="remove-pill" data-value="${val}" style="cursor: pointer; color: #888; font-size: 1.1rem; font-weight: bold;">&times;</span>`;
+                pill.style.cssText = 'background-color: #f1f2f6; border-radius: 6px; padding: 4px 8px; display: inline-flex; align-items: center; gap: 6px; font-size: 0.9rem; color: #333; margin: 2px;';
+                pill.innerHTML = `${author} <span class="remove-pill" data-value="${val}" style="cursor: pointer; color: #888; font-size: 1.1rem; line-height: 1;">&times;</span>`;
                 container.insertBefore(pill, placeholder);
               });
             }
