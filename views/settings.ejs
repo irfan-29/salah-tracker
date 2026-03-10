@@ -8,18 +8,24 @@
 
         <h5 style="text-align: left; margin-left: 2.5%;">Default Home page:</h5>
         <div class="custom-select-wrapper" style="margin: 0 2.5% 20px 2.5%; position: relative;">
+            <% const homeLabels={ 'salah' : 'Salah' , 'quran' : 'Quran' , 'audio' : 'Audio' , 'salah-tracker' : 'Salah Tracker'
+                , 'salah-timings' : 'Salah Timings' , 'challenges' : 'Challenges' , 'analytics' : 'Analytics' , 'posts' : 'Posts'
+                , 'settings' : 'Settings' }; %>  
             <div class="custom-selector form-control d-flex align-items-center justify-content-between" data-field="Home" style="min-height: 58px; cursor: pointer;">
-                <span id="labelHome" style="text-align: left; width: 100%; text-transform: none;"><%= defaultHome %></span>
+                <span id="labelHome" style="text-align: left; width: 100%; text-transform: none;">
+                  <%= homeLabels[defaultHome] || defaultHome %>
+                </span>
                 <span class="material-symbols-rounded">expand_more</span>
             </div>
             <div id="dropdownHome" class="custom-dropdown-menu shadow-sm border rounded">
-                <div class="options-list">
-                    <% ['salah', 'quran', 'audio', 'salah-tracker', 'salah-timings', 'challenges', 'analytics', 'posts', 'settings'].forEach(opt => { %>
-                    <div class="p-2 option-item-custom" data-field="Home" data-value="<%= opt %>" style="text-align: left; text-transform: none;">
-                        <%= opt %>
+              <div class="options-list">
+                  <% Object.keys(homeLabels).forEach(opt=> { %>
+                    <div class="p-2 option-item-custom" data-field="Home" data-value="<%= opt %>"
+                      style="text-align: left; text-transform: none;">
+                      <%= homeLabels[opt] %>
                     </div>
                     <% }); %>
-                </div>
+              </div>
             </div>
             <input type="hidden" name="defaultHome" id="inputHome" value="<%= defaultHome %>">
         </div>
@@ -144,8 +150,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const isVisible = target.style.display === 'block';
             document.querySelectorAll('.custom-dropdown-menu').forEach(d => d.style.display = 'none');
             target.style.display = isVisible ? 'none' : 'block';
-            const search = target.querySelector('.dropdown-search-custom');
-            if(search && !isVisible) setTimeout(() => search.focus(), 10);
+            // REMOVED AUTO FOCUS HERE
         });
     });
 
@@ -226,7 +231,7 @@ document.addEventListener('DOMContentLoaded', function () {
             renderPills(); return;
         }
         dropdown.style.display = (dropdown.style.display === 'none' || dropdown.style.display === '') ? 'block' : 'none';
-        if (dropdown.style.display === 'block') searchInput.focus();
+        // REMOVED AUTO FOCUS HERE
     });
 
     options.forEach(option => {
