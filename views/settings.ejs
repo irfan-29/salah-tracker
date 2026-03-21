@@ -11,11 +11,11 @@
             <% const homeLabels={ 'salah' : 'Salah' , 'quran' : 'Quran' , 'audio' : 'Audio' , 'salah-tracker' : 'Salah Tracker'
                 , 'salah-timings' : 'Salah Timings' , 'challenges' : 'Challenges' , 'analytics' : 'Analytics' , 'posts' : 'Posts'
                 , 'settings' : 'Settings' }; %>  
-            <div class="custom-selector form-control d-flex align-items-center justify-content-between" data-field="Home" style="min-height: 58px; cursor: pointer;">
+            <div class="custom-selector form-control d-flex align-items-center justify-content-between" data-field="Home" style="min-height: 50px; cursor: pointer;">
                 <span id="labelHome" style="text-align: left; width: 100%; text-transform: none;">
                   <%= homeLabels[defaultHome] || defaultHome %>
                 </span>
-                <span class="material-symbols-rounded">expand_more</span>
+                <span class="material-symbols-rounded" style="opacity: 0.5;">expand_more</span>
             </div>
             <div id="dropdownHome" class="custom-dropdown-menu shadow-sm border rounded">
               <div class="options-list">
@@ -30,11 +30,47 @@
             <input type="hidden" name="defaultHome" id="inputHome" value="<%= defaultHome %>">
         </div>
 
+
+
+        <h5 style="text-align: left; margin-left: 2.5%; margin-top: 25px;">Quran Font Selection:</h5>
+        <div class="custom-select-wrapper" style="margin: 0 2.5% 20px 2.5%; position: relative;">
+            <div class="custom-selector form-control d-flex align-items-center justify-content-between" data-field="ArabicFont"
+                style="min-height: 55px; cursor: pointer;">
+                <span id="labelArabicFont">
+                    <%= tarteelFonts[favoriteFont]?.label || 'Choose Font' %>
+                </span>
+                <span class="material-symbols-rounded">expand_more</span>
+            </div>
+        
+            <div id="dropdownArabicFont" class="custom-dropdown-menu shadow-sm border rounded"
+                style="display:none; position:absolute; width:100%; z-index:1000; background:white;">
+                <div class="options-list" style="max-height: 400px; overflow-y: auto;">
+                    <% Object.keys(tarteelFonts).forEach(id=> { %>
+                        <div class="p-3 option-item-custom d-flex justify-content-between align-items-center border-bottom"
+                            data-field="ArabicFont" data-value="<%= id %>">
+                            <div>
+                                <div style="font-weight: 600;">
+                                    <%= tarteelFonts[id].label %>
+                                </div>
+                                <small class="badge bg-light text-dark" style="font-size: 0.6rem;">
+                                    <%= tarteelFonts[id].tag %>
+                                </small>
+                            </div>
+                            <span dir="rtl" style="font-family: '<%= id %>'; font-size: 1.5rem;">بِسْمِ اللهِ</span>
+                        </div>
+                        <% }); %>
+                </div>
+            </div>
+            <input type="hidden" name="font" id="inputArabicFont" value="<%= favoriteFont %>">
+        </div>
+
+
+
         <h5 style="text-align: left; margin-left: 2.5%;">Reciter:</h5>
         <div class="custom-select-wrapper" style="margin: 0 2.5% 20px 2.5%; position: relative;">
-            <div class="custom-selector form-control d-flex align-items-center justify-content-between" data-field="Reciter" style="min-height: 58px; cursor: pointer;">
+            <div class="custom-selector form-control d-flex align-items-center justify-content-between" data-field="Reciter" style="min-height: 50px; cursor: pointer;">
                 <span id="labelReciter" style="text-align: left; width: 100%; text-transform: none;"><%= reciters[favoriteReciter] %></span>
-                <span class="material-symbols-rounded">expand_more</span>
+                <span class="material-symbols-rounded" style="opacity: 0.5;">expand_more</span>
             </div>
             <div id="dropdownReciter" class="custom-dropdown-menu shadow-sm border rounded">
                 <input type="text" class="form-control border-0 border-bottom dropdown-search-custom" placeholder="Search Reciter..." style="text-align: left;">
@@ -83,9 +119,9 @@
 
         <h5 style="text-align: left; margin-left: 2.5%;">Choose your Location:</h5>
         <div class="custom-select-wrapper" style="margin: 0 2.5% 20px 2.5%; position: relative;">
-            <div class="custom-selector form-control d-flex align-items-center justify-content-between" data-field="Location" style="min-height: 58px; cursor: pointer;">
+            <div class="custom-selector form-control d-flex align-items-center justify-content-between" data-field="Location" style="min-height: 50px; cursor: pointer;">
                 <span id="labelLocation" style="text-align: left; width: 100%; text-transform: none;"><%= location %></span>
-                <span class="material-symbols-rounded">expand_more</span>
+                <span class="material-symbols-rounded" style="opacity: 0.5;">expand_more</span>
             </div>
             <div id="dropdownLocation" class="custom-dropdown-menu shadow-sm border rounded">
                 <input type="text" class="form-control border-0 border-bottom dropdown-search-custom" placeholder="Search Location..." style="text-align: left;">
@@ -138,7 +174,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    ['Home', 'Reciter', 'Location'].forEach(field => {
+    ['Home', 'Reciter', 'Location', 'ArabicFont'].forEach(field => {
         const hiddenInput = document.getElementById('input' + field);
         if (hiddenInput) markCustomDropdown(field, hiddenInput.value);
     });

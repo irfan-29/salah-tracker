@@ -99,19 +99,43 @@
         
         <hr>
 
+        <style>
+            /* --- HAFS GROUP --- */
+            @font-face { font-family: 'QPC-Hafs'; src: url('/fonts/qpc-hafs.woff2') format('woff2'); font-display: swap; }
+            @font-face { font-family: 'DigitalKhatt-V2'; src: url('/fonts/dk-v2.woff2') format('woff2'); font-display: swap; }
+            @font-face { font-family: 'Me-Quran'; src: url('/fonts/me-quran.woff2') format('woff2'); font-display: swap; }
+            @font-face { font-family: 'QPC-Nastaleeq'; src: url('/fonts/qpc-nastaleeq.woff2') format('woff2'); font-display: swap; }
+            /* --- INDOPAK GROUP --- */
+            @font-face { font-family: 'Indopak-PDMS'; src: url('/fonts/indopak-pdms.woff2') format('woff2'); font-display: swap; }
+            @font-face { font-family: 'Indopak-Nastaleeq'; src: url('/fonts/indopak-nas.woff2') format('woff2'); font-display: swap; }
+            @font-face { font-family: 'DigitalKhatt-Indopak'; src: url('/fonts/dk-indopak.woff2') format('woff2'); font-display: swap; }
+        </style>
+
+
         <% for (let i = 0; i < surah.arabic1.length; i++) { %>
             <div class="ayah-block" style="margin-bottom: 40px;">
                 <p id="<%= i+1 %>" style="color: #888; font-size: 0.8rem; margin-bottom: 5px; text-align: left;">
                     <%= i+1 %>
                 </p>
                 
-                <p class="surah-name" style="font-size: 28px; text-align: right; direction: rtl; margin-bottom: 20px; font-family: 'Amiri', serif;">
+                <!-- <p class="surah-name" style="font-size: 28px; text-align: right; direction: rtl; margin-bottom: 20px; font-family: 'Amiri', serif;">
                     <%= surah.arabic1[i] %>
-                </p>
+                </p> -->
 
-                <p class="surah-translation" style="font-size: 24px; color: #333; text-align: left; margin-bottom: 20px;">
-                    <%= surah.arabic2[i] %>
-                </p>
+                <%  const styling={ fontFamily: favoriteFont, lineHeight: '1.8' ,
+                    fontSize: '28px' }; %>
+                
+                    <p class="quran-text-display" style="
+                    font-family: '<%= styling.fontFamily %>', serif;
+                    font-size: <%= styling.fontSize %>;
+                    line-height: <%= styling.lineHeight %>;
+                    text-align: right;
+                    direction: rtl;
+                    ">
+                        <%= surah.arabic1[i] %>
+                    </p>
+
+
 
                 <% Object.keys(translations).forEach(function(key) { %>
                     <% var item = translations[key]; %>

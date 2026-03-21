@@ -59,6 +59,7 @@ const settingsSchema = new mongoose.Schema({
     defaultHome: String,
     location: String,
     favoriteReciter: Number,
+    favoriteFont: String,
     favoriteEdition: [String],
     lastReadSurahs: [String],
     audioProgress: {
@@ -357,6 +358,7 @@ app.get("/surah/:surahNo", async (req, res) => {
     const surahNo = parseInt(req.params.surahNo);
     let reciter = 1;
     let favoriteEdition = [];
+    let favoriteFont = 'Amiri';
     let time = 0;
 
     const settings = await Settings.findOne({});
@@ -368,6 +370,7 @@ app.get("/surah/:surahNo", async (req, res) => {
                 ? settings.favoriteEdition
                 : [settings.favoriteEdition];
         }
+        if (settings.favoriteFont) favoriteFont = settings.favoriteFont;
         if (settings.audioProgress && settings.audioProgress.surahNo === surahNo) {
             time = settings.audioProgress.time || 0;
         }
@@ -419,6 +422,7 @@ app.get("/surah/:surahNo", async (req, res) => {
         surah: surah,
         translations: translationData,
         favoriteReciter: String(reciter),
+        favoriteFont: favoriteFont,
         surahNo: surahNo,
         audioTime: time,
         alwaysShowAudio: true,
@@ -622,22 +626,37 @@ app.get("/settings", async (req, res) => {
 
     const recitersJson = await reciters.json();
     const editionsJson = await edition.json();
+    
+    // Default values
     let reciter = 1; 
     let defaultHome = "salah";
     let location = "Coimbatore";
-    let favoriteEdition = []; // Changed to empty array by default
+    let favoriteEdition = [];
+    let favoriteFont = "QPC-Hafs";
 
-     // wait for settings to be fetched
     const settings = await Settings.findOne({});
     if (settings) {
-        if(settings.favoriteReciter) reciter = settings.favoriteReciter;
-        if(settings.defaultHome) defaultHome = settings.defaultHome;
-        if(settings.location) location = settings.location;
-        if(settings.favoriteEdition) {
-            // Ensure backward compatibility if old data is a string
+        if (settings.favoriteReciter) reciter = settings.favoriteReciter;
+        if (settings.defaultHome) defaultHome = settings.defaultHome;
+        if (settings.location) location = settings.location;
+        if (settings.favoriteFont) favoriteFont = settings.favoriteFont;
+        if (settings.favoriteEdition) {
             favoriteEdition = Array.isArray(settings.favoriteEdition) ? settings.favoriteEdition : [settings.favoriteEdition];
         }
     }
+
+    // Official Tarteel QUL Font Mapping
+    const tarteelFonts = { 
+        'QPC-Hafs': { label: 'QPC Hafs (Standard)', tag: 'HAFS' },
+        // 'DigitalKhatt-V2': { label: 'Digital Khatt V2', tag: 'HAFS' },
+        // 'Me-Quran': { label: 'Me Quran', tag: 'HAFS' },
+        'QPC-Nastaleeq': { label: 'QPC Hafs Nastaleeq', tag: 'HAFS' },
+        // 'Uthman-Taha': { label: 'Madani (Uthman Taha)', tag: 'HAFS' },
+        // 'Indopak-PDMS': { label: 'Indopak (PDMS Saleem)', tag: 'INDOPAK' },
+        'Indopak-Nastaleeq': { label: 'Indopak Nastaleeq', tag: 'INDOPAK' },
+        // 'DigitalKhatt-Indopak': { label: 'Digital Khatt Indopak', tag: 'INDOPAK' },
+        // 'Tajweed-V4': { label: 'KFGQPC V4 Tajweed', tag: 'HAFS' }
+    };
 
     // Group by language
     const editionsByLanguage = {};
@@ -656,6 +675,8 @@ app.get("/settings", async (req, res) => {
         favoriteEdition: favoriteEdition, 
         defaultHome: defaultHome, 
         location: location, 
+        favoriteFont: favoriteFont, // Pass to EJS
+        tarteelFonts: tarteelFonts,  // Pass the font list to EJS
         reciters: recitersJson, 
         editions: editionsByLanguage
     });
@@ -794,7 +815,7 @@ app.post("/location", function(req, res) {
 
 //  });
 app.post("/settings", function(req, res){
-    const {defaultHome, reciter, edition, location, redirectTo} = req.body;
+    const {defaultHome, reciter, edition, font, location, redirectTo} = req.body;
 
     // Parse the JSON string sent from the frontend hidden input
     let parsedEditions = [];
@@ -807,7 +828,7 @@ app.post("/settings", function(req, res){
 
     Settings.findOneAndUpdate(
         {}, 
-        { defaultHome: defaultHome, favoriteReciter: reciter, favoriteEdition: parsedEditions, location: location }, 
+        { defaultHome: defaultHome, favoriteReciter: reciter, favoriteEdition: parsedEditions, favoriteFont: font, location: location }, 
         { sort: { _id: -1 }, upsert: true }
     )
     .then(() => {

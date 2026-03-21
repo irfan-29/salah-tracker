@@ -1,3 +1,17 @@
+/* Arabic fonts */
+/* --- HAFS GROUP --- */
+@font-face { font-family: 'QPC-Hafs'; src: url('/fonts/qpc-hafs.woff2') format('woff2'); font-display: swap; }
+@font-face { font-family: 'DigitalKhatt-V2'; src: url('/fonts/dk-v2.woff2') format('woff2'); font-display: swap; }
+@font-face { font-family: 'Me-Quran'; src: url('/fonts/me-quran.woff2') format('woff2'); font-display: swap; }
+@font-face { font-family: 'QPC-Nastaleeq'; src: url('/fonts/qpc-nastaleeq.woff2') format('woff2'); font-display: swap; }
+
+/* --- INDOPAK GROUP --- */
+@font-face { font-family: 'Indopak-PDMS'; src: url('/fonts/indopak-pdms.woff2') format('woff2'); font-display: swap; }
+@font-face { font-family: 'Indopak-Nastaleeq'; src: url('/fonts/indopak-nas.woff2') format('woff2'); font-display: swap; }
+@font-face { font-family: 'DigitalKhatt-Indopak'; src: url('/fonts/dk-indopak.woff2') format('woff2'); font-display: swap; }
+
+
+
 body{
     text-align: center;
     align-items: center;
