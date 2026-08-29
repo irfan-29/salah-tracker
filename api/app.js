@@ -62,6 +62,7 @@ const settingsSchema = new mongoose.Schema({
     favoriteFont: String,
     favoriteEdition: [String],
     lastReadSurahs: [String],
+    theme: { type: String, default: 'light' },
     audioProgress: {
         surahNo: Number,
         surahName: String,
@@ -145,12 +146,15 @@ const SKIP_MIDDLEWARE_URLS = ["/hide-audio"];
 //   });
 
     app.use(async (req, res, next) => {
-      // Skip routes that should not trigger footer audio
+      res.locals.footerAudio = null;
+
+      const settings = await Settings.findOne({}).lean();
+      res.locals.theme = settings?.theme || 'light';
+
+      // Skip footer audio on surah pages (they have their own inline player)
       if (req.path.startsWith("/surah")) {
         return next();
       }
-
-      const settings = await Settings.findOne({}).lean();
 
       if (settings && settings.audioProgress) {
          const response = await fetch(
@@ -183,6 +187,34 @@ const SKIP_MIDDLEWARE_URLS = ["/hide-audio"];
         audioTime = progress.time || 0;
       }
       res.json({ time: audioTime });
+    });
+
+    app.get("/api/surah-audio/:surahNo", async (req, res) => {
+      const surahNo = parseInt(req.params.surahNo, 10);
+      if (isNaN(surahNo) || surahNo < 1 || surahNo > 114) {
+        return res.status(400).json({ error: "Invalid surah number" });
+      }
+
+      try {
+        const settings = await Settings.findOne({}).lean();
+        const reciter = settings?.favoriteReciter ? String(settings.favoriteReciter) : "1";
+        const response = await fetch(`https://quranapi.pages.dev/api/${surahNo}.json`);
+        const surah = await response.json();
+
+        if (!surah.audio || !surah.audio[reciter]) {
+          return res.status(404).json({ error: "Audio not found for reciter" });
+        }
+
+        res.json({
+          surahNo,
+          surahName: surah.surahName,
+          url: surah.audio[reciter].originalUrl,
+          reciterName: surah.audio[reciter].reciter,
+        });
+      } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Failed to fetch surah audio" });
+      }
     });
   
 
@@ -633,6 +665,7 @@ app.get("/settings", async (req, res) => {
     let location = "Coimbatore";
     let favoriteEdition = [];
     let favoriteFont = "QPC-Hafs";
+    let theme = "light";
 
     const settings = await Settings.findOne({});
     if (settings) {
@@ -640,6 +673,7 @@ app.get("/settings", async (req, res) => {
         if (settings.defaultHome) defaultHome = settings.defaultHome;
         if (settings.location) location = settings.location;
         if (settings.favoriteFont) favoriteFont = settings.favoriteFont;
+        if (settings.theme) theme = settings.theme;
         if (settings.favoriteEdition) {
             favoriteEdition = Array.isArray(settings.favoriteEdition) ? settings.favoriteEdition : [settings.favoriteEdition];
         }
@@ -675,8 +709,9 @@ app.get("/settings", async (req, res) => {
         favoriteEdition: favoriteEdition, 
         defaultHome: defaultHome, 
         location: location, 
-        favoriteFont: favoriteFont, // Pass to EJS
-        tarteelFonts: tarteelFonts,  // Pass the font list to EJS
+        favoriteFont: favoriteFont,
+        theme: theme,
+        tarteelFonts: tarteelFonts,
         reciters: recitersJson, 
         editions: editionsByLanguage
     });
@@ -815,7 +850,7 @@ app.post("/location", function(req, res) {
 
 //  });
 app.post("/settings", function(req, res){
-    const {defaultHome, reciter, edition, font, location, redirectTo} = req.body;
+    const {defaultHome, reciter, edition, font, location, theme, redirectTo} = req.body;
 
     // Parse the JSON string sent from the frontend hidden input
     let parsedEditions = [];
@@ -828,7 +863,14 @@ app.post("/settings", function(req, res){
 
     Settings.findOneAndUpdate(
         {}, 
-        { defaultHome: defaultHome, favoriteReciter: reciter, favoriteEdition: parsedEditions, favoriteFont: font, location: location }, 
+        {
+            defaultHome: defaultHome,
+            favoriteReciter: reciter,
+            favoriteEdition: parsedEditions,
+            favoriteFont: font,
+            location: location,
+            theme: theme || 'light'
+        }, 
         { sort: { _id: -1 }, upsert: true }
     )
     .then(() => {
