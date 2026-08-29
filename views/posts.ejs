@@ -1,113 +1,53 @@
-<%- include("navbar") -%>
-
-
-    <h3 style="text-align: center;">Posts</h3>
-
-  
-        <br>
-        <!-- <div class="container1"> -->
-            <div class="d-flex align-items-center w-95 gap-2" style="margin: 0 4%;">
-                <form action="/add-post" method="get">
-                    <button type="submit" class="add btn btn-primary">Add Post</button>
-                </form>
-                <form action="/add-video" method="get">
-                    <button type="submit" class="add btn btn-primary">Add Video</button>
-                </form>
-            </div>
-        <!-- </div> -->
-        
-        
-        <div style="width: 90%; margin: auto;">
-            <% post.forEach(function(post) { %>
-                <% if(post.isVideo) { %>
-                    <!-- <div class="container1" style="margin-left: 2px; margin-right: 2px;"> -->
-                        <div class="video-container">
-                            <iframe width="500" height="315" src="https://www.youtube.com/embed/<%= post.content %>" frameborder="0" allowfullscreen></iframe>
-                        </div>
-                        <p style="margin-bottom: 3px;"><%= post.reference %></p>
-                        <p style="font-size: 14px; color: #888; font-style: italic;"><%= post.postedDate %></p>
-                    <!-- </div> -->
-                <% }else{ %>
-                    <div class="container1">
-                        <p style="margin-bottom: 5px;"><%= post.content %></p>
-                        <p style="margin-bottom: 9px;">Reference: <%= post.reference %></p>
-                        <p style="font-size: 14px; color: #888; font-style: italic;"><%= post.postedDate %></p>
-                    </div>
-                <% } %>
-            <% }); %>
-
-            <!-- <div class="container1" style="margin-left: 2px; margin-right: 2px;"> -->
-                        <div class="shorts-container">
-                            <iframe width="315" height="560" src="https://youtube.com/embed/MMT9lvEW1HM" frameborder="0" allowfullscreen></iframe>
-                        </div>
-                        <p style="margin-bottom: 3px;">FurQan</p>
-                        <p style="font-size: 15px; color: #888; font-style: italic;">Feb 16, 2026</p>
-                    <!-- </div> -->
-        
-        </div>
-
-    <!-- </div> -->
-        
-        <br>
-        <br>
-        <br>
-        <br>
-        <br>
-
-
-        <style>
-            .container1 {
-            /* text-align: left; */
-            max-width: 550px;
-            margin: 25px auto;
-            background-color: #ffffff;
-            padding: 25px 20px 15px 20px;
-            border-radius: 10px;
-            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.05);
-        }
-
-        .video-container {
-          margin: 45px auto 12px;
-          width: 500px;
-          height: 315px;
-          border-radius: 15px;
-      }
-  
-      .video-container iframe {
-          width: 100%;
-          height: 100%;
-          border-radius: 15px;
-          box-shadow: 2px 2px 15px -2px rgba(0,0,0,.25);
-          background-image: var(--period-anime);
-      }
-      .shorts-container {
-        margin: 45px auto 12px;
-          width: 315px;
-          height: 560px;
-          border-radius: 15px;
-      }
-      .shorts-container iframe {
-          width: 100%;
-          height: 100%;
-          border-radius: 15px;
-          box-shadow: 2px 2px 15px -2px rgba(0,0,0,.25);
-          background-image: var(--period-anime);
-      }
-  
-      @media (max-width: 600px) {
-          .video-container {
-              width: 100%;
-              height: 175px;
-          }
-  
-          .video-container iframe {
-              width: 100%;
-              height: 100%;
-          }
-      }
-        </style>
-
-
-
-        
-<%- include('footer') %>
+<%- include("navbar") -%>
+
+<div class="page-header">
+  <h1>Posts</h1>
+  <p>Reflections, reminders, and videos</p>
+</div>
+
+<div class="post-actions">
+  <form action="/add-post" method="get">
+    <button type="submit" class="btn btn-primary">
+      <span class="material-symbols-rounded" style="font-size: 1.1rem;">edit_note</span>
+      Add Post
+    </button>
+  </form>
+  <form action="/add-video" method="get">
+    <button type="submit" class="btn btn-outline-primary">
+      <span class="material-symbols-rounded" style="font-size: 1.1rem;">videocam</span>
+      Add Video
+    </button>
+  </form>
+</div>
+
+<% post.forEach(function(post) { %>
+  <% if(post.isVideo) { %>
+    <div class="post-card post-card-video">
+      <div class="post-video-embed">
+        <iframe src="https://www.youtube.com/embed/<%= post.content %>" allowfullscreen></iframe>
+      </div>
+      <div class="post-card-body">
+        <p class="post-reference"><%= post.reference %></p>
+        <p class="post-date"><%= post.postedDate %></p>
+      </div>
+    </div>
+  <% } else { %>
+    <div class="post-card">
+      <p class="post-content"><%= post.content %></p>
+      <p class="post-reference">Reference: <%= post.reference %></p>
+      <p class="post-date"><%= post.postedDate %></p>
+    </div>
+  <% } %>
+<% }); %>
+
+<div class="post-card post-card-shorts">
+  <div class="post-shorts-embed">
+    <iframe src="https://youtube.com/embed/MMT9lvEW1HM" allowfullscreen></iframe>
+  </div>
+  <div class="post-card-body">
+    <p class="post-reference">FurQan</p>
+    <p class="post-date">Feb 16, 2026</p>
+  </div>
+</div>
+
+<%- include('footer') %>

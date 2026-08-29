@@ -1,89 +1,101 @@
 <%- include("navbar") -%>
 
+<div class="page-header">
+  <h1>Salah Tracker</h1>
+  <p>Log and review your daily prayers</p>
+</div>
 
-        <form action="/salah" method="post">
-            <div class="form-floating">
-              <input class="form-control" type="date" required id="date" name="date"">
-              <label for="date">Date</label>
-            </div>
-            <!-- TO display todays date by default -->
-            <script>
-              const today = new Date().toISOString().split("T")[0];
-              document.getElementById("date").value = today;
-            </script>
+<div class="container1">
+  <div class="card-header">
+    <h3>Log Salah</h3>
+  </div>
+  <form action="/salah" method="post">
+    <div class="form-floating">
+      <input class="form-control" type="date" required id="date" name="date">
+      <label for="date">Date</label>
+    </div>
+    <script>
+      document.getElementById("date").value = new Date().toISOString().split("T")[0];
+    </script>
 
-              <div class="form-floating">
-                  <select name="salah_name" id="salah" required class="form-control" placeholder="Enter the salah name">
-                    <option value="Fajr">Fajr</option>
-                    <option value="Zuhur">Zuhur</option>
-                    <option value="Asar">Asar</option>
-                    <option value="Magrib">Magrib</option>
-                    <option value="Isha">Isha</option>
-                    <option value="others">others</option>
-                  </select>
-                  <label for="salah">Salah</label>
-              </div>
-              <div class="form-floating">
-                <select name="salah_value" id="value" required class="form-control" placeholder="Enter the salah value">
-                  <option value="In Jamath">In Jamath</option>
-                  <option value="On Time">On Time</option>
-                  <option value="Late">Late</option>
-                  <option value="Not Prayed">Not Prayed</option>
-                  <option value="others">others</option>
-                </select>
-                <label for="value">Value</label>
-             </div>
-          
-              <div class="new-task">
-                <button type="submit" class="add btn btn-primary" value="add" name="add">Save</button>
-              </div>
-        </form>
-        
-        <br>
-        <hr>
+    <div class="form-floating">
+      <select name="salah_name" id="salah" required class="form-control">
+        <option value="Fajr">Fajr</option>
+        <option value="Zuhur">Zuhur</option>
+        <option value="Asar">Asar</option>
+        <option value="Magrib">Magrib</option>
+        <option value="Isha">Isha</option>
+        <option value="others">Others</option>
+      </select>
+      <label for="salah">Salah</label>
+    </div>
 
-        <h4>Salah On</h4>
+    <div class="form-floating">
+      <select name="salah_value" id="value" required class="form-control">
+        <option value="In Jamath">In Jamath</option>
+        <option value="On Time">On Time</option>
+        <option value="Late">Late</option>
+        <option value="Not Prayed">Not Prayed</option>
+        <option value="others">Others</option>
+      </select>
+      <label for="value">Status</label>
+    </div>
 
-        <form action="/salah" method="get">
-          <div class="form-floating">
-            <input class="form-control" type="date" required id="date" name="date"">
-            <label for="date">Date</label>
-          </div>
-          <div class="new-task">
-            <button type="submit" class="add btn btn-primary">Find</button>
-          </div>
-        </form>
+    <div class="new-task">
+      <button type="submit" class="btn btn-primary" value="add" name="add">Save Entry</button>
+    </div>
+  </form>
+</div>
 
-        <br>
-        <br>
-        <h5><%= keyDate %></h5>
-        <br>
+<div class="container1">
+  <div class="card-header">
+    <h3>View Salah History</h3>
+  </div>
+  <form action="/salah" method="get">
+    <div class="form-row">
+      <div class="form-floating">
+        <input class="form-control" type="date" required id="findDate" name="date">
+        <label for="findDate">Select Date</label>
+      </div>
+      <button type="submit" class="btn btn-primary">Find</button>
+    </div>
+  </form>
 
-        <% if(keySalah.length>0){ %>
-          <table class="table table-hover table-striped">
-            <thead class="table-light">
-              <tr>
-                <th>Name</th>
-                <th>Value</th>
-                <!-- <th>Reason</th> -->
-              </tr>
-           </thead>
-           <tbody>
-              <% keySalah.forEach(function(salah) { %>
-                <tr>
-                  <td><%= salah.name %></td>
-                  <td><%= salah.value %></td>
-                </tr>
-              <% }); %>
-            </tbody>
-          </table>
-        <% }else{ %>
-          <p>No salah found</p>
-        <% } %>
-        <br>
+  <hr>
 
+  <h4 style="font-weight: 700; margin-bottom: 1rem;"><%= keyDate %></h4>
 
-        
-
+  <% if(keySalah.length > 0){ %>
+    <table class="table table-striped">
+      <thead>
+        <tr>
+          <th>Prayer</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% keySalah.forEach(function(salah) { %>
+          <tr>
+            <td><strong><%= salah.name %></strong></td>
+            <td>
+              <% if (salah.value === 'In Jamath' || salah.value === 'On Time') { %>
+                <span class="badge badge-primary"><%= salah.value %></span>
+              <% } else if (salah.value === 'Late') { %>
+                <span class="badge badge-accent"><%= salah.value %></span>
+              <% } else { %>
+                <span class="badge" style="background: rgba(239,68,68,0.1); color: #dc2626;"><%= salah.value %></span>
+              <% } %>
+            </td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  <% } else { %>
+    <div class="empty-state">
+      <span class="material-symbols-rounded">event_busy</span>
+      <p>No salah records found for this date</p>
+    </div>
+  <% } %>
+</div>
 
 <%- include('footer') %>

@@ -1,16 +1,10 @@
 <%- include("navbar") -%>
 
+<div class="error-card">
+  <span class="material-symbols-rounded error-icon">error_outline</span>
+  <h2 style="font-weight: 700; margin-bottom: 0.75rem;">Something went wrong</h2>
+  <p style="color: var(--color-text-secondary);"><%= err %></p>
+  <a href="/" class="btn btn-primary" style="margin-top: 1.5rem;">Go Home</a>
+</div>
 
-
-
-
-        <h3 style="text-align: center;">Error</h3>
-
-        <%= err %>
-        
-        <br>
-
-
-
-        
 <%- include('footer') %>

@@ -1,55 +1,44 @@
 <%- include("navbar") -%>
 
-        
-        <h4>Salah Timings for <%= keyPrayerDetails.location %></h4>
-        <h5><%= keyPrayerDetails.hijriDate %></h5>
-        <h5><%= keyPrayerDetails.date %></h5>
-        <br>
-    <table class="table table-hover table-striped table-bordered">
-        <thead class="table-dark">
-            <tr>
-                <th>Prayer</th>
-                <th>Time</th>
-            </tr>
-        </thead>
-        <tbody>
-            <% keyPrayerDetails.prayerTimes.forEach(function(prayer) { %>
-                <tr>
-                    <td><%= prayer.timeType %></td>
-                    <td><%= prayer.time %></td>
-                </tr>
-            <% }); %>
-        </tbody>
-    </table>
-        
-    <br>
+<div class="page-header">
+  <h1>Salah Timings</h1>
+  <p>Prayer times for <%= keyPrayerDetails.location %></p>
+</div>
 
+<div class="prayer-meta">
+  <h2><%= keyPrayerDetails.date %></h2>
+  <p><%= keyPrayerDetails.hijriDate %></p>
+</div>
 
-        <div class="container1">
-        <form action="/location" method="post">
-            <input type="hidden" name="redirectTo" value="/salah-timings">
-            <div class="d-flex align-items-center w-95 gap-2" style="margin: 0 2.5%;">
-              <div class="form-floating flex-grow-1" style="margin: auto;">
-                <select name="location" id="location" required class="form-control" placeholder="Choose your Location">
-                  <!-- <option value="" disabled selected hidden>Choose your Location</option> -->
-                  <option value="Coimbatore" <%= "Coimbatore" === location ? 'selected' : '' %>>Coimbatore</option>
-                  <option value="Hosur" <%= "Hosur" === location ? 'selected' : '' %>>Hosur</option>
-                  <option value="Salem" <%= "Salem" === location ? 'selected' : '' %>>Salem</option>
-                  <option value="Ramanathapuram" <%= "Ramanathapuram" === location ? 'selected' : '' %>>Ramanathapuram</option>
-                  <option value="Bengaluru" <%= "Bengaluru" === location ? 'selected' : '' %>>Bengaluru</option>
-                  <!-- <option value="others">others</option> -->
-                </select>
-                <label for="location">Location</label>
-            </div>
-            <!-- <div class="new-task"> -->
-              <button type="submit" class="add btn btn-primary" style="margin-left: 8px;" value="add" name="add">Save</button>
-            </div>
-          </form>
-        </div>
-        <br>
-        <br>
+<div class="prayer-grid">
+  <% keyPrayerDetails.prayerTimes.forEach(function(prayer) { %>
+    <div class="prayer-card">
+      <div class="prayer-name"><%= prayer.timeType %></div>
+      <div class="prayer-time"><%= prayer.time %></div>
+    </div>
+  <% }); %>
+</div>
 
+<div class="container1">
+  <div class="card-header">
+    <h3>Change Location</h3>
+  </div>
+  <form action="/location" method="post">
+    <input type="hidden" name="redirectTo" value="/salah-timings">
+    <div class="form-row">
+      <div class="form-floating">
+        <select name="location" id="location" required class="form-control">
+          <option value="Coimbatore" <%= "Coimbatore" === location ? 'selected' : '' %>>Coimbatore</option>
+          <option value="Hosur" <%= "Hosur" === location ? 'selected' : '' %>>Hosur</option>
+          <option value="Salem" <%= "Salem" === location ? 'selected' : '' %>>Salem</option>
+          <option value="Ramanathapuram" <%= "Ramanathapuram" === location ? 'selected' : '' %>>Ramanathapuram</option>
+          <option value="Bengaluru" <%= "Bengaluru" === location ? 'selected' : '' %>>Bengaluru</option>
+        </select>
+        <label for="location">Location</label>
+      </div>
+      <button type="submit" class="btn btn-primary" value="add" name="add">Update</button>
+    </div>
+  </form>
+</div>
 
-        
-        
 <%- include('footer') %>

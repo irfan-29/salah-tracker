@@ -1,41 +1,37 @@
 <%- include("navbar") -%>
 
+<div class="page-header">
+  <h1>Challenges</h1>
+  <p>Build habits and track your streaks</p>
+</div>
 
+<div class="container1">
+  <form action="/update-streaks" method="POST">
+    <div class="form-floating">
+      <input class="form-control" type="date" required id="date" name="date">
+      <label for="date">Date</label>
+    </div>
 
-
-
-        <h3 style="text-align: center;">Your Challenges</h3>
-
-        <form action="/update-streaks" method="POST">
-            <div class="form-floating">
-                <input class="form-control" type="date" required id="date" name="date"">
-                <label for="date">Date</label>
-              </div>
-              <br>
-            <div style="width: 60%; margin: auto;">
-              <% keyChallenge.forEach(function(challenge, i) { %>
-                  <input type="checkbox" name="completed[]" value="<%= challenge._id %>" id="challenge_<%= i %>">
-                  <label style="margin-bottom: 7px;" for="challenge_<%= i %>">
-                    <strong><%= challenge.challenge %></strong>
-                  </label>
-                  <p style="margin-bottom: 5px;">Current Streak: <span style="font-weight: bold; font-size: 1.25rem;"><%= challenge.currentStreak %></span>🔥</p>
-                  <p style="margin-bottom: 8px;">Max Streak: <span style="font-weight: bold; font-size: 1.05rem;;"><%= challenge.maxStreak %></span> <%= challenge.currentStreak > 1 ? 'days🔥' : 'day🔥' %></p>
-                  <p>Last updated: <%= challenge.lastUpdated %></p>
-                  <br>
-              <% }); %>
-              <button type="submit" style="padding: 10px 20px; background: #28a745; color: white; border: none; border-radius: 5px;">
-                Update Streaks
-              </button>
+    <div class="challenge-list">
+      <% keyChallenge.forEach(function(challenge, i) { %>
+        <div class="challenge-card">
+          <input type="checkbox" name="completed[]" value="<%= challenge._id %>" id="challenge_<%= i %>">
+          <div class="challenge-info">
+            <label for="challenge_<%= i %>"><strong><%= challenge.challenge %></strong></label>
+            <div style="margin-top: 0.5rem;">
+              <span class="streak-badge">🔥 <%= challenge.currentStreak %> day streak</span>
+              <span class="badge badge-accent">Best: <%= challenge.maxStreak %></span>
             </div>
-          </form>
-        
-        <br>
-        <br>
-        <br>
-        <br>
-        <br>
+            <p class="challenge-meta">Last updated: <%= challenge.lastUpdated %></p>
+          </div>
+        </div>
+      <% }); %>
+    </div>
 
+    <div class="new-task" style="margin-top: 1.5rem;">
+      <button type="submit" class="btn btn-success">Update Streaks</button>
+    </div>
+  </form>
+</div>
 
-
-        
 <%- include('footer') %>

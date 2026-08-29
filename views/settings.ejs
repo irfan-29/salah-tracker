@@ -1,307 +1,284 @@
 <%- include("navbar") -%>
 
-<h4>Settings</h4>
-
-<div class="container1">
-    <form action="/settings" method="POST">
-        <input type="hidden" name="redirectTo" value="/settings">
-
-        <h5 style="text-align: left; margin-left: 2.5%;">Default Home page:</h5>
-        <div class="custom-select-wrapper" style="margin: 0 2.5% 20px 2.5%; position: relative;">
-            <% const homeLabels={ 'salah' : 'Salah' , 'quran' : 'Quran' , 'audio' : 'Audio' , 'salah-tracker' : 'Salah Tracker'
-                , 'salah-timings' : 'Salah Timings' , 'challenges' : 'Challenges' , 'analytics' : 'Analytics' , 'posts' : 'Posts'
-                , 'settings' : 'Settings' }; %>  
-            <div class="custom-selector form-control d-flex align-items-center justify-content-between" data-field="Home" style="min-height: 50px; cursor: pointer;">
-                <span id="labelHome" style="text-align: left; width: 100%; text-transform: none;">
-                  <%= homeLabels[defaultHome] || defaultHome %>
-                </span>
-                <span class="material-symbols-rounded" style="opacity: 0.5;">expand_more</span>
-            </div>
-            <div id="dropdownHome" class="custom-dropdown-menu shadow-sm border rounded">
-              <div class="options-list">
-                  <% Object.keys(homeLabels).forEach(opt=> { %>
-                    <div class="p-2 option-item-custom" data-field="Home" data-value="<%= opt %>"
-                      style="text-align: left; text-transform: none;">
-                      <%= homeLabels[opt] %>
-                    </div>
-                    <% }); %>
-              </div>
-            </div>
-            <input type="hidden" name="defaultHome" id="inputHome" value="<%= defaultHome %>">
-        </div>
-
-
-
-        <h5 style="text-align: left; margin-left: 2.5%; margin-top: 25px;">Quran Font Selection:</h5>
-        <div class="custom-select-wrapper" style="margin: 0 2.5% 20px 2.5%; position: relative;">
-            <div class="custom-selector form-control d-flex align-items-center justify-content-between" data-field="ArabicFont"
-                style="min-height: 55px; cursor: pointer;">
-                <span id="labelArabicFont">
-                    <%= tarteelFonts[favoriteFont]?.label || 'Choose Font' %>
-                </span>
-                <span class="material-symbols-rounded">expand_more</span>
-            </div>
-        
-            <div id="dropdownArabicFont" class="custom-dropdown-menu shadow-sm border rounded"
-                style="display:none; position:absolute; width:100%; z-index:1000; background:white;">
-                <div class="options-list" style="max-height: 400px; overflow-y: auto;">
-                    <% Object.keys(tarteelFonts).forEach(id=> { %>
-                        <div class="p-3 option-item-custom d-flex justify-content-between align-items-center border-bottom"
-                            data-field="ArabicFont" data-value="<%= id %>">
-                            <div>
-                                <div style="font-weight: 600;">
-                                    <%= tarteelFonts[id].label %>
-                                </div>
-                                <small class="badge bg-light text-dark" style="font-size: 0.6rem;">
-                                    <%= tarteelFonts[id].tag %>
-                                </small>
-                            </div>
-                            <span dir="rtl" style="font-family: '<%= id %>'; font-size: 1.5rem;">بِسْمِ اللهِ</span>
-                        </div>
-                        <% }); %>
-                </div>
-            </div>
-            <input type="hidden" name="font" id="inputArabicFont" value="<%= favoriteFont %>">
-        </div>
-
-
-
-        <h5 style="text-align: left; margin-left: 2.5%;">Reciter:</h5>
-        <div class="custom-select-wrapper" style="margin: 0 2.5% 20px 2.5%; position: relative;">
-            <div class="custom-selector form-control d-flex align-items-center justify-content-between" data-field="Reciter" style="min-height: 50px; cursor: pointer;">
-                <span id="labelReciter" style="text-align: left; width: 100%; text-transform: none;"><%= reciters[favoriteReciter] %></span>
-                <span class="material-symbols-rounded" style="opacity: 0.5;">expand_more</span>
-            </div>
-            <div id="dropdownReciter" class="custom-dropdown-menu shadow-sm border rounded">
-                <input type="text" class="form-control border-0 border-bottom dropdown-search-custom" placeholder="Search Reciter..." style="text-align: left;">
-                <div class="options-list" style="max-height: 250px; overflow-y: auto;">
-                    <% Object.keys(reciters).forEach(function(key) { %>
-                    <div class="p-2 option-item-custom" data-field="Reciter" data-value="<%= key %>" style="text-align: left; text-transform: none;">
-                        <%= reciters[key] %>
-                    </div>
-                    <% }); %>
-                </div>
-            </div>
-            <input type="hidden" name="reciter" id="inputReciter" value="<%= favoriteReciter %>">
-        </div>
-
-        <h5 style="text-align: left; margin-left: 2.5%;">Translation:</h5>
-        <div class="d-flex align-items-center w-95 gap-2" style="margin: 0 2.5%; position: relative;">
-            <div class="flex-grow-1" style="margin: auto; position: relative;">
-                <div id="selectedEditionContainer" class="form-control d-flex flex-wrap align-items-center gap-2"
-                    style="min-height: 58px; cursor: pointer; padding-bottom: 8px;">
-                    <span id="editionPlaceholder" class="text-muted">Select Preferred Quran Editions</span>
-                </div>
-                <div id="dropdownContainer" class="bg-white border rounded shadow-sm position-absolute w-100 mt-1"
-                    style="display: none; z-index: 1000; max-height: 350px; overflow-y: auto;">
-                    <input type="text" id="searchEdition" class="form-control border-0 border-bottom rounded-0"
-                        placeholder="Search Language or Author..." style="border-radius: 0; position: sticky; top: 0; z-index: 10;">
-                    <div id="editionOptions" style="max-height: 300px; overflow-y: auto; text-align: left;">
-                        <% Object.keys(editions).forEach(function(language) { %>
-                        <div class="language-group">
-                            <div class="p-2 bg-light small text-muted language-label">
-                                <%= language %>
-                            </div>
-                            <% editions[language].forEach(function(edition) { %>
-                            <div class="p-2 option-item" data-value="<%= edition.name %>" data-author="<%= edition.author %>"
-                                data-language="<%= language %>" style="cursor: pointer;">
-                                <%= edition.author %>
-                            </div>
-                            <% }); %>
-                        </div>
-                        <% }); %>
-                    </div>
-                </div>
-                <input type="hidden" name="edition" id="edition" required>
-            </div>
-        </div>
-        <br>
-
-        <h5 style="text-align: left; margin-left: 2.5%;">Choose your Location:</h5>
-        <div class="custom-select-wrapper" style="margin: 0 2.5% 20px 2.5%; position: relative;">
-            <div class="custom-selector form-control d-flex align-items-center justify-content-between" data-field="Location" style="min-height: 50px; cursor: pointer;">
-                <span id="labelLocation" style="text-align: left; width: 100%; text-transform: none;"><%= location %></span>
-                <span class="material-symbols-rounded" style="opacity: 0.5;">expand_more</span>
-            </div>
-            <div id="dropdownLocation" class="custom-dropdown-menu shadow-sm border rounded">
-                <input type="text" class="form-control border-0 border-bottom dropdown-search-custom" placeholder="Search Location..." style="text-align: left;">
-                <div class="options-list">
-                    <% ['Coimbatore', 'Hosur', 'Salem', 'Ramanathapuram', 'Bengaluru'].forEach(loc => { %>
-                    <div class="p-2 option-item-custom" data-field="Location" data-value="<%= loc %>" style="text-align: left; text-transform: none;">
-                        <%= loc %>
-                    </div>
-                    <% }); %>
-                </div>
-            </div>
-            <input type="hidden" name="location" id="inputLocation" value="<%= location %>">
-        </div>
-
-        <button type="submit" class="add btn btn-primary" style="margin-left: 8px;" value="add" name="add">Save Settings</button>
-    </form>
-    <br>
-
-    <h5 style="text-align: left; margin-left: 2.5%;">Challenges:</h5>
-    <form action="/add-challenge" method="POST">
-        <div class="d-flex align-items-center w-95 gap-2" style="margin: 0 2.5%;">
-            <div class="form-floating flex-grow-1" style="margin: auto;">
-                <input class="form-control" type="text" required id="challenge" name="challenge" placeholder="Enter your challenge (e.g., Drink 4L of water)">
-                <label for="challenge">Enter your challenge (e.g., Drink 4L of water)</label>
-            </div>
-            <button type="submit" class="add btn btn-primary" value="add" name="add" style="padding: 8px 15px; margin-left: 10px; background-color: #28a745; color: white; border: none; border-radius: 5px;">Add Challenge</button>
-        </div>
-    </form>
-    <br>
+<div class="page-header">
+  <h1>Settings</h1>
+  <p>Customize your experience</p>
 </div>
 
-<style>
-    .container1 { max-width: 800px; margin: 35px auto; background-color: #ffffff; padding: 30px 15px; border-radius: 10px; box-shadow: 0 8px 16px rgba(0, 0, 0, 0.05); }
-    .custom-dropdown-menu { display: none; position: absolute; width: 100%; background: white; z-index: 1050; margin-top: 4px; text-align: left; }
-    .option-item-custom { cursor: pointer; padding: 10px; transition: background 0.2s; text-align: left; }
-    .option-item-custom:hover { background: #f1f4f9; }
-    .selected-highlight { background: #eef5ff !important; color: #0066ff !important; font-weight:200; opacity: 0.8 }
-    .dropdown-search-custom { position: sticky; top: 0; z-index: 5; background: white; }
-    .edition-pill { background-color: #f1f2f6; border-radius: 6px; padding: 4px 8px; display: inline-flex; align-items: center; gap: 6px; font-size: 0.9rem; color: #333; margin: 2px; }
-</style>
+<div class="container1 settings-form">
+  <form action="/settings" method="POST">
+    <input type="hidden" name="redirectTo" value="/settings">
+
+    <div class="form-section-title">Appearance</div>
+    <div class="theme-picker">
+      <label class="theme-picker-option <%= theme === 'light' ? 'active' : '' %>">
+        <input type="radio" name="theme" value="light" <%= theme === 'light' ? 'checked' : '' %>>
+        <span class="material-symbols-rounded">light_mode</span>
+        <span>Light</span>
+      </label>
+      <label class="theme-picker-option <%= theme === 'dark' ? 'active' : '' %>">
+        <input type="radio" name="theme" value="dark" <%= theme === 'dark' ? 'checked' : '' %>>
+        <span class="material-symbols-rounded">dark_mode</span>
+        <span>Dark</span>
+      </label>
+    </div>
+
+    <div class="form-section-title">Default Home Page</div>
+    <div class="custom-select-wrapper">
+      <% const homeLabels={ 'salah' : 'Salah' , 'quran' : 'Quran' , 'audio' : 'Audio' , 'salah-tracker' : 'Salah Tracker'
+          , 'salah-timings' : 'Salah Timings' , 'challenges' : 'Challenges' , 'analytics' : 'Analytics' , 'posts' : 'Posts'
+          , 'settings' : 'Settings' }; %>
+      <div class="custom-selector form-control d-flex align-items-center justify-content-between" data-field="Home">
+        <span id="labelHome"><%= homeLabels[defaultHome] || defaultHome %></span>
+        <span class="material-symbols-rounded" style="opacity: 0.5;">expand_more</span>
+      </div>
+      <div id="dropdownHome" class="custom-dropdown-menu">
+        <div class="options-list">
+          <% Object.keys(homeLabels).forEach(opt=> { %>
+            <div class="option-item-custom" data-field="Home" data-value="<%= opt %>"><%= homeLabels[opt] %></div>
+          <% }); %>
+        </div>
+      </div>
+      <input type="hidden" name="defaultHome" id="inputHome" value="<%= defaultHome %>">
+    </div>
+
+    <div class="form-section-title">Quran Font</div>
+    <div class="custom-select-wrapper">
+      <div class="custom-selector form-control d-flex align-items-center justify-content-between" data-field="ArabicFont">
+        <span id="labelArabicFont"><%= tarteelFonts[favoriteFont]?.label || 'Choose Font' %></span>
+        <span class="material-symbols-rounded" style="opacity: 0.5;">expand_more</span>
+      </div>
+      <div id="dropdownArabicFont" class="custom-dropdown-menu">
+        <div class="options-list" style="max-height: 400px; overflow-y: auto;">
+          <% Object.keys(tarteelFonts).forEach(id=> { %>
+            <div class="option-item-custom d-flex justify-content-between align-items-center" data-field="ArabicFont" data-value="<%= id %>">
+              <div>
+                <div style="font-weight: 600;"><%= tarteelFonts[id].label %></div>
+                <span class="badge badge-primary" style="font-size: 0.65rem;"><%= tarteelFonts[id].tag %></span>
+              </div>
+              <span dir="rtl" style="font-family: '<%= id %>'; font-size: 1.5rem;">بِسْمِ اللهِ</span>
+            </div>
+          <% }); %>
+        </div>
+      </div>
+      <input type="hidden" name="font" id="inputArabicFont" value="<%= favoriteFont %>">
+    </div>
+
+    <div class="form-section-title">Reciter</div>
+    <div class="custom-select-wrapper">
+      <div class="custom-selector form-control d-flex align-items-center justify-content-between" data-field="Reciter">
+        <span id="labelReciter"><%= reciters[favoriteReciter] %></span>
+        <span class="material-symbols-rounded" style="opacity: 0.5;">expand_more</span>
+      </div>
+      <div id="dropdownReciter" class="custom-dropdown-menu">
+        <input type="text" class="dropdown-search-custom" placeholder="Search Reciter...">
+        <div class="options-list" style="max-height: 250px; overflow-y: auto;">
+          <% Object.keys(reciters).forEach(function(key) { %>
+            <div class="option-item-custom" data-field="Reciter" data-value="<%= key %>"><%= reciters[key] %></div>
+          <% }); %>
+        </div>
+      </div>
+      <input type="hidden" name="reciter" id="inputReciter" value="<%= favoriteReciter %>">
+    </div>
+
+    <div class="form-section-title">Translation Editions</div>
+    <div class="custom-select-wrapper">
+      <div id="selectedEditionContainer" class="custom-selector form-control d-flex flex-wrap align-items-center gap-2" style="min-height: 58px; cursor: pointer;">
+        <span id="editionPlaceholder" class="text-muted">Select preferred Quran editions</span>
+      </div>
+      <div id="dropdownContainer" class="custom-dropdown-menu" style="max-height: 350px; overflow-y: auto;">
+        <input type="text" id="searchEdition" class="dropdown-search-custom" placeholder="Search language or author...">
+        <div id="editionOptions">
+          <% Object.keys(editions).forEach(function(language) { %>
+            <div class="language-group">
+              <div class="p-2 bg-light small text-muted language-label"><%= language %></div>
+              <% editions[language].forEach(function(edition) { %>
+                <div class="option-item-custom option-item" data-value="<%= edition.name %>" data-author="<%= edition.author %>" data-language="<%= language %>" style="cursor: pointer;">
+                  <%= edition.author %>
+                </div>
+              <% }); %>
+            </div>
+          <% }); %>
+        </div>
+      </div>
+      <input type="hidden" name="edition" id="edition" required>
+    </div>
+
+    <div class="form-section-title">Location</div>
+    <div class="custom-select-wrapper">
+      <div class="custom-selector form-control d-flex align-items-center justify-content-between" data-field="Location">
+        <span id="labelLocation"><%= location %></span>
+        <span class="material-symbols-rounded" style="opacity: 0.5;">expand_more</span>
+      </div>
+      <div id="dropdownLocation" class="custom-dropdown-menu">
+        <input type="text" class="dropdown-search-custom" placeholder="Search Location...">
+        <div class="options-list">
+          <% ['Coimbatore', 'Hosur', 'Salem', 'Ramanathapuram', 'Bengaluru'].forEach(loc => { %>
+            <div class="option-item-custom" data-field="Location" data-value="<%= loc %>"><%= loc %></div>
+          <% }); %>
+        </div>
+      </div>
+      <input type="hidden" name="location" id="inputLocation" value="<%= location %>">
+    </div>
+
+    <div class="new-task" style="margin-top: 1.5rem;">
+      <button type="submit" class="btn btn-primary" value="add" name="add">Save Settings</button>
+    </div>
+  </form>
+
+  <hr>
+
+  <div class="form-section-title">Add Challenge</div>
+  <form action="/add-challenge" method="POST">
+    <div class="form-row">
+      <div class="form-floating">
+        <input class="form-control" type="text" required id="challenge" name="challenge" placeholder="Enter your challenge">
+        <label for="challenge">e.g., Drink 4L of water daily</label>
+      </div>
+      <button type="submit" class="btn btn-success" value="add" name="add">Add</button>
+    </div>
+  </form>
+</div>
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    // --- PART 1: Custom Dropdowns (Home, Reciter, Location) ---
-    function markCustomDropdown(field, currentVal) {
-        const dropdown = document.getElementById('dropdown' + field);
-        if (!dropdown) return;
-        dropdown.querySelectorAll('.option-item-custom').forEach(opt => {
-            opt.classList.toggle('selected-highlight', opt.getAttribute('data-value') === currentVal);
-        });
+  document.querySelectorAll('.theme-picker-option input').forEach(radio => {
+    radio.addEventListener('change', function () {
+      document.querySelectorAll('.theme-picker-option').forEach(opt => opt.classList.remove('active'));
+      this.closest('.theme-picker-option').classList.add('active');
+      document.documentElement.setAttribute('data-theme', this.value);
+    });
+  });
+
+  function markCustomDropdown(field, currentVal) {
+    const dropdown = document.getElementById('dropdown' + field);
+    if (!dropdown) return;
+    dropdown.querySelectorAll('.option-item-custom').forEach(opt => {
+      opt.classList.toggle('selected-highlight', opt.getAttribute('data-value') === currentVal);
+    });
+  }
+
+  ['Home', 'Reciter', 'Location', 'ArabicFont'].forEach(field => {
+    const hiddenInput = document.getElementById('input' + field);
+    if (hiddenInput) markCustomDropdown(field, hiddenInput.value);
+  });
+
+  document.querySelectorAll('.custom-selector[data-field]').forEach(el => {
+    el.addEventListener('click', function () {
+      const field = this.getAttribute('data-field');
+      const target = document.getElementById('dropdown' + field);
+      const isVisible = target.style.display === 'block';
+      document.querySelectorAll('.custom-dropdown-menu').forEach(d => d.style.display = 'none');
+      target.style.display = isVisible ? 'none' : 'block';
+    });
+  });
+
+  document.querySelectorAll('.option-item-custom[data-field]').forEach(opt => {
+    opt.addEventListener('click', function () {
+      const field = this.getAttribute('data-field');
+      const val = this.getAttribute('data-value');
+      document.getElementById('input' + field).value = val;
+      document.getElementById('label' + field).textContent = this.textContent.trim();
+      markCustomDropdown(field, val);
+      document.getElementById('dropdown' + field).style.display = 'none';
+    });
+  });
+
+  document.querySelectorAll('.dropdown-search-custom').forEach(input => {
+    input.addEventListener('input', function() {
+      const term = this.value.toLowerCase();
+      this.closest('.custom-dropdown-menu').querySelectorAll('.option-item-custom').forEach(item => {
+        item.style.display = item.textContent.toLowerCase().includes(term) ? 'block' : 'none';
+      });
+    });
+  });
+
+  const container = document.getElementById('selectedEditionContainer');
+  const dropdown = document.getElementById('dropdownContainer');
+  const searchInput = document.getElementById('searchEdition');
+  const hiddenInput = document.getElementById('edition');
+  const placeholder = document.getElementById('editionPlaceholder');
+  const options = document.querySelectorAll('.option-item');
+
+  let rawData = <%- JSON.stringify(favoriteEdition || []) %>;
+  let selectedEditions = Array.isArray(rawData) ? rawData.filter(v => v && v.trim() !== '') : [];
+
+  function getAuthorFromValue(val) { return val.includes(':') ? val.split(':')[2] : val; }
+  function getIdFromValue(val) { return val.includes(':') ? val.split(':')[0] : val; }
+
+  function renderPills() {
+    container.querySelectorAll('.edition-pill').forEach(pill => pill.remove());
+    if (selectedEditions.length === 0) { placeholder.style.display = 'block'; }
+    else {
+      placeholder.style.display = 'none';
+      selectedEditions.forEach(val => {
+        const author = getAuthorFromValue(val);
+        const pill = document.createElement('span');
+        pill.className = 'edition-pill';
+        pill.innerHTML = `${author} <span class="remove-pill" data-value="${val}" style="cursor: pointer; opacity: 0.6;">&times;</span>`;
+        container.insertBefore(pill, placeholder);
+      });
     }
+    hiddenInput.value = JSON.stringify(selectedEditions);
+    updateDropdownState();
+  }
 
-    ['Home', 'Reciter', 'Location', 'ArabicFont'].forEach(field => {
-        const hiddenInput = document.getElementById('input' + field);
-        if (hiddenInput) markCustomDropdown(field, hiddenInput.value);
-    });
-
-    document.querySelectorAll('.custom-selector').forEach(el => {
-        el.addEventListener('click', function () {
-            const field = this.getAttribute('data-field');
-            const target = document.getElementById('dropdown' + field);
-            const isVisible = target.style.display === 'block';
-            document.querySelectorAll('.custom-dropdown-menu').forEach(d => d.style.display = 'none');
-            target.style.display = isVisible ? 'none' : 'block';
-            // REMOVED AUTO FOCUS HERE
-        });
-    });
-
-    document.querySelectorAll('.option-item-custom').forEach(opt => {
-        opt.addEventListener('click', function () {
-            const field = this.getAttribute('data-field');
-            const val = this.getAttribute('data-value');
-            document.getElementById('input' + field).value = val;
-            document.getElementById('label' + field).textContent = this.textContent.trim();
-            markCustomDropdown(field, val);
-            document.getElementById('dropdown' + field).style.display = 'none';
-        });
-    });
-
-    document.querySelectorAll('.dropdown-search-custom').forEach(input => {
-        input.addEventListener('input', function() {
-            const term = this.value.toLowerCase();
-            this.closest('.custom-dropdown-menu').querySelectorAll('.option-item-custom').forEach(item => {
-                item.style.display = item.textContent.toLowerCase().includes(term) ? 'block' : 'none';
-            });
-        });
-    });
-
-    // --- PART 2: Translation Field (UNCHANGED Logic) ---
-    const container = document.getElementById('selectedEditionContainer');
-    const dropdown = document.getElementById('dropdownContainer');
-    const searchInput = document.getElementById('searchEdition');
-    const hiddenInput = document.getElementById('edition');
-    const placeholder = document.getElementById('editionPlaceholder');
-    const options = document.querySelectorAll('.option-item');
-
-    let rawData = <%- JSON.stringify(favoriteEdition || []) %>;
-    let selectedEditions = Array.isArray(rawData) ? rawData.filter(v => v && v.trim() !== '') : [];
-
-    function getAuthorFromValue(val) { return val.includes(':') ? val.split(':')[2] : val; }
-    function getIdFromValue(val) { return val.includes(':') ? val.split(':')[0] : val; }
-
-    function renderPills() {
-        container.querySelectorAll('.edition-pill').forEach(pill => pill.remove());
-        if (selectedEditions.length === 0) { placeholder.style.display = 'block'; } 
-        else {
-            placeholder.style.display = 'none';
-            selectedEditions.forEach(val => {
-                const author = getAuthorFromValue(val);
-                const pill = document.createElement('span');
-                pill.className = 'edition-pill';
-                pill.innerHTML = `${author} <span class="remove-pill" data-value="${val}" style="cursor: pointer; color: #888; font-size: 1.1rem; line-height: 1;">&times;</span>`;
-                container.insertBefore(pill, placeholder);
-            });
-        }
-        hiddenInput.value = JSON.stringify(selectedEditions);
-        updateDropdownState();
-    }
-
-    function updateDropdownState() {
-        const selectedIds = selectedEditions.map(val => getIdFromValue(val));
-        options.forEach(option => {
-            const optionId = option.getAttribute('data-value');
-            if (selectedIds.includes(optionId)) {
-                option.style.backgroundColor = "#eef5ff"; option.style.color = "#0066ff";
-                option.style.pointerEvents = "none"; option.style.opacity = "0.7";
-                if (!option.querySelector('.check-mark')) {
-                    const check = document.createElement('span'); check.className = 'check-mark';
-                    check.innerHTML = ' ✓'; check.style.float = 'right'; option.appendChild(check);
-                }
-            } else {
-                option.style.backgroundColor = ""; option.style.color = "";
-                option.style.pointerEvents = "auto"; option.style.opacity = "1";
-                const check = option.querySelector('.check-mark'); if (check) check.remove();
-            }
-        });
-    }
-
-    container.addEventListener('click', function (e) {
-        if (e.target.classList.contains('remove-pill')) {
-            const valToRemove = e.target.getAttribute('data-value');
-            selectedEditions = selectedEditions.filter(val => val !== valToRemove);
-            renderPills(); return;
-        }
-        dropdown.style.display = (dropdown.style.display === 'none' || dropdown.style.display === '') ? 'block' : 'none';
-        // REMOVED AUTO FOCUS HERE
-    });
-
+  function updateDropdownState() {
+    const selectedIds = selectedEditions.map(val => getIdFromValue(val));
     options.forEach(option => {
-        option.addEventListener('click', function () {
-            const id = this.getAttribute('data-value'), lan = this.getAttribute('data-language'), author = this.getAttribute('data-author');
-            if (!selectedEditions.some(item => getIdFromValue(item) === id)) {
-                selectedEditions.push(`${id}:${lan}:${author}`);
-                renderPills();
-            }
-            dropdown.style.display = 'none';
-        });
+      const optionId = option.getAttribute('data-value');
+      if (selectedIds.includes(optionId)) {
+        option.classList.add('selected-highlight');
+        option.style.pointerEvents = "none";
+        option.style.opacity = "0.7";
+      } else {
+        option.classList.remove('selected-highlight');
+        option.style.pointerEvents = "auto";
+        option.style.opacity = "1";
+      }
     });
+  }
 
-    searchInput.addEventListener('input', function (e) {
-        const term = e.target.value.toLowerCase();
-        document.querySelectorAll('.language-group').forEach(group => {
-            let hasVisible = false;
-            group.querySelectorAll('.option-item').forEach(opt => {
-                const match = (opt.getAttribute('data-author') || '').toLowerCase().includes(term) || (opt.getAttribute('data-language') || '').toLowerCase().includes(term);
-                opt.style.display = match ? 'block' : 'none';
-                if(match) hasVisible = true;
-            });
-            group.style.display = hasVisible ? 'block' : 'none';
-        });
+  container.addEventListener('click', function (e) {
+    if (e.target.classList.contains('remove-pill')) {
+      selectedEditions = selectedEditions.filter(val => val !== e.target.getAttribute('data-value'));
+      renderPills(); return;
+    }
+    dropdown.style.display = (dropdown.style.display === 'none' || dropdown.style.display === '') ? 'block' : 'none';
+  });
+
+  options.forEach(option => {
+    option.addEventListener('click', function () {
+      const id = this.getAttribute('data-value'), lan = this.getAttribute('data-language'), author = this.getAttribute('data-author');
+      if (!selectedEditions.some(item => getIdFromValue(item) === id)) {
+        selectedEditions.push(`${id}:${lan}:${author}`);
+        renderPills();
+      }
+      dropdown.style.display = 'none';
     });
+  });
 
-    document.addEventListener('click', function (e) {
-        if (!e.target.closest('.custom-select-wrapper') && !container.contains(e.target) && !dropdown.contains(e.target)) {
-            document.querySelectorAll('.custom-dropdown-menu').forEach(d => d.style.display = 'none');
-            dropdown.style.display = 'none';
-        }
+  searchInput.addEventListener('input', function (e) {
+    const term = e.target.value.toLowerCase();
+    document.querySelectorAll('.language-group').forEach(group => {
+      let hasVisible = false;
+      group.querySelectorAll('.option-item').forEach(opt => {
+        const match = (opt.getAttribute('data-author') || '').toLowerCase().includes(term) || (opt.getAttribute('data-language') || '').toLowerCase().includes(term);
+        opt.style.display = match ? 'block' : 'none';
+        if(match) hasVisible = true;
+      });
+      group.style.display = hasVisible ? 'block' : 'none';
     });
+  });
 
-    renderPills();
+  document.addEventListener('click', function (e) {
+    if (!e.target.closest('.custom-select-wrapper') && !container.contains(e.target) && !dropdown.contains(e.target)) {
+      document.querySelectorAll('.custom-dropdown-menu').forEach(d => d.style.display = 'none');
+      dropdown.style.display = 'none';
+    }
+  });
+
+  renderPills();
 });
 </script>
 
