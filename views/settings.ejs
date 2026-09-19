@@ -104,6 +104,19 @@
       <input type="hidden" name="edition" id="edition" required>
     </div>
 
+    <div class="form-section-title">Primary Translation</div>
+    <p class="form-section-hint">Shown on Ayah of the Day and listed first on the surah page.</p>
+    <div class="custom-select-wrapper">
+      <div class="custom-selector form-control d-flex align-items-center justify-content-between" data-field="PrimaryTranslation">
+        <span id="labelPrimaryTranslation">Select editions first</span>
+        <span class="material-symbols-rounded" style="opacity: 0.5;">expand_more</span>
+      </div>
+      <div id="dropdownPrimaryTranslation" class="custom-dropdown-menu">
+        <div class="options-list" id="primaryTranslationOptions"></div>
+      </div>
+      <input type="hidden" name="primaryTranslation" id="inputPrimaryTranslation" value="<%= primaryTranslation || '' %>">
+    </div>
+
     <div class="form-section-title">Location</div>
     <div class="custom-select-wrapper">
       <div class="custom-selector form-control d-flex align-items-center justify-content-between" data-field="Location">
@@ -123,19 +136,6 @@
 
     <div class="new-task" style="margin-top: 1.5rem;">
       <button type="submit" class="btn btn-primary" value="add" name="add">Save Settings</button>
-    </div>
-  </form>
-
-  <hr>
-
-  <div class="form-section-title">Add Challenge</div>
-  <form action="/add-challenge" method="POST">
-    <div class="form-row">
-      <div class="form-floating">
-        <input class="form-control" type="text" required id="challenge" name="challenge" placeholder="Enter your challenge">
-        <label for="challenge">e.g., Drink 4L of water daily</label>
-      </div>
-      <button type="submit" class="btn btn-success" value="add" name="add">Add</button>
     </div>
   </form>
 </div>
@@ -202,9 +202,49 @@ document.addEventListener('DOMContentLoaded', function () {
 
   let rawData = <%- JSON.stringify(favoriteEdition || []) %>;
   let selectedEditions = Array.isArray(rawData) ? rawData.filter(v => v && v.trim() !== '') : [];
+  const primaryInput = document.getElementById('inputPrimaryTranslation');
+  const primaryLabel = document.getElementById('labelPrimaryTranslation');
+  const primaryOptions = document.getElementById('primaryTranslationOptions');
 
   function getAuthorFromValue(val) { return val.includes(':') ? val.split(':')[2] : val; }
   function getIdFromValue(val) { return val.includes(':') ? val.split(':')[0] : val; }
+  function getEditionLabel(val) {
+    const parts = String(val || '').split(':');
+    const lan = parts[1] || '';
+    const author = parts[2] || parts[0] || '';
+    return lan ? `${lan} - ${author}` : author;
+  }
+
+  function syncPrimaryDropdown() {
+    if (!primaryInput || !primaryOptions || !primaryLabel) return;
+    primaryOptions.innerHTML = '';
+    if (selectedEditions.length === 0) {
+      primaryInput.value = '';
+      primaryLabel.textContent = 'Select editions first';
+      return;
+    }
+
+    selectedEditions.forEach(val => {
+      const opt = document.createElement('div');
+      opt.className = 'option-item-custom';
+      opt.setAttribute('data-field', 'PrimaryTranslation');
+      opt.setAttribute('data-value', val);
+      opt.textContent = getEditionLabel(val);
+      opt.addEventListener('click', function () {
+        primaryInput.value = val;
+        primaryLabel.textContent = getEditionLabel(val);
+        markCustomDropdown('PrimaryTranslation', val);
+        document.getElementById('dropdownPrimaryTranslation').style.display = 'none';
+      });
+      primaryOptions.appendChild(opt);
+    });
+
+    if (!selectedEditions.includes(primaryInput.value)) {
+      primaryInput.value = selectedEditions[0];
+    }
+    primaryLabel.textContent = getEditionLabel(primaryInput.value);
+    markCustomDropdown('PrimaryTranslation', primaryInput.value);
+  }
 
   function renderPills() {
     container.querySelectorAll('.edition-pill').forEach(pill => pill.remove());
@@ -221,6 +261,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     hiddenInput.value = JSON.stringify(selectedEditions);
     updateDropdownState();
+    syncPrimaryDropdown();
   }
 
   function updateDropdownState() {

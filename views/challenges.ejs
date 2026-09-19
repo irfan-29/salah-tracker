@@ -6,32 +6,105 @@
 </div>
 
 <div class="container1">
-  <form action="/update-streaks" method="POST">
+  <div class="card-header">
+    <h3>Add Challenge</h3>
+  </div>
+  <form action="/add-challenge" method="POST">
+    <div class="form-row">
+      <div class="form-floating">
+        <input class="form-control" type="text" required id="newChallenge" name="challenge" placeholder="Enter your challenge">
+        <label for="newChallenge">e.g., Drink 4L of water daily</label>
+      </div>
+      <button type="submit" class="btn btn-success" value="add" name="add">Add</button>
+    </div>
+  </form>
+</div>
+
+<div class="container1">
+  <form id="streakForm" action="/update-streaks" method="POST">
     <div class="form-floating">
       <input class="form-control" type="date" required id="date" name="date">
       <label for="date">Date</label>
     </div>
-
-    <div class="challenge-list">
-      <% keyChallenge.forEach(function(challenge, i) { %>
-        <div class="challenge-card">
-          <input type="checkbox" name="completed[]" value="<%= challenge._id %>" id="challenge_<%= i %>">
-          <div class="challenge-info">
-            <label for="challenge_<%= i %>"><strong><%= challenge.challenge %></strong></label>
-            <div style="margin-top: 0.5rem;">
-              <span class="streak-badge">🔥 <%= challenge.currentStreak %> day streak</span>
-              <span class="badge badge-accent">Best: <%= challenge.maxStreak %></span>
-            </div>
-            <p class="challenge-meta">Last updated: <%= challenge.lastUpdated %></p>
-          </div>
-        </div>
-      <% }); %>
-    </div>
-
-    <div class="new-task" style="margin-top: 1.5rem;">
-      <button type="submit" class="btn btn-success">Update Streaks</button>
-    </div>
   </form>
+
+  <div class="challenge-list" style="margin-top: 1.25rem;">
+    <% if (!keyChallenge || keyChallenge.length === 0) { %>
+      <p class="challenge-empty">No challenges yet. Add one above to start a streak.</p>
+    <% } %>
+    <% keyChallenge.forEach(function(challenge, i) { %>
+      <div class="challenge-card" data-challenge-id="<%= challenge._id %>">
+        <input form="streakForm" type="checkbox" name="completed[]" value="<%= challenge._id %>" id="challenge_<%= i %>">
+        <div class="challenge-info">
+          <div class="challenge-header-row">
+            <label for="challenge_<%= i %>" class="challenge-title-label"><strong><%= challenge.challenge %></strong></label>
+            <div class="challenge-actions">
+              <button type="button" class="btn btn-outline btn-edit-challenge">Edit</button>
+              <form action="/delete-challenge" method="POST" onsubmit="return confirm('Delete this challenge?');">
+                <input type="hidden" name="id" value="<%= challenge._id %>">
+                <button type="submit" class="btn btn-danger">Delete</button>
+              </form>
+            </div>
+          </div>
+          <form action="/edit-challenge" method="POST" class="challenge-edit-form">
+            <input type="hidden" name="id" value="<%= challenge._id %>">
+            <div class="form-row">
+              <div class="form-floating">
+                <input class="form-control" type="text" required name="challenge" value="<%= challenge.challenge %>" placeholder="Challenge">
+                <label>Challenge</label>
+              </div>
+              <button type="submit" class="btn btn-primary">Save</button>
+              <button type="button" class="btn btn-outline btn-cancel-edit">Cancel</button>
+            </div>
+          </form>
+          <div style="margin-top: 0.5rem;">
+            <span class="streak-badge">🔥 <%= challenge.currentStreak || 0 %> day streak</span>
+            <span class="badge badge-accent">Best: <%= challenge.maxStreak || 0 %></span>
+          </div>
+          <p class="challenge-meta">Last updated: <%= challenge.lastUpdated || '—' %></p>
+        </div>
+      </div>
+    <% }); %>
+  </div>
+
+  <% if (keyChallenge && keyChallenge.length > 0) { %>
+  <div class="new-task" style="margin-top: 1.5rem;">
+    <button form="streakForm" type="submit" class="btn btn-success">Update Streaks</button>
+  </div>
+  <% } %>
 </div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.challenge-card').forEach(function (card) {
+      const editBtn = card.querySelector('.btn-edit-challenge');
+      const cancelBtn = card.querySelector('.btn-cancel-edit');
+      const editForm = card.querySelector('.challenge-edit-form');
+      const titleLabel = card.querySelector('.challenge-title-label');
+      const actions = card.querySelector('.challenge-actions');
+
+      function openEdit() {
+        editForm.classList.add('is-open');
+        if (titleLabel) titleLabel.style.display = 'none';
+        if (actions) actions.style.display = 'none';
+        const input = editForm.querySelector('input[name="challenge"]');
+        if (input) input.focus();
+      }
+
+      function closeEdit() {
+        editForm.classList.remove('is-open');
+        if (titleLabel) titleLabel.style.display = '';
+        if (actions) actions.style.display = '';
+      }
+
+      if (editBtn && editForm) {
+        editBtn.addEventListener('click', openEdit);
+      }
+      if (cancelBtn && editForm) {
+        cancelBtn.addEventListener('click', closeEdit);
+      }
+    });
+  });
+</script>
 
 <%- include('footer') %>

@@ -1,405 +1,295 @@
 
-
   </main>
 
-
-
   <% if (typeof footerAudio !== 'undefined' && footerAudio) { %>
-
   <div class="global-audio-bar" id="globalAudioBar">
-
     <div class="audio-bar-inner">
-
       <div class="audio-bar-track-info">
-
         <div class="audio-artwork" id="audioArtwork">
-
           <img src="/images/audio-player.webp" id="audioIcon" alt="Quran Audio" class="rotating-icon" />
-
         </div>
-
         <div class="audio-track-meta">
-
           <div class="surah-title" id="audioSurahTitle"><%= footerAudio.surahNo %>. <%= footerAudio.surahName %></div>
-
           <div class="reciter-name" id="audioReciterName"><%= footerAudio.reciterName %></div>
-
         </div>
-
       </div>
-
-
 
       <div class="audio-bar-center">
-
         <div class="audio-transport">
-
           <button type="button" class="audio-btn" id="audioPrevBtn" aria-label="Previous surah">
-
             <span class="material-symbols-rounded">skip_previous</span>
-
           </button>
-
           <button type="button" class="audio-btn audio-btn-play" id="audioPlayBtn" aria-label="Play/Pause">
-
             <span class="material-symbols-rounded" id="playIcon">play_arrow</span>
-
           </button>
-
           <button type="button" class="audio-btn" id="audioNextBtn" aria-label="Next surah">
-
             <span class="material-symbols-rounded">skip_next</span>
-
           </button>
-
         </div>
-
         <div class="audio-progress-row">
-
           <span class="audio-time" id="audioCurrentTime">0:00</span>
-
           <div class="audio-progress-track" id="progressTrack">
-
             <div class="audio-progress-fill" id="progressFill"></div>
-
             <input type="range" class="audio-progress-input" id="progressInput" min="0" max="100" value="0" aria-label="Seek">
-
           </div>
-
           <span class="audio-time" id="audioDuration">0:00</span>
-
         </div>
-
       </div>
 
-
-
       <form action="/hide-audio" method="POST" class="audio-close-form">
-
         <button type="submit" class="audio-close-btn" aria-label="Close audio">
-
           <span class="material-symbols-rounded">close</span>
-
         </button>
-
       </form>
-
     </div>
 
-
-
     <audio id="globalAudio" preload="metadata">
-
       <source src="<%= footerAudio.url %>" type="audio/mpeg" />
-
     </audio>
-
   </div>
 
-
-
   <script>
-
     (function () {
-
       const audio = document.getElementById('globalAudio');
-
       const playBtn = document.getElementById('audioPlayBtn');
-
       const playIcon = document.getElementById('playIcon');
-
       const prevBtn = document.getElementById('audioPrevBtn');
-
       const nextBtn = document.getElementById('audioNextBtn');
-
       const progressFill = document.getElementById('progressFill');
-
       const progressInput = document.getElementById('progressInput');
-
       const currentTimeEl = document.getElementById('audioCurrentTime');
-
       const durationEl = document.getElementById('audioDuration');
-
       const surahTitleEl = document.getElementById('audioSurahTitle');
-
       const reciterNameEl = document.getElementById('audioReciterName');
-
       const icon = document.getElementById('audioIcon');
 
-
-
       let currentSurahNo = <%= footerAudio.surahNo %>;
-
       let isAudioPlaying = false;
-
       let lastSentTime = 0;
-
       let isLoading = false;
-
+      let restoreSavedTime = true;
+      let ignoreEnded = false;
+      let loadToken = 0;
       const savedTime = <%= JSON.stringify(footerAudio.time || 0) %>;
-
-
+      const audioBar = document.getElementById('globalAudioBar');
 
       function formatTime(seconds) {
-
         if (!seconds || isNaN(seconds)) return '0:00';
-
         const m = Math.floor(seconds / 60);
-
         const s = Math.floor(seconds % 60);
-
         return `${m}:${s.toString().padStart(2, '0')}`;
-
       }
-
-
 
       function updateProgress() {
-
         if (!audio.duration) return;
-
         const pct = (audio.currentTime / audio.duration) * 100;
-
         progressFill.style.width = pct + '%';
-
         progressInput.value = pct;
-
         currentTimeEl.textContent = formatTime(audio.currentTime);
-
       }
-
-
 
       function setPlayingUI(playing) {
-
         playIcon.textContent = playing ? 'pause' : 'play_arrow';
-
         icon.classList.toggle('rotate', playing);
-
       }
 
-
+      function updateNavButtons() {
+        prevBtn.disabled = isLoading || currentSurahNo <= 1;
+        nextBtn.disabled = isLoading || currentSurahNo >= 114;
+      }
 
       function saveProgress(time, surahName) {
-
         fetch('/update-audio-time', {
-
           method: 'POST',
-
           headers: { 'Content-Type': 'application/json' },
-
           body: JSON.stringify({
-
             surahNo: currentSurahNo,
-
             surahName: surahName || surahTitleEl.textContent.replace(/^\d+\.\s*/, ''),
-
             time: time ?? audio.currentTime
-
           })
-
         }).catch(err => console.error('Failed to update audio time:', err));
-
       }
 
+      function waitForPlaybackReady() {
+        return new Promise((resolve, reject) => {
+          const isReady = () => (
+            audio.readyState >= 2 &&
+            Number.isFinite(audio.duration) &&
+            audio.duration > 1
+          );
+          if (isReady()) {
+            resolve();
+            return;
+          }
+          const timeout = setTimeout(() => {
+            cleanup();
+            reject(new Error('Audio load timeout'));
+          }, 30000);
+          const onReady = () => {
+            if (!isReady()) return;
+            cleanup();
+            resolve();
+          };
+          const onError = () => {
+            cleanup();
+            reject(new Error('Failed to load audio'));
+          };
+          const cleanup = () => {
+            clearTimeout(timeout);
+            audio.removeEventListener('loadedmetadata', onReady);
+            audio.removeEventListener('canplay', onReady);
+            audio.removeEventListener('canplaythrough', onReady);
+            audio.removeEventListener('error', onError);
+          };
+          audio.addEventListener('loadedmetadata', onReady);
+          audio.addEventListener('canplay', onReady);
+          audio.addEventListener('canplaythrough', onReady);
+          audio.addEventListener('error', onError, { once: true });
+        });
+      }
 
+      function resetAudioElement() {
+        ignoreEnded = true;
+        audio.pause();
+        audio.removeAttribute('src');
+        while (audio.firstChild) audio.removeChild(audio.firstChild);
+      }
 
       async function loadSurah(surahNo, autoplay) {
-
         if (surahNo < 1 || surahNo > 114 || isLoading) return;
 
         isLoading = true;
-
-        prevBtn.disabled = surahNo <= 1;
-
-        nextBtn.disabled = surahNo >= 114;
-
-
+        ignoreEnded = true;
+        restoreSavedTime = false;
+        const token = ++loadToken;
+        if (audioBar) audioBar.classList.add('is-loading');
+        updateNavButtons();
 
         try {
-
           const res = await fetch(`/api/surah-audio/${surahNo}`);
-
-          if (!res.ok) return;
-
+          if (!res.ok) throw new Error('Audio API failed');
           const data = await res.json();
-
-
+          if (token !== loadToken) return;
 
           currentSurahNo = data.surahNo;
-
           surahTitleEl.textContent = `${data.surahNo}. ${data.surahName}`;
+          reciterNameEl.textContent = data.reciterName || 'Loading…';
 
-          reciterNameEl.textContent = data.reciterName;
-
+          resetAudioElement();
           audio.src = data.url;
-
           audio.load();
 
+          await waitForPlaybackReady();
+          if (token !== loadToken) return;
 
-
-          await new Promise((resolve) => {
-
-            audio.addEventListener('loadedmetadata', resolve, { once: true });
-
-          });
-
-
-
+          try { audio.currentTime = 0; } catch (e) {}
           durationEl.textContent = formatTime(audio.duration);
-
           progressFill.style.width = '0%';
-
           progressInput.value = 0;
-
           currentTimeEl.textContent = '0:00';
-
-
-
+          lastSentTime = 0;
           saveProgress(0, data.surahName);
 
-
-
           if (autoplay) {
-
             await audio.play();
-
+            await new Promise((resolve) => {
+              if (!audio.paused && audio.currentTime >= 0) {
+                resolve();
+                return;
+              }
+              const onPlaying = () => { cleanup(); resolve(); };
+              const onFail = () => { cleanup(); resolve(); };
+              const timer = setTimeout(onFail, 2000);
+              const cleanup = () => {
+                clearTimeout(timer);
+                audio.removeEventListener('playing', onPlaying);
+                audio.removeEventListener('error', onFail);
+              };
+              audio.addEventListener('playing', onPlaying, { once: true });
+              audio.addEventListener('error', onFail, { once: true });
+            });
           }
-
         } catch (err) {
-
           console.error('Failed to load surah:', err);
-
+          setPlayingUI(false);
         } finally {
-
-          isLoading = false;
-
-          prevBtn.disabled = currentSurahNo <= 1;
-
-          nextBtn.disabled = currentSurahNo >= 114;
-
+          if (token === loadToken) {
+            isLoading = false;
+            if (audioBar) audioBar.classList.remove('is-loading');
+            updateNavButtons();
+            setTimeout(() => {
+              if (token === loadToken) ignoreEnded = false;
+            }, 400);
+          }
         }
-
       }
 
-
-
       audio.addEventListener('loadedmetadata', () => {
-
-        if (savedTime > 0 && !isNaN(savedTime)) {
-
+        const duration = audio.duration;
+        if (
+          restoreSavedTime &&
+          savedTime > 0 &&
+          !isNaN(savedTime) &&
+          !isNaN(duration) &&
+          savedTime < duration - 1
+        ) {
           audio.currentTime = savedTime;
-
         }
-
-        durationEl.textContent = formatTime(audio.duration);
-
+        restoreSavedTime = false;
+        durationEl.textContent = formatTime(duration);
         updateProgress();
-
       });
-
-
 
       audio.addEventListener('timeupdate', updateProgress);
 
-
-
       audio.addEventListener('play', () => {
-
         isAudioPlaying = true;
-
         setPlayingUI(true);
-
       });
-
-
 
       audio.addEventListener('pause', () => {
-
         isAudioPlaying = false;
-
         setPlayingUI(false);
-
       });
-
-
 
       audio.addEventListener('ended', () => {
-
+        if (isLoading || ignoreEnded) return;
+        if (!Number.isFinite(audio.duration) || audio.duration < 1) return;
         isAudioPlaying = false;
-
         setPlayingUI(false);
-
         if (currentSurahNo < 114) {
-
           loadSurah(currentSurahNo + 1, true);
-
         }
-
       });
-
-
 
       playBtn.addEventListener('click', () => {
-
-        if (audio.paused) audio.play();
-
+        if (isLoading) return;
+        if (audio.paused) audio.play().catch(err => console.error('Play failed:', err));
         else audio.pause();
-
       });
-
-
 
       prevBtn.addEventListener('click', () => loadSurah(currentSurahNo - 1, true));
-
       nextBtn.addEventListener('click', () => loadSurah(currentSurahNo + 1, true));
 
-
-
       progressInput.addEventListener('input', () => {
-
         if (audio.duration) {
-
           audio.currentTime = (progressInput.value / 100) * audio.duration;
-
           updateProgress();
-
         }
-
       });
 
-
-
       setInterval(() => {
-
         if (!isAudioPlaying || audio.paused || audio.ended || audio.seeking ||
-
             isNaN(audio.currentTime) || audio.currentTime <= 0) return;
-
         if (Math.abs(audio.currentTime - lastSentTime) < 5) return;
-
         lastSentTime = audio.currentTime;
-
         saveProgress(audio.currentTime);
-
       }, 5000);
 
-
-
-      prevBtn.disabled = currentSurahNo <= 1;
-
-      nextBtn.disabled = currentSurahNo >= 114;
-
+      updateNavButtons();
     })();
-
   </script>
-
   <% } %>
 
-
-
 </body>
-
 </html>
-
-

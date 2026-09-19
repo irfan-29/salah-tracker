@@ -63,6 +63,7 @@ const settingsSchema = new mongoose.Schema({
     favoriteEdition: [String],
     lastReadSurahs: [String],
     theme: { type: String, default: 'light' },
+    primaryTranslation: String,
     audioProgress: {
         surahNo: Number,
         surahName: String,
@@ -70,6 +71,68 @@ const settingsSchema = new mongoose.Schema({
     }
 });
 const Settings = mongoose.model("Settings", settingsSchema);
+
+const ayahOfTheDaySchema = new mongoose.Schema({
+    date: { type: String, unique: true },
+    surahNo: Number,
+    ayahNo: Number
+});
+const AyahOfTheDay = mongoose.model("AyahOfTheDay", ayahOfTheDaySchema);
+
+function todayDateKey() {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+}
+
+function parseEdition(combinedStr) {
+    const parts = String(combinedStr || '').split(':');
+    return {
+        id: parts[0] || '',
+        lan: parts[1] || '',
+        author: parts[2] || parts[0] || ''
+    };
+}
+
+function getFavoriteEditions(settings) {
+    if (!settings?.favoriteEdition) return [];
+    const editions = Array.isArray(settings.favoriteEdition)
+        ? settings.favoriteEdition
+        : [settings.favoriteEdition];
+    return editions.filter((v) => v && String(v).trim() !== '');
+}
+
+function getPrimaryEdition(settings) {
+    const editions = getFavoriteEditions(settings);
+    if (!editions.length) return null;
+    const primary = settings?.primaryTranslation;
+    if (primary && editions.includes(primary)) return primary;
+    if (primary) {
+        const primaryId = parseEdition(primary).id;
+        const match = editions.find((e) => parseEdition(e).id === primaryId);
+        if (match) return match;
+    }
+    return editions[0];
+}
+
+async function getOrCreateAyahOfTheDay(surahs) {
+    const date = todayDateKey();
+    let entry = await AyahOfTheDay.findOne({ date });
+    if (entry) return entry;
+
+    const surahNo = Math.floor(Math.random() * 114) + 1;
+    const totalAyah = Number(surahs[surahNo - 1]?.totalAyah) || 1;
+    const ayahNo = Math.floor(Math.random() * totalAyah) + 1;
+
+    try {
+        entry = await AyahOfTheDay.create({ date, surahNo, ayahNo });
+    } catch (err) {
+        entry = await AyahOfTheDay.findOne({ date });
+    }
+    return entry;
+}
 
 const postsSchema = new mongoose.Schema({
     // user:,
@@ -380,8 +443,53 @@ app.get("/quran", async(req, res) => {
 
     const settings = await Settings.findOne({}).lean();
     const lastReadSurahs = settings?.lastReadSurahs ?? [];
+    const favoriteFont = settings?.favoriteFont || 'Amiri';
 
-    res.render("quran", {surahs: data, lastReadSurahs: lastReadSurahs});
+    const ayahEntry = (await getOrCreateAyahOfTheDay(data)) || { surahNo: 1, ayahNo: 1 };
+    const surahMeta = data[ayahEntry.surahNo - 1] || {};
+    const ayahIndex = ayahEntry.ayahNo - 1;
+
+    let arabicText = '';
+    let translationText = '';
+    let translationLabel = '';
+
+    try {
+        const ayahRes = await fetch(`https://quranapi.pages.dev/api/${ayahEntry.surahNo}.json`);
+        const ayahSurah = await ayahRes.json();
+        arabicText = ayahSurah.arabic1?.[ayahIndex] || '';
+    } catch (err) {
+        console.error('Failed to fetch ayah of the day Arabic:', err);
+    }
+
+    const primaryEdition = getPrimaryEdition(settings);
+    if (primaryEdition) {
+        const { id, lan, author } = parseEdition(primaryEdition);
+        translationLabel = lan ? `${lan} - ${author}` : author;
+        try {
+            const translationRes = await fetch(
+                `https://cdn.jsdelivr.net/gh/fawazahmed0/quran-api@1/editions/${id}/${ayahEntry.surahNo}.json`
+            );
+            const translationJson = await translationRes.json();
+            translationText = translationJson.chapter?.[ayahIndex]?.text || '';
+        } catch (err) {
+            console.error('Failed to fetch ayah of the day translation:', err);
+        }
+    }
+
+    res.render("quran", {
+        surahs: data,
+        lastReadSurahs: lastReadSurahs,
+        favoriteFont: favoriteFont,
+        ayahOfTheDay: {
+            surahNo: ayahEntry.surahNo,
+            ayahNo: ayahEntry.ayahNo,
+            surahName: surahMeta.surahName || '',
+            surahNameArabic: surahMeta.surahNameArabic || '',
+            arabicText,
+            translationText,
+            translationLabel
+        }
+    });
 });
 
 
@@ -397,16 +505,15 @@ app.get("/surah/:surahNo", async (req, res) => {
 
     if (settings) {
         if (settings.favoriteReciter) reciter = settings.favoriteReciter;
-        if (settings.favoriteEdition) {
-            favoriteEdition = Array.isArray(settings.favoriteEdition)
-                ? settings.favoriteEdition
-                : [settings.favoriteEdition];
-        }
+        favoriteEdition = getFavoriteEditions(settings);
         if (settings.favoriteFont) favoriteFont = settings.favoriteFont;
         if (settings.audioProgress && settings.audioProgress.surahNo === surahNo) {
             time = settings.audioProgress.time || 0;
         }
     }
+
+    const primaryEdition = getPrimaryEdition(settings);
+    const primaryTranslationId = primaryEdition ? parseEdition(primaryEdition).id : null;
 
     const response = await fetch(`https://quranapi.pages.dev/api/${surahNo}.json`);
     const surah = await response.json();
@@ -432,10 +539,19 @@ app.get("/surah/:surahNo", async (req, res) => {
         });
 
         const results = await Promise.all(translationPromises);
+        const orderedEditions = [...favoriteEdition];
+        if (primaryEdition) {
+            const primaryIdx = orderedEditions.indexOf(primaryEdition);
+            if (primaryIdx > 0) {
+                orderedEditions.splice(primaryIdx, 1);
+                orderedEditions.unshift(primaryEdition);
+            }
+        }
 
-        favoriteEdition.forEach((combinedStr, index) => {
-            const id = combinedStr.split(':')[0];
-            if (results[index]) {
+        orderedEditions.forEach((combinedStr) => {
+            const index = favoriteEdition.indexOf(combinedStr);
+            const id = parseEdition(combinedStr).id;
+            if (index >= 0 && results[index]) {
                 translationData[id] = results[index];
             }
         });
@@ -458,6 +574,8 @@ app.get("/surah/:surahNo", async (req, res) => {
         surahNo: surahNo,
         audioTime: time,
         alwaysShowAudio: true,
+        primaryTranslationId: primaryTranslationId,
+        highlightAyah: parseInt(req.query.ayah, 10) || null,
     });
 });  
   
@@ -666,6 +784,7 @@ app.get("/settings", async (req, res) => {
     let favoriteEdition = [];
     let favoriteFont = "QPC-Hafs";
     let theme = "light";
+    let primaryTranslation = "";
 
     const settings = await Settings.findOne({});
     if (settings) {
@@ -675,8 +794,9 @@ app.get("/settings", async (req, res) => {
         if (settings.favoriteFont) favoriteFont = settings.favoriteFont;
         if (settings.theme) theme = settings.theme;
         if (settings.favoriteEdition) {
-            favoriteEdition = Array.isArray(settings.favoriteEdition) ? settings.favoriteEdition : [settings.favoriteEdition];
+            favoriteEdition = getFavoriteEditions(settings);
         }
+        primaryTranslation = getPrimaryEdition(settings) || "";
     }
 
     // Official Tarteel QUL Font Mapping
@@ -706,7 +826,8 @@ app.get("/settings", async (req, res) => {
 
     res.render('settings', {
         favoriteReciter: String(reciter), 
-        favoriteEdition: favoriteEdition, 
+        favoriteEdition: favoriteEdition,
+        primaryTranslation: primaryTranslation, 
         defaultHome: defaultHome, 
         location: location, 
         favoriteFont: favoriteFont,
@@ -739,13 +860,42 @@ app.post("/salah", function(req, res){
 });
 
 
-app.post("/add-challenge", function(req, res){
-    const challenge = req.body.challenge;
-    const newChallenge = new Challenges({
-        challenge: challenge
-    });
-    newChallenge.save();
-    res.redirect("/settings");
+app.post("/add-challenge", async function(req, res){
+    const challenge = (req.body.challenge || '').trim();
+    if (!challenge) return res.redirect("/challenges");
+    try {
+        await Challenges.create({
+            challenge: challenge,
+            currentStreak: 0,
+            maxStreak: 0
+        });
+    } catch (err) {
+        console.error(err);
+    }
+    res.redirect("/challenges");
+});
+
+app.post("/edit-challenge", async function(req, res){
+    const id = req.body.id;
+    const challenge = (req.body.challenge || '').trim();
+    if (!id || !challenge) return res.redirect("/challenges");
+    try {
+        await Challenges.findByIdAndUpdate(id, { challenge });
+    } catch (err) {
+        console.error(err);
+    }
+    res.redirect("/challenges");
+});
+
+app.post("/delete-challenge", async function(req, res){
+    const id = req.body.id;
+    if (!id) return res.redirect("/challenges");
+    try {
+        await Challenges.findByIdAndDelete(id);
+    } catch (err) {
+        console.error(err);
+    }
+    res.redirect("/challenges");
 });
 
 
@@ -850,7 +1000,7 @@ app.post("/location", function(req, res) {
 
 //  });
 app.post("/settings", function(req, res){
-    const {defaultHome, reciter, edition, font, location, theme, redirectTo} = req.body;
+    const {defaultHome, reciter, edition, font, location, theme, primaryTranslation, redirectTo} = req.body;
 
     // Parse the JSON string sent from the frontend hidden input
     let parsedEditions = [];
@@ -860,6 +1010,16 @@ app.post("/settings", function(req, res){
         // Fallback in case of parsing error
         if (typeof edition === 'string') parsedEditions = [edition];
     }
+    parsedEditions = parsedEditions.filter((v) => v && String(v).trim() !== '');
+
+    let resolvedPrimary = primaryTranslation || '';
+    if (resolvedPrimary && !parsedEditions.includes(resolvedPrimary)) {
+        const primaryId = parseEdition(resolvedPrimary).id;
+        resolvedPrimary = parsedEditions.find((e) => parseEdition(e).id === primaryId) || '';
+    }
+    if (!resolvedPrimary && parsedEditions.length) {
+        resolvedPrimary = parsedEditions[0];
+    }
 
     Settings.findOneAndUpdate(
         {}, 
@@ -867,6 +1027,7 @@ app.post("/settings", function(req, res){
             defaultHome: defaultHome,
             favoriteReciter: reciter,
             favoriteEdition: parsedEditions,
+            primaryTranslation: resolvedPrimary,
             favoriteFont: font,
             location: location,
             theme: theme || 'light'

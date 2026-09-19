@@ -1,7 +1,6 @@
 {
   "name": "track-my-salah",
   "version": "1.0.0",
-  "description": "",
   "main": "index.js",
   "engines": {
     "node": "20.x"
@@ -16,15 +15,17 @@
   "author": "Mohammed Irfan U",
   "license": "ISC",
   "dependencies": {
-    "body-parser": "^1.20.3",
-    "cheerio": "^1.0.0",
+    "body-parser": "^1.20.8",
+    "cheerio": "^1.2.0",
     "ejs": "^3.1.10",
-    "express": "^4.21.2",
-    "express-session": "^1.18.1",
-    "mongoose": "^8.9.6",
+    "express": "^4.22.3",
+    "express-session": "^1.19.0",
+    "mongoose": "^8.24.4",
+    "node": "^26.9.0",
     "node-fetch": "^2.7.0",
-    "nodemon": "^3.1.9",
+    "nodemon": "^3.1.14",
     "path": "^0.12.7",
     "serverless-http": "^3.2.0"
-  }
+  },
+  "description": ""
 }

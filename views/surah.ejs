@@ -105,10 +105,11 @@
 
       <% Object.keys(translations).forEach(function(key) { %>
         <% var item = translations[key]; %>
+        <% var isPrimary = primaryTranslationId && key === primaryTranslationId; %>
         <% if (item && item.chapter && item.chapter[i]) { %>
           <div style="text-align: left; margin-top: 1rem; margin-bottom: 1.25rem; padding: 0.75rem 0 0.75rem 1rem; border-left: 3px solid var(--color-primary); background: var(--color-primary-glow); border-radius: 0 var(--radius-sm) var(--radius-sm) 0;">
             <p style="color: var(--color-primary); font-size: 0.6875rem; margin-bottom: 0.375rem; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700;">
-              <%= item.displayLabel %>
+              <%= item.displayLabel %><% if (isPrimary) { %> · Primary<% } %>
             </p>
             <p style="font-family: 'Mukta Malar', sans-serif; font-size: 1.0625rem; color: var(--color-text); line-height: 1.6; margin: 0;">
               <%= item.chapter[i].text %>
@@ -147,6 +148,18 @@
       }, 2000);
     }
   }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    const highlightAyah = <%= JSON.stringify(highlightAyah || null) %>;
+    const hashAyah = window.location.hash.replace('#', '');
+    const ayahNumber = highlightAyah || (hashAyah ? parseInt(hashAyah, 10) : null);
+    if (ayahNumber && !isNaN(ayahNumber)) {
+      const range = document.getElementById('ayahRange');
+      range.value = ayahNumber;
+      updateAyahLabel();
+      setTimeout(goToAyah, 250);
+    }
+  });
 
   const mybutton = document.getElementById("myBtn");
   window.onscroll = function() {

@@ -429,6 +429,10 @@ a {
   transition: margin-left var(--transition);
 }
 
+body:has(.global-audio-bar) .main-content {
+  padding-bottom: 9rem;
+}
+
 .sidebar.collapsed ~ .main-content {
   margin-left: var(--sidebar-collapsed);
 }
@@ -962,6 +966,61 @@ a {
   margin-top: 0.375rem;
 }
 
+.challenge-header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.challenge-actions {
+  display: flex;
+  gap: 0.375rem;
+  flex-shrink: 0;
+}
+
+.challenge-actions .btn {
+  padding: 0.25rem 0.5rem;
+  min-height: 32px;
+  font-size: 0.75rem;
+}
+
+.challenge-edit-form {
+  display: none;
+  margin-top: 0.75rem;
+}
+
+.challenge-edit-form.is-open {
+  display: block;
+}
+
+.challenge-empty {
+  text-align: center;
+  color: var(--color-text-secondary);
+  padding: 1.5rem 0;
+}
+
+.btn-danger {
+  background: #dc2626;
+  color: #fff;
+}
+
+.btn-danger:hover {
+  background: #b91c1c;
+}
+
+.btn-outline {
+  background: transparent;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+}
+
+.btn-outline:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
 /* --- Quran / Surah --- */
 .surah-item {
   padding: 1rem 1.25rem;
@@ -1099,6 +1158,80 @@ a {
   letter-spacing: 0.06em;
   color: var(--color-primary);
   margin-bottom: 0.75rem;
+}
+
+.featured-ayah-ref {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0 0 1.125rem;
+}
+
+.featured-ayah-cite {
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: var(--color-primary);
+  line-height: 1.2;
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.featured-ayah-surah {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0;
+  line-height: 1.4;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.featured-ayah-num {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-primary);
+  background: var(--color-surface);
+  border: 1px solid rgba(13, 148, 136, 0.25);
+  border-radius: var(--radius-full);
+  padding: 0.2rem 0.625rem;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.featured-ayah-arabic {
+  font-size: 1.75rem;
+  line-height: 2;
+  text-align: right;
+  direction: rtl;
+  color: var(--color-text);
+  margin: 0 0 1rem;
+}
+
+.featured-ayah-edition {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-primary);
+  margin-bottom: 0.375rem;
+}
+
+.featured-ayah-translation {
+  font-size: 1.0625rem;
+  line-height: 1.6;
+  color: var(--color-text);
+  margin: 0;
+}
+
+.form-section-hint {
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+  margin: -0.35rem 0 0.75rem;
 }
 
 .scrollable-container {
@@ -1419,6 +1552,15 @@ a {
 
 .rotate {
   animation: spin 4s linear infinite;
+}
+
+.global-audio-bar.is-loading .rotating-icon {
+  animation: spin 1s linear infinite;
+  opacity: 0.55;
+}
+
+.global-audio-bar.is-loading .surah-title {
+  opacity: 0.75;
 }
 
 @keyframes spin {
