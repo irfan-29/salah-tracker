@@ -134,14 +134,84 @@
       <input type="hidden" name="location" id="inputLocation" value="<%= location %>">
     </div>
 
-    <div class="new-task" style="margin-top: 1.5rem;">
+    <div class="form-section-title">Telegram Notifications</div>
+    <p class="form-section-hint">
+      Get a Telegram summary each time you update your streaks.
+      <strong>1.</strong> Open <a href="https://t.me/BotFather" target="_blank" rel="noopener">@BotFather</a>,
+      send <code>/newbot</code>, and copy the token it gives you.
+      <strong>2.</strong> Open your new bot and tap <strong>Start</strong>.
+      <strong>3.</strong> Paste the token below and press <strong>Find my chat ID</strong>.
+    </p>
+    <p class="form-section-hint">
+      Stuck on the chat ID? Paste it in yourself &mdash; for a private bot chat it is
+      the same as your own Telegram user ID, which you can read from your
+      Telegram Web address bar (the digits after the <code>#</code> in
+      <code>web.telegram.org/a/#123456789</code>). You must tap
+      <strong>Start</strong> on the bot once, or it won't be allowed to message you.
+    </p>
+
+    <% if (typeof tgStatus !== 'undefined' && tgStatus) { %>
+      <div class="wa-status wa-status-<%= tgStatus === 'sent' ? 'ok' : 'bad' %>">
+        <span class="material-symbols-rounded"><%= tgStatus === 'sent' ? 'check_circle' : 'error' %></span>
+        <%= tgStatus === 'sent' ? 'Test message sent.' : (tgMessages[tgStatus] || tgMessages.unknown) %>
+      </div>
+    <% } %>
+
+    <% if (typeof tgFoundChatId !== 'undefined' && tgFoundChatId) { %>
+      <div class="wa-status wa-status-ok">
+        <span class="material-symbols-rounded">check_circle</span>
+        Found chat ID <strong><%= tgFoundChatId %></strong> &mdash; it's filled in below. Save to keep it.
+      </div>
+    <% } %>
+
+    <div class="form-floating">
+      <input class="form-control" type="text" id="telegramBotToken" name="telegramBotToken"
+             placeholder="123456789:AAExxxxxxxxxxxxxxxxxxxxxxxx" value="<%= telegramBotToken || '' %>">
+      <label for="telegramBotToken">Bot token</label>
+    </div>
+
+    <div class="form-floating">
+      <input class="form-control" type="text" id="telegramChatId" name="telegramChatId"
+             placeholder="123456789" value="<%= tgFoundChatId || telegramChatId || '' %>">
+      <label for="telegramChatId">Chat ID</label>
+    </div>
+
+    <div class="new-task" style="margin-top: 1.5rem; display: flex; gap: 0.75rem; flex-wrap: wrap; justify-content: center;">
       <button type="submit" class="btn btn-primary" value="add" name="add">Save Settings</button>
     </div>
+  </form>
+
+  <form action="/telegram-chat-id" method="POST" class="wa-test-form">
+    <input type="hidden" name="redirectTo" value="/settings">
+    <input type="hidden" id="tgLookupToken" name="telegramBotToken" value="<%= telegramBotToken || '' %>">
+    <button type="submit" class="btn btn-outline">
+      <span class="material-symbols-rounded">search</span>
+      Find my chat ID
+    </button>
+  </form>
+
+  <form action="/test-telegram" method="POST" class="wa-test-form">
+    <input type="hidden" name="redirectTo" value="/settings">
+    <button type="submit" class="btn btn-outline">
+      <span class="material-symbols-rounded">send</span>
+      Send test message
+    </button>
   </form>
 </div>
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+  // The chat-ID lookup form is separate from the settings form, so it can't read
+  // the token input directly. Copy whatever is currently typed into it on submit.
+  const lookupForm = document.querySelector('form[action="/telegram-chat-id"]');
+  const tokenInput = document.getElementById('telegramBotToken');
+  if (lookupForm && tokenInput) {
+    lookupForm.addEventListener('submit', function () {
+      const hidden = document.getElementById('tgLookupToken');
+      if (hidden) hidden.value = tokenInput.value.trim();
+    });
+  }
+
   document.querySelectorAll('.theme-picker-option input').forEach(radio => {
     radio.addEventListener('change', function () {
       document.querySelectorAll('.theme-picker-option').forEach(opt => opt.classList.remove('active'));

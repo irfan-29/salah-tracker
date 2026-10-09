@@ -976,23 +976,79 @@ body:has(.global-audio-bar) .main-content {
 
 .challenge-actions {
   display: flex;
+  align-items: center;
   gap: 0.375rem;
   flex-shrink: 0;
 }
 
-.challenge-actions .btn {
-  padding: 0.25rem 0.5rem;
-  min-height: 32px;
-  font-size: 0.75rem;
+.challenge-actions form {
+  margin: 0;
 }
 
-.challenge-edit-form {
-  display: none;
-  margin-top: 0.75rem;
+.challenge-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--color-text-muted);
+  line-height: 1;
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease,
+    transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.challenge-edit-form.is-open {
-  display: block;
+.challenge-icon-btn .material-symbols-rounded {
+  font-size: 1.25rem;
+  font-variation-settings: 'FILL' 0, 'wght' 500, 'GRAD' 0, 'opsz' 24;
+  pointer-events: none;
+}
+
+.challenge-icon-btn:hover {
+  transform: translateY(-1px);
+}
+
+.challenge-icon-btn:active {
+  transform: translateY(0) scale(0.94);
+}
+
+.challenge-icon-btn-edit:hover,
+.challenge-icon-btn-edit:focus-visible {
+  background: rgba(59, 130, 246, 0.12);
+  border-color: rgba(59, 130, 246, 0.35);
+  color: #2563eb;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.25);
+}
+
+.challenge-icon-btn-danger:hover,
+.challenge-icon-btn-danger:focus-visible {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.35);
+  color: #dc2626;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.25);
+}
+
+[data-theme="dark"] .challenge-icon-btn {
+  color: var(--color-text-muted);
+}
+
+[data-theme="dark"] .challenge-icon-btn-edit:hover,
+[data-theme="dark"] .challenge-icon-btn-edit:focus-visible {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: rgba(96, 165, 250, 0.45);
+  color: #93c5fd;
+}
+
+[data-theme="dark"] .challenge-icon-btn-danger:hover,
+[data-theme="dark"] .challenge-icon-btn-danger:focus-visible {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(248, 113, 113, 0.45);
+  color: #fca5a5;
 }
 
 .challenge-empty {
@@ -1347,6 +1403,73 @@ body:has(.global-audio-bar) .main-content {
 /* --- Settings --- */
 .settings-form .form-section-title:first-child {
   margin-top: 0;
+}
+
+.wa-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  max-width: 480px;
+  margin: 0 auto 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-align: left;
+}
+
+.wa-status .material-symbols-rounded {
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+.wa-status-ok {
+  background: rgba(16, 185, 129, 0.12);
+  color: #047857;
+}
+
+.wa-status-bad {
+  background: rgba(239, 68, 68, 0.12);
+  color: #b91c1c;
+}
+
+[data-theme="dark"] .wa-status-ok {
+  color: #6ee7b7;
+}
+
+[data-theme="dark"] .wa-status-bad {
+  color: #fca5a5;
+}
+
+.tg-actions {
+  max-width: 480px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.tg-actions .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.tg-actions .btn .material-symbols-rounded {
+  font-size: 1.1rem;
+}
+
+.wa-test-form {
+  text-align: center;
+  margin-top: 1rem;
+}
+
+.wa-test-form .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.wa-test-form .btn .material-symbols-rounded {
+  font-size: 1.1rem;
 }
 
 .custom-select-wrapper {

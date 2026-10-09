@@ -10,6 +10,7 @@ const session = require('express-session');
 
 // internal
 const { islamicFinderFetch } = require("../api/utils/islamic-finder.js");
+const { sendTelegramMessage, findChatId, buildStreakSummary, normalizeChatId, normalizeToken, extractToken, isValidToken, ERROR_MESSAGES } = require("../api/utils/telegram.js");
 
 
 
@@ -64,6 +65,8 @@ const settingsSchema = new mongoose.Schema({
     lastReadSurahs: [String],
     theme: { type: String, default: 'light' },
     primaryTranslation: String,
+    telegramBotToken: String,
+    telegramChatId: String,
     audioProgress: {
         surahNo: Number,
         surahName: String,
@@ -78,6 +81,17 @@ const ayahOfTheDaySchema = new mongoose.Schema({
     ayahNo: Number
 });
 const AyahOfTheDay = mongoose.model("AyahOfTheDay", ayahOfTheDaySchema);
+
+// Duplicate form fields (same name twice) arrive as an array. Coerce them to a
+// single sane value so a duplicate can never build a broken path like
+// "/settings,/settings" or a token of "abc,def".
+function pickField(value) {
+  if (Array.isArray(value)) {
+    const filled = value.filter((v) => v !== undefined && v !== null && String(v).trim() !== "");
+    return filled.length ? filled[filled.length - 1] : "";
+  }
+  return value === undefined || value === null ? "" : value;
+}
 
 function todayDateKey() {
     const now = new Date();
@@ -768,6 +782,21 @@ app.get("/challenges", function(req, res){
         res.render('challenges', {keyChallenge: challenge});
     });
 });
+
+app.get("/add-challenge", function(req, res){
+    res.render("challenge-form", { mode: "add", challenge: null });
+});
+
+app.get("/edit-challenge/:id", async function(req, res){
+    try {
+        const challenge = await Challenges.findById(req.params.id);
+        if (!challenge) return res.redirect("/challenges");
+        res.render("challenge-form", { mode: "edit", challenge });
+    } catch (err) {
+        console.error(err);
+        res.redirect("/challenges");
+    }
+});
   
 
 app.get("/settings", async (req, res) => {
@@ -782,6 +811,8 @@ app.get("/settings", async (req, res) => {
     let defaultHome = "salah";
     let location = "Coimbatore";
     let favoriteEdition = [];
+    let telegramBotToken = "";
+    let telegramChatId = "";
     let favoriteFont = "QPC-Hafs";
     let theme = "light";
     let primaryTranslation = "";
@@ -797,6 +828,8 @@ app.get("/settings", async (req, res) => {
             favoriteEdition = getFavoriteEditions(settings);
         }
         primaryTranslation = getPrimaryEdition(settings) || "";
+        if (settings.telegramBotToken) telegramBotToken = settings.telegramBotToken;
+        if (settings.telegramChatId) telegramChatId = settings.telegramChatId;
     }
 
     // Official Tarteel QUL Font Mapping
@@ -832,6 +865,12 @@ app.get("/settings", async (req, res) => {
         location: location, 
         favoriteFont: favoriteFont,
         theme: theme,
+        telegramBotToken: telegramBotToken,
+        telegramChatId: telegramChatId,
+        tgStatus: Object.prototype.hasOwnProperty.call(ERROR_MESSAGES, req.query.tg || "") ||
+                  req.query.tg === "sent" ? req.query.tg : "",
+        tgFoundChatId: normalizeChatId(req.query.chat || ""),
+        tgMessages: ERROR_MESSAGES,
         tarteelFonts: tarteelFonts,
         reciters: recitersJson, 
         editions: editionsByLanguage
@@ -900,34 +939,75 @@ app.post("/delete-challenge", async function(req, res){
 
 
 app.post('/update-streaks', async (req, res) => {
-    const completed = req.body.completed || []; // array of completed challenge IDs
-    const lastUpdated=new Date(req.body.date);
+    // `completed[]` arrives as an array, but a lone value parses as a string
+    const completed = [].concat(req.body.completed || []).map(String);
+
     const options = { weekday: "long", month: "short", day: "2-digit", year: "numeric" };
+    const lastUpdated = new Date(req.body.date);
+    if (isNaN(lastUpdated.getTime())) {
+        console.error("update-streaks: missing or invalid date", req.body.date);
+        return res.redirect('/challenges');
+    }
     const formattedDate = lastUpdated.toLocaleDateString("en-US", options);
 
-    const allChallenges = await Challenges.find({});
-  
-    for (const challenge of allChallenges) {
-      const isCompleted = completed.includes(challenge._id.toString());
-  
-      if (isCompleted) {
-        // increment streak if completed
-        challenge.currentStreak = (challenge.currentStreak || 0) + 1;
+    let updatedChallenges = [];
 
-        if(challenge.currentStreak > (challenge.maxStreak || 0)) {
-            challenge.maxStreak = challenge.currentStreak;
+    try {
+        const allChallenges = await Challenges.find({});
+
+        for (const challenge of allChallenges) {
+          const isCompleted = completed.includes(challenge._id.toString());
+
+          if (isCompleted) {
+            // increment streak if completed
+            challenge.currentStreak = (challenge.currentStreak || 0) + 1;
+
+            if(challenge.currentStreak > (challenge.maxStreak || 0)) {
+                challenge.maxStreak = challenge.currentStreak;
+            }
+          } else {
+            // reset if not completed
+            challenge.currentStreak = 0;
+          }
+
+          challenge.lastUpdated = formattedDate; // optional: track when it was last updated
+          await challenge.save();
+
+          updatedChallenges.push({
+            id: challenge._id.toString(),
+            name: challenge.challenge,
+            currentStreak: challenge.currentStreak,
+            maxStreak: challenge.maxStreak,
+          });
         }
-      } else {
-        // reset if not completed
-        challenge.currentStreak = 0;
-      }
-  
-      challenge.lastUpdated = formattedDate; // optional: track when it was last updated
-      await challenge.save();
+
+        // Awaited deliberately: on Vercel the function can be frozen once the
+        // response is sent, which would silently drop a fire-and-forget send.
+        // The fetch is timeout-bounded so a slow API cannot stall the redirect.
+        await notifyStreakUpdate({ formattedDate, completed, updatedChallenges });
+    } catch (err) {
+        console.error(err);
     }
-  
+
     res.redirect('/challenges');
 });
+
+async function notifyStreakUpdate({ formattedDate, completed, updatedChallenges }) {
+    const settings = await Settings.findOne().sort({ _id: -1 });
+    if (!settings || !settings.telegramBotToken || !settings.telegramChatId) return;
+
+    const text = buildStreakSummary({
+        date: formattedDate,
+        completed,
+        challenges: updatedChallenges,
+    });
+
+    await sendTelegramMessage({
+        botToken: settings.telegramBotToken,
+        chatId: settings.telegramChatId,
+        text,
+    });
+}
 
 
 app.post("/default-home", function(req,res){
@@ -970,6 +1050,42 @@ app.post("/set-edition", function(req, res){
         });
   });
 
+app.post("/test-telegram", async function(req, res){
+    const redirectTo = pickField(req.body.redirectTo) || '/settings';
+    try {
+        const settings = await Settings.findOne().sort({ _id: -1 });
+        if (!settings || !settings.telegramBotToken || !settings.telegramChatId) {
+            return res.redirect(`${redirectTo}?tg=missing`);
+        }
+        const result = await sendTelegramMessage({
+            botToken: settings.telegramBotToken,
+            chatId: settings.telegramChatId,
+            text: `<b>Salah Tracker</b> — test message\n\nTelegram notifications are connected.`,
+        });
+        res.redirect(`${redirectTo}?tg=${result.sent ? 'sent' : result.code}`);
+    } catch (err) {
+        console.error(err);
+        res.redirect(`${redirectTo}?tg=error`);
+    }
+});
+
+// Reads back the user's most recent message to the bot so they never have to
+// hunt down their own chat id.
+app.post("/telegram-chat-id", async function(req, res){
+    const redirectTo = pickField(req.body.redirectTo) || '/settings';
+    try {
+        const token = normalizeToken(pickField(req.body.telegramBotToken));
+        const result = await findChatId(token);
+        if (!result.chatId) {
+            return res.redirect(`${redirectTo}?tg=${result.code || 'no-messages'}`);
+        }
+        res.redirect(`${redirectTo}?chat=${encodeURIComponent(result.chatId)}`);
+    } catch (err) {
+        console.error(err);
+        res.redirect(`${redirectTo}?tg=error`);
+    }
+});
+
 app.post("/location", function(req, res) {
     const location = req.body.location;
     const redirectTo = req.body.redirectTo;
@@ -1000,7 +1116,17 @@ app.post("/location", function(req, res) {
 
 //  });
 app.post("/settings", function(req, res){
-    const {defaultHome, reciter, edition, font, location, theme, primaryTranslation, redirectTo} = req.body;
+    const body = req.body;
+    const defaultHome = pickField(body.defaultHome);
+    const reciter = pickField(body.reciter);
+    const edition = pickField(body.edition);
+    const font = pickField(body.font);
+    const location = pickField(body.location);
+    const theme = pickField(body.theme);
+    const primaryTranslation = pickField(body.primaryTranslation);
+    const redirectTo = pickField(body.redirectTo);
+    const telegramBotToken = pickField(body.telegramBotToken);
+    const telegramChatId = pickField(body.telegramChatId);
 
     // Parse the JSON string sent from the frontend hidden input
     let parsedEditions = [];
@@ -1011,6 +1137,16 @@ app.post("/settings", function(req, res){
         if (typeof edition === 'string') parsedEditions = [edition];
     }
     parsedEditions = parsedEditions.filter((v) => v && String(v).trim() !== '');
+
+    // Pull the token out of whatever was pasted, and drop the notification
+    // settings if it is unusable. Crucially this must NOT abort the rest of the
+    // save: a bad token should never cost you your theme, reciter or editions.
+    const cleanToken = extractToken(telegramBotToken);
+    const cleanChatId = normalizeChatId(telegramChatId);
+    const telegramRejected = Boolean(cleanToken) && (!isValidToken(cleanToken) || !cleanChatId);
+    if (telegramRejected) {
+        console.error("settings: telegram settings incomplete, saving the rest only");
+    }
 
     let resolvedPrimary = primaryTranslation || '';
     if (resolvedPrimary && !parsedEditions.includes(resolvedPrimary)) {
@@ -1030,12 +1166,15 @@ app.post("/settings", function(req, res){
             primaryTranslation: resolvedPrimary,
             favoriteFont: font,
             location: location,
-            theme: theme || 'light'
+            theme: theme || 'light',
+            telegramBotToken: telegramRejected ? "" : cleanToken,
+            telegramChatId: telegramRejected ? "" : cleanChatId
         }, 
         { sort: { _id: -1 }, upsert: true }
     )
     .then(() => {
-        res.redirect(redirectTo || '/settings');
+        const target = redirectTo || '/settings';
+        res.redirect(telegramRejected ? `${target}?tg=incomplete` : target);
     })
     .catch((err) => {
         console.error(err);
