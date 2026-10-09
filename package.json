@@ -1,9 +1,9 @@
 {
   "name": "track-my-salah",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "api/app.js",
   "engines": {
-    "node": "20.x"
+    "node": "24.x"
   },
   "scripts": {
     "start": "node api/app.js",
@@ -21,9 +21,7 @@
     "express": "^4.22.3",
     "express-session": "^1.19.0",
     "mongoose": "^8.24.4",
-    "node": "^26.9.0",
     "node-fetch": "^2.7.0",
-    "path": "^0.12.7",
     "serverless-http": "^3.2.0"
   },
   "description": "",
