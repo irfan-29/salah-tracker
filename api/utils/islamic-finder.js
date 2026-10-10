@@ -12,6 +12,9 @@ const ISLAMIC_FINDER_HEADERS = {
 async function islamicFinderFetch(url) {
 
     const response = await fetch(url, {
+      // Bounded so a slow upstream degrades into an error page instead of
+      // hanging until the serverless function is killed.
+      timeout: 6000,
       headers: {
         ...ISLAMIC_FINDER_HEADERS
       },

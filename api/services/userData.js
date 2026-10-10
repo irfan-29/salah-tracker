@@ -99,6 +99,24 @@ async function recordSurahRead(req, surahNo) {
   return guest.lastReadSurahs;
 }
 
+// Reading a surah marks progress AND stores playback position. These used to be
+// two separate saves; against a remote Mongo that is ~400ms of dead time, which
+// is the difference between a comfortable page load and a Vercel timeout.
+async function recordSurahReadAndProgress(req, { surahNo, surahName, time }) {
+    if (req.isAuthenticated && req.isAuthenticated()) {
+        req.user.pushLastReadSurah(surahNo);
+        req.user.settings = req.user.settings || {};
+        req.user.settings.audioProgress = { surahNo, surahName, time };
+        await req.user.save();
+        return;
+    }
+    const guest = readGuest(req);
+    const value = String(surahNo);
+    guest.lastReadSurahs = [value, ...guest.lastReadSurahs.filter((n) => n !== value)].slice(0, 5);
+    guest.settings = { ...(guest.settings || {}), audioProgress: { surahNo, surahName, time } };
+    writeGuest(req, res_of(req), guest);
+}
+
 // --- Challenges -------------------------------------------------------------
 
 async function listChallenges(req) {
@@ -251,6 +269,7 @@ module.exports = {
   updateSettings,
   getLastReadSurahs,
   recordSurahRead,
+  recordSurahReadAndProgress,
   listChallenges,
   addChallenge,
   renameChallenge,

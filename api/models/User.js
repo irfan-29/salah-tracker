@@ -63,12 +63,12 @@ userSchema.pre("save", function (next) {
 });
 
 // Surah progress is capped so a long-lived account cannot grow unbounded.
+// Build a plain array: `this.lastReadSurahs` is a Mongoose DocumentArray, whose
+// .filter() returns a plain array that has no .unshift().
 userSchema.methods.pushLastReadSurah = function (surahNo) {
     const value = String(surahNo);
-    this.lastReadSurahs = this.lastReadSurahs
-        .filter((n) => n !== value)
-        .unshift(value)
-        .slice(0, 5);
+    const existing = Array.from(this.lastReadSurahs || []);
+    this.lastReadSurahs = [value, ...existing.filter((n) => String(n) !== value)].slice(0, 5);
 };
 
 module.exports = mongoose.model("User", userSchema);

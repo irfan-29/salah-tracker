@@ -19,6 +19,7 @@ const { passport, requireLogin, attachUser } = require("./middleware/auth.js");
 // fetched surah/prayer payload, which would shadow the service module.
 const userData = require("./services/userData.js");
 const { mergeGuestIntoUser } = require("./utils/guestStore.js");
+const { cachedJson, cachedJsonOrNull } = require("./utils/quranCache.js");
 const User = require("./models/User.js");
 
 
@@ -210,13 +211,10 @@ async function resolveAyahText(entry, edition) {
     const { id, lan, author } = parseEdition(chosen);
 
     try {
-        const [arabicRes, translationRes] = await Promise.all([
-            fetch(`https://quranapi.pages.dev/api/${entry.surahNo}.json`),
-            fetch(`https://cdn.jsdelivr.net/gh/fawazahmed0/quran-api@1/editions/${id}/${entry.surahNo}.json`)
+        const [arabicSurah, translationJson] = await Promise.all([
+            cachedJson(`https://quranapi.pages.dev/api/${entry.surahNo}.json`),
+            cachedJson(`https://cdn.jsdelivr.net/gh/fawazahmed0/quran-api@1/editions/${id}/${entry.surahNo}.json`)
         ]);
-
-        const arabicSurah = await arabicRes.json();
-        const translationJson = await translationRes.json();
         const ayahIndex = entry.ayahNo - 1;
 
         entry.arabicText = arabicSurah.arabic1?.[ayahIndex] || "";
@@ -339,10 +337,14 @@ const SKIP_MIDDLEWARE_URLS = ["/hide-audio"];
       res.locals.theme = settings.theme || 'light';
 
       try {
-        const entry = await AyahOfTheDay.findOne({ date: todayDateKey() });
-        if (entry) {
-          await resolveAyahText(entry, settings.primaryTranslation);
-          res.locals.ayahOfTheDay = entry.toObject();
+        // Surah pages don't render the shared daily-ayah widget, and resolving it
+        // there costs two upstream reads per page view for no benefit.
+        if (!req.path.startsWith("/surah")) {
+          const entry = await AyahOfTheDay.findOne({ date: todayDateKey() });
+          if (entry) {
+            await resolveAyahText(entry, settings.primaryTranslation);
+            res.locals.ayahOfTheDay = entry.toObject();
+          }
         }
       } catch (err) {
         console.error("ayah of the day: lookup failed -", err.message);
@@ -354,18 +356,24 @@ const SKIP_MIDDLEWARE_URLS = ["/hide-audio"];
       }
 
       if (settings.audioProgress && settings.audioProgress.surahNo) {
-         const response = await fetch(
+         const audioSurah = await cachedJsonOrNull(
             `https://quranapi.pages.dev/api/${settings.audioProgress.surahNo}.json`
         );
-        const audioSurah = await response.json();
+         const reciterAudio = audioSurah && audioSurah.audio
+             ? audioSurah.audio[settings.favoriteReciter] || audioSurah.audio[1]
+             : null;
 
-        res.locals.footerAudio = {
-          url: audioSurah.audio[settings.favoriteReciter].originalUrl,
-          surahNo: settings.audioProgress.surahNo,
-          surahName: settings.audioProgress.surahName,
-          reciterName: audioSurah.audio[settings.favoriteReciter].reciter,
-          time: settings.audioProgress.time
-        };
+         if (audioSurah && reciterAudio) {
+           res.locals.footerAudio = {
+             url: reciterAudio.originalUrl,
+             surahNo: settings.audioProgress.surahNo,
+             surahName: settings.audioProgress.surahName,
+             reciterName: reciterAudio.reciter,
+             time: settings.audioProgress.time
+           };
+         } else {
+           res.locals.footerAudio = null;
+         }
       } else {
         res.locals.footerAudio = null;
       }
@@ -395,10 +403,9 @@ const SKIP_MIDDLEWARE_URLS = ["/hide-audio"];
       try {
         const settings = await userData.getSettings(req);
         const reciter = settings.favoriteReciter ? String(settings.favoriteReciter) : "1";
-        const response = await fetch(`https://quranapi.pages.dev/api/${surahNo}.json`);
-        const surah = await response.json();
+        const surah = await cachedJsonOrNull(`https://quranapi.pages.dev/api/${surahNo}.json`);
 
-        if (!surah.audio || !surah.audio[reciter]) {
+        if (!surah || !surah.audio || !surah.audio[reciter]) {
           return res.status(404).json({ error: "Audio not found for reciter" });
         }
 
@@ -553,8 +560,8 @@ app.get("/", async (req, res) => {
 
 
 app.get("/quran", async(req, res) => {
-    const response = await fetch(`https://quranapi.pages.dev/api/surah.json`);
-    const data = await response.json();
+    const data = await cachedJsonOrNull(`https://quranapi.pages.dev/api/surah.json`);
+    if (!data) return res.status(503).send("Could not load the surah index.");
 
     const settings = await userData.getSettings(req);
     const lastReadSurahs = await userData.getLastReadSurahs(req);
@@ -594,7 +601,7 @@ app.get("/quran", async(req, res) => {
 
 
 
-app.get("/surah/:surahNo", async (req, res) => {
+app.get("/surah/:surahNo", async (req, res, next) => {
     const surahNo = parseInt(req.params.surahNo);
     let reciter = 1;
     let favoriteEdition = [];
@@ -613,8 +620,12 @@ app.get("/surah/:surahNo", async (req, res) => {
     const primaryEdition = getPrimaryEdition(settings);
     const primaryTranslationId = primaryEdition ? parseEdition(primaryEdition).id : null;
 
-    const response = await fetch(`https://quranapi.pages.dev/api/${surahNo}.json`);
-    const surah = await response.json();
+    // Cached upstream reads: both sources are static, so re-fetching per request
+    // only burned the serverless invocation budget.
+    const surah = await cachedJsonOrNull(`https://quranapi.pages.dev/api/${surahNo}.json`);
+    if (!surah) {
+        return res.status(503).send("Could not load this surah right now. Please try again.");
+    }
     const surahName = surah.surahName;
 
     const translationData = {};
@@ -625,8 +636,7 @@ app.get("/surah/:surahNo", async (req, res) => {
             const lan = parts[1] || "";
             const author = parts[2] || id;
 
-            return fetch(`https://cdn.jsdelivr.net/gh/fawazahmed0/quran-api@1/editions/${id}/${surahNo}.json`)
-                .then((res) => res.json())
+            return cachedJson(`https://cdn.jsdelivr.net/gh/fawazahmed0/quran-api@1/editions/${id}/${surahNo}.json`)
                 .then((data) => {
                     return { ...data, displayLabel: `${lan} - ${author}` };
                 })
@@ -655,10 +665,13 @@ app.get("/surah/:surahNo", async (req, res) => {
         });
     }
 
-    // Reading a surah counts as progress. Logged in it persists to the account;
-    // anonymous readers get it in the cookie so it merges in on sign-in.
-    await userData.recordSurahRead(req, surahNo);
-    await userData.updateSettings(req, { audioProgress: { surahNo, surahName, time } });
+    // Progress tracking is secondary to showing the surah: if the write fails
+    // the reader still gets the page instead of an error.
+    try {
+        await userData.recordSurahReadAndProgress(req, { surahNo, surahName, time });
+    } catch (err) {
+        console.error("surah: could not record progress -", err.message);
+    }
 
     res.render("surah", {
         surah: surah,
@@ -725,8 +738,7 @@ app.get("/salah-timings", async(req, res)=>{
 
 // Helper function to get current Hijri date
 async function getCurrentHijriDate() {
-    const response = await fetch('https://api.aladhan.com/v1/gToH');
-    const data = await response.json();
+    const data = await cachedJson('https://api.aladhan.com/v1/gToH');
     return {
       hijriMonth: parseInt(data.data.hijri.month.number),
       hijriYear: parseInt(data.data.hijri.year),
@@ -741,19 +753,16 @@ async function getCurrentHijriDate() {
         let hijriYear = parseInt(req.query.year);
 
         if(!hijriMonth){
-            const responseMonth = await fetch(`https://api.aladhan.com/v1/currentIslamicMonth`);
-            const json1 = await responseMonth.json();
+            const json1 = await cachedJson('https://api.aladhan.com/v1/currentIslamicMonth');
             hijriMonth = json1.data;
         }
         if(!hijriYear){
-            const responseYear = await fetch(`https://api.aladhan.com/v1/currentIslamicYear`);
-            const json2 = await responseYear.json();
+            const json2 = await cachedJson('https://api.aladhan.com/v1/currentIslamicYear');
             hijriYear = json2.data;
         }
 
         const apiUrl = `https://api.aladhan.com/v1/hToGCalendar/${hijriMonth}/${hijriYear}`;
-        const response = await fetch(apiUrl);
-        const json = await response.json();
+        const json = await cachedJson(apiUrl);
 
         const hijriMonthName = json.data[0].hijri.month.en;
         const gregorianMonth = json.data[0].gregorian.month.en;
@@ -887,11 +896,8 @@ app.get("/edit-challenge/:id", requireLogin, async function(req, res){
   
 
 app.get("/settings", async (req, res) => {
-    const reciters = await fetch(`https://quranapi.pages.dev/api/reciters.json`);
-    const edition = await fetch('https://cdn.jsdelivr.net/gh/fawazahmed0/quran-api@1/editions.json');
-
-    const recitersJson = await reciters.json();
-    const editionsJson = await edition.json();
+    const recitersJson = await cachedJson("https://quranapi.pages.dev/api/reciters.json");
+    const editionsJson = await cachedJson("https://cdn.jsdelivr.net/gh/fawazahmed0/quran-api@1/editions.json");
 
     const settings = await userData.getSettings(req);
 
