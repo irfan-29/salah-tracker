@@ -36,18 +36,31 @@ mongoose.set({strictQuery: true});
 const MONGO_URI = process.env.MONGO_URI || "mongodb+srv://admin-irfan:Irf6360944@cluster0.jo7etur.mongodb.net/salahDB";
 mongoose.connect(MONGO_URI);
 
-// Cookie + session. Both secrets are required in production: the cookie signs
-// the anonymous guest payload, the session stores the login.
+// Cookie + session secrets. These are REQUIRED in production: without them the
+// session falls back to a shared dev secret, which means every deployment
+// shares one key and anyone can forge a login cookie.
 const COOKIE_SECRET = process.env.COOKIE_SECRET;
 const SESSION_SECRET = process.env.SESSION_SECRET;
+const IS_PRODUCTION = process.env.NODE_ENV === "production";
+
+if ((!COOKIE_SECRET || !SESSION_SECRET) && IS_PRODUCTION) {
+    console.error("FATAL: COOKIE_SECRET and SESSION_SECRET must be set in production.");
+    process.exit(1);
+}
 if (!COOKIE_SECRET || !SESSION_SECRET) {
-    console.warn("WARNING: COOKIE_SECRET and SESSION_SECRET are unset. Falling back to a dev secret - set them in .env before deploying.");
+    console.warn("WARNING: COOKIE_SECRET / SESSION_SECRET unset - using a development fallback. Sessions will not survive a restart.");
 }
 
-app.use(cookieParser(COOKIE_SECRET || "dev-only-insecure-secret"));
+app.use(cookieParser(COOKIE_SECRET));
+
+// REQUIRED behind Vercel/nginx. Without it `req.secure` is false even though the
+// request arrived over HTTPS, and express-session then silently refuses to emit
+// a `secure` cookie - so every login appears to succeed and then bounces the
+// user straight back to a signed-out page.
+app.set("trust proxy", 1);
 
 app.use(session({
-    secret: SESSION_SECRET || "dev-only-insecure-secret",
+    secret: SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
     // Vercel runs each invocation in a fresh container, so the default
@@ -62,9 +75,9 @@ app.use(session({
         maxAge: 30 * 24 * 60 * 60 * 1000,
         httpOnly: true,
         sameSite: "lax",
-        secure: process.env.NODE_ENV === "production",
-        // Trust the proxy so `secure` cookies are set behind Vercel.
-        proxy: true
+        // Only mark Secure when actually served over HTTPS. Behind a proxy this
+        // relies on `app.set("trust proxy", 1)` above to read X-Forwarded-Proto.
+        secure: IS_PRODUCTION ? "auto" : false
     }
 }));
 
