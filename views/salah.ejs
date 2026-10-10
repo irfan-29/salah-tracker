@@ -9,6 +9,23 @@
   <div class="card-header">
     <h3>Log Salah</h3>
   </div>
+
+  <% if (!canManage) { %>
+    <div class="gate-notice">
+      <span class="gate-icon material-symbols-rounded" aria-hidden="true">lock</span>
+      <div class="gate-body">
+        <h2 class="gate-title">Sign in to log your prayers</h2>
+        <p class="gate-text">
+          Recording which prayers you kept is personal, so it needs an account
+          to keep your history safe. Everything else stays open.
+        </p>
+        <div class="gate-actions">
+          <a href="/login" class="btn btn-primary">Sign in to continue</a>
+          <a href="/register" class="btn btn-outline">Create account</a>
+        </div>
+      </div>
+    </div>
+  <% } else { %>
   <form action="/salah" method="post">
     <div class="form-floating">
       <input class="form-control" type="date" required id="date" name="date">
@@ -45,6 +62,7 @@
       <button type="submit" class="btn btn-primary" value="add" name="add">Save Entry</button>
     </div>
   </form>
+  <% } %>
 </div>
 
 <div class="container1">

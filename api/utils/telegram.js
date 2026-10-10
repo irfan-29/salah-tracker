@@ -2,6 +2,16 @@ const fetch = require("node-fetch");
 
 const API_BASE = "https://api.telegram.org";
 
+// One shared bot for the whole app, configured once via the environment. Users
+// never supply a token; they only opt their own chat into receiving from it.
+function appBotToken() {
+  return normalizeToken(process.env.TELEGRAM_BOT_TOKEN);
+}
+
+function botIsConfigured() {
+  return isValidToken(appBotToken());
+}
+
 // Telegram hard-limits a message at 4096 chars; leave room for the ellipsis.
 const MAX_TEXT = 4000;
 
@@ -97,7 +107,7 @@ async function getBotId(token) {
 // Failures are returned, never thrown, so a bad token can never break a streak
 // update or crash the request.
 async function sendTelegramMessage({ botToken, chatId, text }) {
-  const token = normalizeToken(botToken);
+  const token = extractToken(botToken || appBotToken());
   const chat = normalizeChatId(chatId);
 
   if (!token || !chat) {
@@ -129,7 +139,7 @@ async function sendTelegramMessage({ botToken, chatId, text }) {
 // Lets the user discover their chat id without leaving the settings page: they
 // start the bot, then this reads back the most recent message they sent.
 async function findChatId(botToken) {
-  const token = normalizeToken(botToken);
+  const token = extractToken(botToken || appBotToken());
   if (!token) return { chatId: "", code: "bad-token" };
 
   try {
@@ -181,12 +191,13 @@ const ERROR_MESSAGES = {
   "bot-blocked": "You blocked the bot, or it can't message you first. Unblock it and send /start again.",
   "bad-token": "That bot token was rejected. Copy it again from @BotFather.",
   "bad-token-format": "That doesn't look like a bot token. Copy just the single line starting with the digits before the colon — no commas, quotes or extra text.",
-  incomplete: "Your other settings were saved, but Telegram needs both a bot token and a chat ID. Paste the token, tap Start on your bot, then press Find my chat ID.",
+  incomplete: "Your other settings were saved, but Telegram needs a chat ID. Tap Start on the bot, then press Find my chat ID.",
   "bad-format": "The message formatting was rejected. Check the bot token.",
   "too-long": "Your challenge list is too long for one Telegram message.",
   "rate-limited": "Too many requests to Telegram. Wait a few minutes.",
-  "not-configured": "Add your bot token and chat ID first, then save.",
-  "no-messages": "No messages found. Open your bot chat, tap Start (or send any message), then press Find my chat ID again. You can also paste your ID manually — for a private bot chat it equals your own Telegram user ID.",
+  "not-configured": "Add your chat ID first, then save.",
+  "bot-missing": "The app's Telegram bot isn't configured yet. An administrator needs to set TELEGRAM_BOT_TOKEN.",
+  "no-messages": "No messages found. Open the Salah Tracker bot chat, tap Start (or send any message), then press Find my chat ID again.",
   unknown: "Couldn't send. Check your bot token and chat ID.",
   missing: "Add your bot token and chat ID first, then save.",
   error: "Something went wrong sending the message.",
@@ -200,5 +211,7 @@ module.exports = {
   normalizeToken,
   extractToken,
   isValidToken,
+  botIsConfigured,
+  appBotToken,
   ERROR_MESSAGES,
 };

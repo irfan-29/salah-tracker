@@ -5,28 +5,58 @@
   <p>Build habits and track your streaks</p>
 </div>
 
+<% if (canManage) { %>
 <div class="post-actions">
   <a href="/add-challenge" class="btn btn-primary">Add new challenge</a>
 </div>
+<% } %>
+
+<% if (!canManage) { %>
+  <div class="gate-notice">
+    <span class="gate-icon material-symbols-rounded" aria-hidden="true">lock</span>
+    <div class="gate-body">
+      <h2 class="gate-title">Sign in to manage challenges</h2>
+      <p class="gate-text">
+        Adding, editing and deleting challenges needs an account so your streaks
+        are saved to you and not lost. You can still browse everything else.
+      </p>
+      <div class="gate-actions">
+        <a href="/login" class="btn btn-primary">Sign in to continue</a>
+        <a href="/register" class="btn btn-outline">Create account</a>
+      </div>
+    </div>
+  </div>
+<% } %>
 
 <div class="container1">
+  <% if (canManage) { %>
   <form id="streakForm" action="/update-streaks" method="POST">
     <div class="form-floating">
       <input class="form-control" type="date" required id="date" name="date">
       <label for="date">Date</label>
     </div>
   </form>
+  <% } %>
 
   <div class="challenge-list" style="margin-top: 1.25rem;">
     <% if (!keyChallenge || keyChallenge.length === 0) { %>
-      <p class="challenge-empty">No challenges yet. Add one to start a streak.</p>
+      <p class="challenge-empty">
+        <% if (canManage) { %>
+          No challenges yet. Add one to start a streak.
+        <% } else { %>
+          No challenges yet.
+        <% } %>
+      </p>
     <% } %>
     <% keyChallenge.forEach(function(challenge, i) { %>
       <div class="challenge-card" data-challenge-id="<%= challenge._id %>">
+        <% if (canManage) { %>
         <input form="streakForm" type="checkbox" name="completed[]" value="<%= challenge._id %>" id="challenge_<%= i %>">
+        <% } %>
         <div class="challenge-info">
           <div class="challenge-header-row">
             <label for="challenge_<%= i %>" class="challenge-title-label"><strong><%= challenge.challenge %></strong></label>
+            <% if (canManage) { %>
             <div class="challenge-actions">
               <a href="/edit-challenge/<%= challenge._id %>" class="challenge-icon-btn challenge-icon-btn-edit" aria-label="Edit challenge" title="Edit">
                 <span class="material-symbols-rounded" aria-hidden="true">edit</span>
@@ -38,6 +68,7 @@
                 </button>
               </form>
             </div>
+            <% } %>
           </div>
           <div style="margin-top: 0.5rem;">
             <span class="streak-badge">🔥 <%= challenge.currentStreak || 0 %> day streak</span>
@@ -49,7 +80,7 @@
     <% }); %>
   </div>
 
-  <% if (keyChallenge && keyChallenge.length > 0) { %>
+  <% if (canManage && keyChallenge && keyChallenge.length > 0) { %>
   <div class="new-task" style="margin-top: 1.5rem;">
     <button form="streakForm" type="submit" class="btn btn-success">Update Streaks</button>
   </div>
