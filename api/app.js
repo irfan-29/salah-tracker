@@ -1382,7 +1382,12 @@ app.post("/api/qstash/sweep", async function(req, res){
     if (!qstash.isConfigured()) {
         // No QStash settings, so this can only be an unauthenticated caller.
         // Fail closed rather than running a sweep for anyone who finds the URL.
-        return res.status(503).json({ error: "qstash-not-configured" });
+        // Name the missing variables: "QStash is broken" is much harder to
+        // diagnose than the specific one, and a wrong QSTASH_URL looks exactly
+        // like a bad token unless it is called out.
+        const missing = qstash.missingConfig();
+        console.error("qstash sweep: not configured; missing " + missing.join(", "));
+        return res.status(503).json({ error: "qstash-not-configured", missing });
     }
 
     const valid = await qstash.verify({

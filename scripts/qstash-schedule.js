@@ -17,21 +17,13 @@ require("dotenv").config();
 
 const qstash = require("../api/utils/qstash.js");
 
-const REQUIRED = {
-    QSTASH_TOKEN: "QStash REST API token (console.upstash.com/qstash)",
-    QSTASH_CURRENT_SIGNING_KEY: "current signing key",
-    QSTASH_NEXT_SIGNING_KEY: "next signing key",
-    QSTASH_APP_URL: "public base URL, e.g. https://your-app.vercel.app",
-};
-
 function checkConfig() {
-    const missing = Object.entries(REQUIRED)
-        .filter(([key]) => !process.env[key])
-        .map(([key, desc]) => `  ${key.padEnd(28)} ${desc}`);
+    const missing = qstash.missingConfig();
 
     if (missing.length) {
-        console.error("Missing environment variables:\n" + missing.join("\n"));
-        console.error("\nCopy them from console.upstash.com/qstash into .env");
+        console.error("Missing environment variables:\n" + missing.map((m) => "  " + m).join("\n"));
+        console.error("\nCopy the .env block from https://console.upstash.com/qstash into .env");
+        console.error("QSTASH_URL must match your region - the token only works against it.");
         process.exit(1);
     }
 }

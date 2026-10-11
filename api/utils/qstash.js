@@ -54,6 +54,15 @@ const SCHEDULE_NAME = "salah-notify-sweep";
 let receiver;
 let client;
 
+// QStash's console gives a per-region QSTASH_URL (e.g.
+// https://qstash-us-east-1.upstash.io). The SDK falls back to the global
+// https://qstash.upstash.io when that is unset - which accepts the request and
+// then rejects it, because the token belongs to a regional instance. Passing it
+// explicitly turns a confusing runtime auth failure into a startup check.
+function baseUrl() {
+    return (process.env.QSTASH_URL || "").replace(/\/+$/, "");
+}
+
 function token() {
     return process.env.QSTASH_TOKEN || "";
 }
@@ -68,9 +77,25 @@ function receiverConfig() {
 function isConfigured() {
     return Boolean(
         token() &&
+        baseUrl() &&
         process.env.QSTASH_CURRENT_SIGNING_KEY &&
         process.env.QSTASH_APP_URL
     );
+}
+
+// Environment variables missing for the QStash feature to work at all. Reported
+// together so a half-configured deploy is obvious in one place.
+function missingConfig() {
+    const required = {
+        QSTASH_TOKEN: "QStash REST API token",
+        QSTASH_URL: "QStash API URL, e.g. https://qstash-us-east-1.upstash.io",
+        QSTASH_CURRENT_SIGNING_KEY: "current signing key",
+        QSTASH_NEXT_SIGNING_KEY: "next signing key",
+        QSTASH_APP_URL: "public base URL of this app",
+    };
+    return Object.entries(required)
+        .filter(([key]) => !process.env[key])
+        .map(([key, desc]) => `${key} (${desc})`);
 }
 
 function getReceiver() {
@@ -79,7 +104,7 @@ function getReceiver() {
 }
 
 function getClient() {
-    if (!client) client = new Client({ token: token() });
+    if (!client) client = new Client({ token: token(), baseUrl: baseUrl() });
     return client;
 }
 
@@ -181,8 +206,10 @@ module.exports = {
     SWEEP_RETRIES,
     SCHEDULE_NAME,
     isConfigured,
+    missingConfig,
     verify,
     sweepUrl,
+    baseUrl,
     listSchedules,
     findSchedule,
     ensureSchedule,
