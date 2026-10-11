@@ -136,28 +136,54 @@ async function sendTelegramMessage({ botToken, chatId, text }) {
   }
 }
 
-// Lets the user discover their chat id without leaving the settings page: they
-// start the bot, then this reads back the most recent message they sent.
-async function findChatId(botToken) {
+// A short, human-typeable code that ties one Telegram chat to one account.
+function makeVerifyCode() {
+  // Avoid ambiguous characters (0/O, 1/I/l) so it survives being typed on a phone.
+  const alphabet = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
+  let code = "";
+  for (let i = 0; i < 6; i++) {
+    code += alphabet[Math.floor(Math.random() * alphabet.length)];
+  }
+  return code;
+}
+
+// Claim a chat for an account.
+//
+// `getUpdates` returns updates for EVERY user of the shared bot, so simply
+// taking the newest message would let one account bind another person's chat and
+// then receive their prayer logs. Instead the user sends a unique code to the
+// bot and we only accept a chat whose message text matches that code.
+//
+// offset:-1 asks Telegram for the single newest update and confirms everything
+// before it, which keeps the queue from growing without bound. If two people
+// activate at the same instant the loser simply retries - no data can be
+// mis-attributed, because the code must match.
+async function claimChatByCode(botToken, code) {
   const token = extractToken(botToken || appBotToken());
   if (!token) return { chatId: "", code: "bad-token" };
+  if (!code) return { chatId: "", code: "no-code" };
 
   try {
     const updates = await telegramRequest(token, "getUpdates", {
-      limit: 100,
+      offset: -1,
+      limit: 1,
       allowed_updates: ["message"],
     });
 
-    const chats = (updates || [])
-      .map((u) => u.message || u.channel_post)
-      .filter(Boolean);
+    const message = updates && updates[0] && updates[0].message;
+    if (!message || !message.chat) return { chatId: "", code: "no-messages" };
 
-    if (!chats.length) return { chatId: "", code: "no-messages" };
+    const text = String(message.text || "").trim().toUpperCase();
+    if (text !== String(code).trim().toUpperCase()) {
+      // Someone else's activation is sitting at the head of the queue. Not an
+      // error - tell them to send their own code and try again.
+      return { chatId: "", code: "code-mismatch" };
+    }
 
-    const last = chats[chats.length - 1];
     return {
-      chatId: String(last.chat.id),
-      name: [last.chat.first_name, last.chat.last_name].filter(Boolean).join(" "),
+      chatId: String(message.chat.id),
+      name: [message.chat.first_name, message.chat.last_name].filter(Boolean).join(" "),
+      username: message.chat.username || "",
     };
   } catch (err) {
     console.error("telegram: getUpdates failed -", err.message);
@@ -197,7 +223,9 @@ const ERROR_MESSAGES = {
   "rate-limited": "Too many requests to Telegram. Wait a few minutes.",
   "not-configured": "Add your chat ID first, then save.",
   "bot-missing": "The app's Telegram bot isn't configured yet. An administrator needs to set TELEGRAM_BOT_TOKEN.",
-  "no-messages": "No messages found. Open the Salah Tracker bot chat, tap Start (or send any message), then press Find my chat ID again.",
+  "no-messages": "No message found. Send your setup code to the bot, then press Connect again.",
+  "no-code": "Generate a setup code first.",
+  "code-mismatch": "That wasn't your code. Send your own setup code to the bot, then press Connect again.",
   unknown: "Couldn't send. Check your bot token and chat ID.",
   missing: "Add your bot token and chat ID first, then save.",
   error: "Something went wrong sending the message.",
@@ -205,7 +233,8 @@ const ERROR_MESSAGES = {
 
 module.exports = {
   sendTelegramMessage,
-  findChatId,
+  claimChatByCode,
+  makeVerifyCode,
   buildStreakSummary,
   normalizeChatId,
   normalizeToken,

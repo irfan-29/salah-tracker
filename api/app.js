@@ -13,7 +13,7 @@ const { MongoStore } = require("connect-mongo");
 
 // internal
 const { islamicFinderFetch } = require("../api/utils/islamic-finder.js");
-const { sendTelegramMessage, findChatId, buildStreakSummary, normalizeChatId, normalizeToken, extractToken, isValidToken, botIsConfigured, ERROR_MESSAGES } = require("../api/utils/telegram.js");
+const { sendTelegramMessage, claimChatByCode, makeVerifyCode, buildStreakSummary, normalizeChatId, normalizeToken, extractToken, isValidToken, botIsConfigured, ERROR_MESSAGES } = require("../api/utils/telegram.js");
 const { passport, requireLogin, attachUser } = require("./middleware/auth.js");
 // Named `userData` rather than `data`: several routes bind a local `data` to a
 // fetched surah/prayer payload, which would shadow the service module.
@@ -950,6 +950,7 @@ app.get("/settings", async (req, res) => {
         theme: theme,
         telegramChatId: telegramChatId,
         botConfigured: botIsConfigured(),
+        tgSetupCode: (req.session && req.session.tgVerifyCode) || "",
         tgStatus: Object.prototype.hasOwnProperty.call(ERROR_MESSAGES, req.query.tg || "") ||
                   req.query.tg === "sent" ? req.query.tg : "",
         tgFoundChatId: normalizeChatId(req.query.chat || ""),
@@ -1213,16 +1214,39 @@ app.post("/test-telegram", async function(req, res){
 
 // Reads back the user's most recent message to the bot so they never have to
 // hunt down their own chat id.
-app.post("/telegram-chat-id", async function(req, res){
+// Step 1: issue a setup code. It lives in the session (not the account) so it
+// expires with the login and never becomes a long-lived shared secret.
+app.post("/telegram-setup-code", function(req, res){
+    const redirectTo = pickField(req.body.redirectTo) || '/settings';
+    if (!botIsConfigured()) return res.redirect(`${redirectTo}?tg=bot-missing`);
+    req.session.tgVerifyCode = makeVerifyCode();
+    req.session.tgVerifyCodeAt = Date.now();
+    res.redirect(`${redirectTo}?tg=code`);
+});
+
+// Step 2: the user has sent that code to the bot, so bind their chat to their
+// account. Matching on the code is what keeps multiple users apart.
+app.post("/telegram-chat-id", requireLogin, async function(req, res){
     const redirectTo = pickField(req.body.redirectTo) || '/settings';
     try {
         if (!botIsConfigured()) return res.redirect(`${redirectTo}?tg=bot-missing`);
-        const result = await findChatId();
+
+        const code = req.session.tgVerifyCode;
+        const issuedAt = req.session.tgVerifyCodeAt || 0;
+        if (!code || Date.now() - issuedAt > 15 * 60 * 1000) {
+            return res.redirect(`${redirectTo}?tg=no-code`);
+        }
+
+        const result = await claimChatByCode(undefined, code);
         if (!result.chatId) {
             return res.redirect(`${redirectTo}?tg=${result.code || 'no-messages'}`);
         }
-        // Remember it so the user doesn't have to re-discover it next session.
+
         await userData.setTelegramChatId(req, result.chatId);
+        // One-shot: clear it so a stale code can't rebind someone later.
+        delete req.session.tgVerifyCode;
+        delete req.session.tgVerifyCodeAt;
+
         res.redirect(`${redirectTo}?chat=${encodeURIComponent(result.chatId)}`);
     } catch (err) {
         console.error(err);

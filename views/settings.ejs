@@ -137,9 +137,10 @@
     <div class="form-section-title">Telegram Notifications</div>
     <p class="form-section-hint">
       Get a summary on Telegram each time you update your streaks.
-      <strong>1.</strong> Open <a href="https://t.me/SalahTracker_UMI_Bot" target="_blank" rel="noopener">the Salah Tracker bot</a>
-      and tap <strong>Start</strong>.
-      <strong>2.</strong> Press <strong>Find my chat ID</strong> below &mdash; it fills in the field for you.
+      <strong>1.</strong> Open <a href="https://t.me/SalahTracker_UMI_Bot" target="_blank" rel="noopener">the Salah Tracker bot</a>.
+      <strong>2.</strong> Press <strong>Get setup code</strong> below.
+      <strong>3.</strong> Send that code to the bot.
+      <strong>4.</strong> Press <strong>Connect</strong>.
     </p>
 
     <% if (typeof botConfigured !== 'undefined' && !botConfigured) { %>
@@ -159,7 +160,15 @@
     <% if (typeof tgFoundChatId !== 'undefined' && tgFoundChatId) { %>
       <div class="wa-status wa-status-ok">
         <span class="material-symbols-rounded">check_circle</span>
-        Found chat ID <strong><%= tgFoundChatId %></strong> &mdash; it's filled in below. Save to keep it.
+        Connected to chat <strong><%= tgFoundChatId %></strong> &mdash; it's filled in below. Save to keep it.
+      </div>
+    <% } %>
+
+    <% if (typeof tgSetupCode !== 'undefined' && tgSetupCode) { %>
+      <div class="wa-status wa-status-ok">
+        <span class="material-symbols-rounded">key</span>
+        Send this code to the bot, then press Connect:
+        <strong class="tg-code"><%= tgSetupCode %></strong>
       </div>
     <% } %>
 
@@ -174,11 +183,19 @@
     </div>
   </form>
 
+  <form action="/telegram-setup-code" method="POST" class="wa-test-form">
+    <input type="hidden" name="redirectTo" value="/settings">
+    <button type="submit" class="btn btn-outline">
+      <span class="material-symbols-rounded">key</span>
+      Get setup code
+    </button>
+  </form>
+
   <form action="/telegram-chat-id" method="POST" class="wa-test-form">
     <input type="hidden" name="redirectTo" value="/settings">
     <button type="submit" class="btn btn-outline">
-      <span class="material-symbols-rounded">search</span>
-      Find my chat ID
+      <span class="material-symbols-rounded">link</span>
+      Connect
     </button>
   </form>
 
