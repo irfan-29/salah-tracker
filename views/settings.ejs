@@ -171,8 +171,10 @@
       </div>
     <% } %>
 
-    <% if (tgPrefs.enabled && !tgPrefs.chatId) { %>
-      <!-- Enabled but not connected yet: show the setup steps. -->
+    <%# Both panels are always rendered and shown/hidden by script, so flipping
+        the switch reveals the right fields immediately instead of waiting for a
+        Save + reload round trip. %>
+    <div class="tg-panel" data-tg-panel="setup" <%= (tgPrefs.enabled && !tgPrefs.chatId) ? '' : 'hidden' %>>
       <div class="tg-steps">
         <div class="tg-step"><span class="tg-step-n">1</span>
           <span>Open <a href="https://t.me/SalahTracker_UMI_Bot" target="_blank" rel="noopener">the Salah Tracker bot</a> in Telegram.</span>
@@ -192,9 +194,9 @@
           <strong class="tg-code"><%= tgSetupCode %></strong>
         </div>
       <% } %>
-    <% } %>
+    </div>
 
-    <% if (tgPrefs.enabled && tgPrefs.chatId) { %>
+    <div class="tg-panel" data-tg-panel="modules" <%= (tgPrefs.enabled && tgPrefs.chatId) ? '' : 'hidden' %>>
       <div class="wa-status wa-status-ok">
         <span class="material-symbols-rounded">check_circle</span>
         Connected to chat <strong><%= tgPrefs.chatId %></strong>.
@@ -253,12 +255,11 @@
                   title="Send today's Salah timings now">
             <span class="material-symbols-rounded">send</span>Send now
           </button>
-          <% if (tgPrefs.events.salahTimings) { %>
-          <div class="form-floating tg-time">
+          <div class="form-floating tg-time" data-tg-time-for="tgEventSalahTimings"
+               <%= tgPrefs.events.salahTimings ? '' : 'hidden' %>>
             <input class="form-control" type="time" id="tgSalahTime" name="tgSalahTime" value="<%= tgPrefs.times.salahTimings %>">
             <label for="tgSalahTime">Send at</label>
           </div>
-          <% } %>
         </div>
 
         <div class="tg-module">
@@ -271,12 +272,11 @@
                   title="Send today's Ayah of the day now">
             <span class="material-symbols-rounded">send</span>Send now
           </button>
-          <% if (tgPrefs.events.ayahOfTheDay) { %>
-          <div class="form-floating tg-time">
+          <div class="form-floating tg-time" data-tg-time-for="tgEventAyah"
+               <%= tgPrefs.events.ayahOfTheDay ? '' : 'hidden' %>>
             <input class="form-control" type="time" id="tgAyahTime" name="tgAyahTime" value="<%= tgPrefs.times.ayahOfTheDay %>">
             <label for="tgAyahTime">Send at</label>
           </div>
-          <% } %>
         </div>
       </div>
 
@@ -284,7 +284,7 @@
         Times are in your own timezone (<%= tgPrefs.timezone %>). A message is sent
         the first time you open the app after its time.
       </p>
-    <% } %>
+    </div>
 
     <input type="hidden" id="tgTimezoneField" name="tgTimezone" value="<%= tgPrefs.timezone %>">
     <% } %>
@@ -294,11 +294,10 @@
     </div>
   </form>
 
-  <%# Everything below is connection state, so it only exists once notifications
-      are actually switched on. %>
-  <% if (isLoggedIn && tgPrefs.enabled) { %>
-    <% if (!tgPrefs.chatId) { %>
-    <div class="wa-test-form">
+  <%# Connection controls track the same switch, so they appear the moment it is
+      flipped rather than after a save. %>
+  <% if (isLoggedIn) { %>
+    <div class="wa-test-form tg-panel" data-tg-panel="connect" <%= tgPrefs.enabled && !tgPrefs.chatId ? '' : 'hidden' %>>
       <form action="/telegram-setup-code" method="POST" style="display:inline">
         <input type="hidden" name="redirectTo" value="/settings">
         <button type="submit" class="btn btn-primary">
@@ -314,12 +313,48 @@
         </button>
       </form>
     </div>
-    <% } %>
   <% } %>
 </div>
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+  // --- Telegram notification panel -----------------------------------------
+  // The panels are rendered server-side but toggled here, so switching the
+  // master toggle reveals the right fields immediately instead of waiting for
+  // a Save + full page reload.
+  const tgToggle = document.querySelector('input[name="tgEnabled"]');
+  const connected = <%= tgPrefs.chatId ? 'true' : 'false' %>;
+
+  function setPanel(name, show) {
+    document.querySelectorAll('[data-tg-panel="' + name + '"]').forEach(function (el) {
+      el.hidden = !show;
+    });
+  }
+
+  function syncTgPanels() {
+    const on = tgToggle ? tgToggle.checked : false;
+    setPanel('setup', on && !connected);
+    setPanel('connect', on && !connected);
+    setPanel('modules', on && connected);
+  }
+
+  // A module's own time field follows that module's checkbox.
+  function syncTgTimes() {
+    document.querySelectorAll('[data-tg-time-for]').forEach(function (field) {
+      const box = document.querySelector('input[name="' + field.getAttribute('data-tg-time-for') + '"]');
+      field.hidden = !(box && box.checked);
+    });
+  }
+
+  if (tgToggle) {
+    tgToggle.addEventListener('change', function () { syncTgPanels(); });
+    syncTgPanels();
+  }
+  document.querySelectorAll('.tg-modules input[type="checkbox"]').forEach(function (box) {
+    box.addEventListener('change', syncTgTimes);
+  });
+  syncTgTimes();
+
   // Delivery times are stored in the visitor's own timezone, but the server has
   // no way to know it - so read it from the browser and submit it with the form.
   const tzField = document.getElementById('tgTimezoneField');
