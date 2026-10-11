@@ -9,12 +9,16 @@
     "start": "node api/app.js",
     "dev": "nodemon api/app.js",
     "build": "echo success",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "qstash:schedule": "node scripts/qstash-schedule.js",
+    "qstash:schedule": "node scripts/qstash-schedule.js"
   },
   "keywords": [],
   "author": "Mohammed Irfan U",
   "license": "ISC",
   "dependencies": {
+    "@upstash/qstash": "^2.12.0",
+    "@upstash/redis": "^1.39.0",
     "body-parser": "^1.20.8",
     "cheerio": "^1.2.0",
     "connect-mongo": "^6.0.0",

@@ -7,14 +7,20 @@
 //
 //   * Every time the app is loaded we run the check for that user, so a message
 //     lands the first time they open the app after their chosen time. This works
-//     on every Vercel plan including Hobby, for free.
+//     on every Vercel plan including Hobby, for free, and costs nothing.
 //
-//   * If exact delivery matters, point a cron job at /api/due-notifications
-//     (Pro allows once-per-minute). The same check runs there, so the outcome is
-//     identical - only the latency changes.
+//   * A QStash schedule calls sweepAllUsers() on a fixed interval, so reminders
+//     arrive even if nobody opens the app. This is the path that makes scheduled
+//     delivery actually happen - see api/utils/qstash.js, and note it bills per
+//     message, so the interval is a cost decision.
+//
+// The same isDue() check runs on both paths, so the outcome is identical; only
+// the latency differs.
 //
 // The per-day `lastSent` stamp is what stops a user receiving the same digest
-// on every page load.
+// on every page load. It is written only after a message is actually delivered,
+// so a transient Telegram failure is retried on the next check instead of being
+// silently lost.
 
 const User = require("../models/User.js");
 const AyahOfTheDay = require("../models/AyahOfTheDay.js");

@@ -22,6 +22,7 @@ const { mergeGuestIntoUser } = require("./utils/guestStore.js");
 const { cachedJson, cachedJsonOrNull } = require("./utils/quranCache.js");
 const notify = require("./services/notifications.js");
 const scheduler = require("./services/notifyScheduler.js");
+const qstash = require("./utils/qstash.js");
 const User = require("./models/User.js");
 
 
@@ -29,7 +30,14 @@ const User = require("./models/User.js");
 const app=express();
 
 app.set('view engine', 'ejs');
-app.use(express.json());
+// QStash signs the raw request body, so keep an untouched copy. Without this the
+// signature cannot be verified: re-serialising the parsed JSON does not reproduce
+// the exact bytes that were signed.
+app.use(express.json({
+    verify(req, res, buf) {
+        req.rawBody = buf && buf.length ? buf.toString("utf8") : "";
+    }
+}));
 app.use(bodyParser.urlencoded({extended: true}));
 // app.use(express.static("public"));
 app.use(express.static(path.join(__dirname, "../public")));
@@ -1349,26 +1357,35 @@ app.get("/api/due-notifications", async function(req, res){
     }
 });
 
-// Cron entry point. Protected by a shared token because a public sweep would let
-// anyone trigger sends for every subscriber.
-app.get("/api/due-notifications/sweep", async function(req, res){
-    const expected = process.env.CRON_SECRET;
-    const provided = req.query.key || (req.get("authorization") || "").replace(/^Bearer\s+/i, "");
+// QStash schedule entry point. Replaces the old shared-secret sweep: the request
+// is only accepted when its Upstash-Signature checks out against the raw body,
+// so nobody can trigger sends for every subscriber.
+//
+// This does NOT re-publish itself. The next tick is a QStash schedule, which
+// cannot fork into duplicate chains - see api/utils/qstash.js for why that
+// matters to cost.
+app.post("/api/qstash/sweep", async function(req, res){
+    if (!qstash.isConfigured()) {
+        // No QStash settings, so this can only be an unauthenticated caller.
+        // Fail closed rather than running a sweep for anyone who finds the URL.
+        return res.status(503).json({ error: "qstash-not-configured" });
+    }
 
-    if (!expected) {
-        // Fail closed. Without a secret this endpoint would let anyone trigger a
-        // send for every subscriber, so refuse rather than run wide open.
-        console.error("sweep: CRON_SECRET is not set - refusing to run.");
-        return res.status(503).json({ error: "cron-not-configured" });
+    const valid = await qstash.verify({
+        signature: req.get("upstash-signature"),
+        body: req.rawBody
+    });
+    if (!valid) {
+        return res.status(401).json({ error: "invalid-signature" });
     }
-    if (provided !== expected) {
-        return res.status(401).json({ error: "unauthorised" });
-    }
+
     try {
         const result = await scheduler.sweepAllUsers();
         res.json({ ok: true, ...result });
     } catch (err) {
-        console.error("sweep:", err.message);
+        // 5xx so QStash makes its one bounded retry rather than dropping the
+        // tick - a missed window means a missed reminder.
+        console.error("qstash sweep:", err.message);
         res.status(500).json({ error: "failed" });
     }
 });
