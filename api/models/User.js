@@ -57,15 +57,17 @@ const userSchema = new mongoose.Schema({
             ayahOfTheDay: { type: Boolean, default: true }
         },
         times: {
-            // HH:MM in the user's timezone.
+            // HH:MM in the user's timezone. Only the two daily, time-based
+            // modules take a time; challenges / salah log / new post are
+            // event-driven and fire the moment the action happens.
             ayahOfTheDay: { type: String, default: "05:30" },
-            dailyDigest: { type: String, default: "20:00" }
+            salahTimings: { type: String, default: "05:00" }
         },
         // Date keys ("YYYY-MM-DD") of the last time each scheduled event fired,
         // so a due-check never sends the same day's message twice.
         lastSent: {
             ayahOfTheDay: String,
-            dailyDigest: String
+            salahTimings: String
         }
     },
     claimsMigratedAt: Date

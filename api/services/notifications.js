@@ -15,7 +15,9 @@ const { sendTelegramMessage, buildStreakSummary } = require("../utils/telegram.j
 const { cachedJsonOrNull } = require("../utils/quranCache.js");
 
 const EVENT_KEYS = ["challenges", "salahTracker", "newPost", "salahTimings", "ayahOfTheDay"];
-const SCHEDULED_KEYS = ["ayahOfTheDay", "dailyDigest"];
+// Only these two are time-based. The rest fire from the request that caused
+// them, so a clock time would be meaningless for them.
+const SCHEDULED_KEYS = ["ayahOfTheDay", "salahTimings"];
 const DEFAULT_TZ = "UTC";
 
 // --- Time helpers -----------------------------------------------------------
@@ -70,7 +72,7 @@ function telegramPrefs(user) {
         events: Object.fromEntries(EVENT_KEYS.map((k) => [k, Boolean(events[k])])),
         times: {
             ayahOfTheDay: normaliseHhMm(tg.times && tg.times.ayahOfTheDay, "05:30"),
-            dailyDigest: normaliseHhMm(tg.times && tg.times.dailyDigest, "20:00")
+            salahTimings: normaliseHhMm(tg.times && tg.times.salahTimings, "05:00")
         },
         lastSent: tg.lastSent || {}
     };
@@ -96,17 +98,26 @@ function escapeHtml(str) {
 async function buildSalahTimingsMessage(user) {
     const location = (user.settings && user.settings.location) || "Coimbatore";
     try {
-        const data = await cachedJsonOrNull(
-            "https://api.aladhan.com/v1/timingsByCity?city=" +
-            encodeURIComponent(location) + "&method=2"
-        );
+        // timingsByAddress is the one that reliably answers for an Indian city
+        // name; timingsByCity returns 400 for Salem/Coimbatore. It answers with a
+        // 302, so the cache has to follow redirects.
+        const url =
+            "https://api.aladhan.com/v1/timingsByAddress?address=" +
+            encodeURIComponent(`${location}, India`) + "&method=2";
+        const data = await cachedJsonOrNull(url, { followRedirects: true });
         if (!data || !data.data || !data.data.timings) return null;
 
         const t = data.data.timings;
         const hijri = (data.data.date && data.data.date.hijri) || {};
+        const hijriLabel = [
+            String(hijri.day || "").trim(),
+            (hijri.month && (hijri.month.en || hijri.month.number)) || "",
+            hijri.year || "",
+        ].filter(Boolean).join(" ");
+
         const lines = [
             `<b>Salah Tracker</b> — ${escapeHtml(location)}`,
-            `Today, ${escapeHtml(String(hijri.day || "").trim() + " " + (hijri.month && (hijri.month.en || hijri.month.number) || ""))}`,
+            `Today, ${escapeHtml(hijriLabel)}`,
             ""
         ];
         const rows = [
@@ -114,7 +125,9 @@ async function buildSalahTimingsMessage(user) {
             ["Asr", t.Asr], ["Maghrib", t.Maghrib], ["Isha", t.Isha]
         ];
         for (const [label, value] of rows) {
-            if (value) lines.push(`${label}: ${escapeHtml(String(value).split(" ")[0])}`);
+            // Aladhan returns "05:08 (IST)" - keep just the clock time.
+            const clock = String(value || "").split(" ")[0];
+            if (/^\d{1,2}:\d{2}$/.test(clock)) lines.push(`${label}: ${escapeHtml(clock)}`);
         }
         return lines.join("\n");
     } catch (err) {
@@ -160,32 +173,6 @@ function buildNewPostMessage(post) {
     }
     if (post.reference) lines.push("", `<i>${escapeHtml(post.reference)}</i>`);
     if (post.authorName) lines.push("", `— ${escapeHtml(post.authorName)}`);
-    return lines.join("\n");
-}
-
-function buildDigestMessage(user, ctx) {
-    const prefs = telegramPrefs(user);
-    const dateLabel = ctx.dateLabel;
-    const lines = [`<b>Salah Tracker</b> — daily digest`, escapeHtml(dateLabel), ""];
-
-    if (ctx.ayah) {
-        lines.push(`<b>Ayah of the day</b> (${escapeHtml(ctx.ayah.surahName || ("Surah " + ctx.ayah.surahNo))} ${ctx.ayah.ayahNo})`);
-        if (ctx.ayah.arabicText) lines.push(escapeHtml(ctx.ayah.arabicText));
-        if (ctx.ayah.translationText) lines.push(`<i>${escapeHtml(ctx.ayah.translationText)}</i>`);
-        lines.push("");
-    }
-
-    if (prefs.events.salahTracker) {
-        lines.push(`<b>Salah</b>`);
-        lines.push(escapeHtml(ctx.salahSummary || "No salah logged today."));
-        lines.push("");
-    }
-
-    if (prefs.events.challenges && ctx.challengeSummary) {
-        lines.push(`<b>Challenges</b>`);
-        lines.push(escapeHtml(ctx.challengeSummary));
-    }
-
     return lines.join("\n");
 }
 
@@ -237,7 +224,6 @@ module.exports = {
     buildSalahTimingsMessage,
     buildSalahLogMessage,
     buildNewPostMessage,
-    buildDigestMessage,
     summariseChallenges,
     deliver,
     safeDeliver,

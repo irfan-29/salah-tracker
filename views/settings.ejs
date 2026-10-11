@@ -136,25 +136,31 @@
 
     <div class="form-section-title">Telegram Notifications</div>
 
+    <div class="tg-row tg-row-head">
+      <div>
+        <div class="tg-title">Telegram notifications</div>
+        <div class="tg-sub">Daily reminders and streak summaries</div>
+      </div>
+      <% if (isLoggedIn) { %>
+      <label class="tg-switch">
+        <input type="checkbox" name="tgEnabled" <%= tgPrefs.enabled ? 'checked' : '' %>>
+        <span class="tg-slider"></span>
+      </label>
+      <% } else { %>
+      <!-- Signed out: only the switch is unavailable. The label stays readable so
+           the feature is discoverable rather than hidden. -->
+      <label class="tg-switch tg-switch-locked" aria-disabled="true" title="Sign in to enable">
+        <input type="checkbox" disabled>
+        <span class="tg-slider"></span>
+        <span class="tg-lock-dot material-symbols-rounded" aria-hidden="true">lock</span>
+      </label>
+      <% } %>
+    </div>
+
     <% if (!isLoggedIn) { %>
-      <!-- Locked: blur the panel so it reads as unavailable, and explain why. -->
-      <div class="tg-locked">
-        <div class="tg-locked-inner">
-          <div class="tg-row tg-row-head">
-            <div>
-              <div class="tg-title">Telegram notifications</div>
-              <div class="tg-sub">Daily reminders and streak summaries</div>
-            </div>
-            <label class="tg-switch" aria-disabled="true">
-              <input type="checkbox" disabled>
-              <span class="tg-slider"></span>
-            </label>
-          </div>
-          <div class="tg-locked-note">
-            <span class="material-symbols-rounded">lock</span>
-            Sign in to turn on Telegram notifications.
-          </div>
-        </div>
+      <div class="tg-locked-note">
+        <span class="material-symbols-rounded">lock</span>
+        <a href="/login">Sign in</a> to turn on Telegram notifications.
       </div>
     <% } else { %>
 
@@ -164,17 +170,6 @@
         Notifications are off: the app's Telegram bot isn't configured on the server yet.
       </div>
     <% } %>
-
-    <div class="tg-row tg-row-head">
-      <div>
-        <div class="tg-title">Telegram notifications</div>
-        <div class="tg-sub">Daily reminders and streak summaries</div>
-      </div>
-      <label class="tg-switch">
-        <input type="checkbox" name="tgEnabled" <%= tgPrefs.enabled ? 'checked' : '' %>>
-        <span class="tg-slider"></span>
-      </label>
-    </div>
 
     <% if (tgPrefs.enabled && !tgPrefs.chatId) { %>
       <!-- Enabled but not connected yet: show the setup steps. -->
@@ -229,7 +224,7 @@
         <label class="tg-row">
           <input type="checkbox" name="tgEventSalahTimings" <%= tgPrefs.events.salahTimings ? 'checked' : '' %>>
           <span class="tg-check material-symbols-rounded" aria-hidden="true"></span>
-          <span><strong>Salah timings</strong><em>Included in your daily digest</em></span>
+          <span><strong>Salah timings</strong><em>Sent once a day</em></span>
         </label>
 
         <label class="tg-row">
@@ -239,63 +234,66 @@
         </label>
       </div>
 
-      <div class="tg-title tg-title-sm">Delivery times</div>
-      <p class="form-section-hint">
-        Times are in your own timezone (<%= tgPrefs.timezone %>).
-        A message is sent the first time you open the app after its time.
-      </p>
+      <%# A time only makes sense for the two daily modules. The other three fire
+          the instant the action happens, so asking for a clock time would mislead. %>
+      <% if (tgPrefs.events.salahTimings) { %>
+      <div class="form-floating">
+        <input class="form-control" type="time" id="tgSalahTime" name="tgSalahTime" value="<%= tgPrefs.times.salahTimings %>">
+        <label for="tgSalahTime">Send salah timings at</label>
+      </div>
+      <% } %>
 
+      <% if (tgPrefs.events.ayahOfTheDay) { %>
       <div class="form-floating">
         <input class="form-control" type="time" id="tgAyahTime" name="tgAyahTime" value="<%= tgPrefs.times.ayahOfTheDay %>">
-        <label for="tgAyahTime">Ayah of the day</label>
+        <label for="tgAyahTime">Send ayah of the day at</label>
       </div>
+      <% } %>
 
-      <div class="form-floating">
-        <input class="form-control" type="time" id="tgDigestTime" name="tgDigestTime" value="<%= tgPrefs.times.dailyDigest %>">
-        <label for="tgDigestTime">Daily digest</label>
-      </div>
+      <p class="form-section-hint">
+        Times are in your own timezone (<%= tgPrefs.timezone %>). A message is sent
+        the first time you open the app after its time.
+      </p>
     <% } %>
 
     <input type="hidden" id="tgTimezoneField" name="tgTimezone" value="<%= tgPrefs.timezone %>">
     <% } %>
-
-    <div class="form-floating">
-      <input class="form-control" type="text" id="telegramChatId" name="telegramChatId"
-             placeholder="123456789" value="<%= tgPrefs.chatId || telegramChatId || '' %>">
-      <label for="telegramChatId">Chat ID</label>
-    </div>
 
     <div class="new-task" style="margin-top: 1.5rem; display: flex; gap: 0.75rem; flex-wrap: wrap; justify-content: center;">
       <button type="submit" class="btn btn-primary" value="add" name="add">Save Settings</button>
     </div>
   </form>
 
-  <% if (isLoggedIn && tgPrefs.enabled && !tgPrefs.chatId) { %>
-  <div class="wa-test-form">
-    <form action="/telegram-setup-code" method="POST" style="display:inline">
-      <input type="hidden" name="redirectTo" value="/settings">
-      <button type="submit" class="btn btn-primary">
-        <span class="material-symbols-rounded">key</span>
-        Get setup code
-      </button>
-    </form>
-    <form action="/telegram-chat-id" method="POST" style="display:inline">
+  <%# Everything below is connection state, so it only exists once notifications
+      are actually switched on. %>
+  <% if (isLoggedIn && tgPrefs.enabled) { %>
+    <% if (!tgPrefs.chatId) { %>
+    <div class="wa-test-form">
+      <form action="/telegram-setup-code" method="POST" style="display:inline">
+        <input type="hidden" name="redirectTo" value="/settings">
+        <button type="submit" class="btn btn-primary">
+          <span class="material-symbols-rounded">key</span>
+          Get setup code
+        </button>
+      </form>
+      <form action="/telegram-chat-id" method="POST" style="display:inline">
+        <input type="hidden" name="redirectTo" value="/settings">
+        <button type="submit" class="btn btn-outline">
+          <span class="material-symbols-rounded">link</span>
+          Connect
+        </button>
+      </form>
+    </div>
+    <% } else { %>
+    <form action="/test-telegram" method="POST" class="wa-test-form">
       <input type="hidden" name="redirectTo" value="/settings">
       <button type="submit" class="btn btn-outline">
-        <span class="material-symbols-rounded">link</span>
-        Connect
+        <span class="material-symbols-rounded">send</span>
+        Send test message
       </button>
     </form>
-  </div>
+    <% } %>
   <% } %>
-
-  <form action="/test-telegram" method="POST" class="wa-test-form">
-    <input type="hidden" name="redirectTo" value="/settings">
-    <button type="submit" class="btn btn-outline">
-      <span class="material-symbols-rounded">send</span>
-      Send test message
-    </button>
-  </form>
 </div>
 
 <script>
@@ -309,11 +307,6 @@ document.addEventListener('DOMContentLoaded', function () {
       if (tz) tzField.value = tz;
     } catch (e) { /* keep the stored value */ }
   }
-
-  // Fade the locked panel in only once signed in, so the page doesn't flash the
-  // blurred state for someone who is actually logged in.
-  const locked = document.querySelector('.tg-locked');
-  if (locked) requestAnimationFrame(() => locked.classList.add('is-visible'));
 
   document.querySelectorAll('.theme-picker-option input').forEach(radio => {
     radio.addEventListener('change', function () {

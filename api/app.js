@@ -1349,7 +1349,7 @@ app.post("/settings", function(req, res){
     const tgEnabled = String(body.tgEnabled || "") === "on";
     const tgTimezone = String(body.tgTimezone || "").trim();
     const tgAyahTime = notify.normaliseHhMm(pickField(body.tgAyahTime), "05:30");
-    const tgDigestTime = notify.normaliseHhMm(pickField(body.tgDigestTime), "20:00");
+    const tgSalahTime = notify.normaliseHhMm(pickField(body.tgSalahTime), "05:00");
 
     const tgEvents = {
         challenges: String(body.tgEventChallenges) === "on",
@@ -1412,7 +1412,7 @@ app.post("/settings", function(req, res){
             user.telegram.events = { ...(user.telegram.events || {}), ...tgEvents };
             user.telegram.times = {
                 ayahOfTheDay: tgAyahTime,
-                dailyDigest: tgDigestTime
+                salahTimings: tgSalahTime
             };
             await user.save();
         }

@@ -22,13 +22,16 @@ const Cache = mongoose.models.QuranCache || mongoose.model("QuranCache", cacheSc
 const memo = new Map();
 const MEMO_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
-async function fetchJson(url) {
-    const res = await fetch(url, { timeout: FETCH_TIMEOUT_MS });
+async function fetchJson(url, { followRedirects = true } = {}) {
+    const res = await fetch(url, {
+        timeout: FETCH_TIMEOUT_MS,
+        follow: followRedirects ? 5 : 0
+    });
     if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
     return res.json();
 }
 
-async function cachedJson(url) {
+async function cachedJson(url, opts = {}) {
     const key = url;
 
     const hot = memo.get(key);
@@ -45,7 +48,7 @@ async function cachedJson(url) {
         console.error("quranCache: read failed -", err.message);
     }
 
-    const value = await fetchJson(url);
+    const value = await fetchJson(url, opts);
 
     memo.set(key, { value, at: Date.now() });
     try {
@@ -62,9 +65,9 @@ async function cachedJson(url) {
 
 // Best-effort variant: returns null instead of throwing, for callers that can
 // still render something useful without the data.
-async function cachedJsonOrNull(url) {
+async function cachedJsonOrNull(url, opts = {}) {
     try {
-        return await cachedJson(url);
+        return await cachedJson(url, opts);
     } catch (err) {
         console.error("quranCache: fetch failed -", url, err.message);
         return null;

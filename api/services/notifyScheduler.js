@@ -84,24 +84,14 @@ async function runDueForUser(user, now = new Date()) {
         }
     }
 
-    if (isDue(user, "dailyDigest", now)) {
-        const dateLabel = dateLabelIn(prefs.timezone, now);
-        const entries = user.salahLog || [];
-        const today = entries.filter((e) => e.date === dateLabel);
-
-        const text = notify.buildDigestMessage(user, {
-            dateLabel,
-            ayah: await currentAyah(now),
-            salahSummary: today.length
-                ? `${today.filter((e) => e.value !== "Not Prayed").length}/5 logged`
-                : "No salah logged today.",
-            challengeSummary: `${(user.challenges || []).length} challenge(s) tracked`,
-        });
-
+    if (isDue(user, "salahTimings", now)) {
+        const text = await notify.buildSalahTimingsMessage(user);
         const ok = await notify.safeDeliver(user, text);
+        // Only stamp on real delivery, so a transient failure retries next check
+        // instead of silently dropping the day's timings.
         if (ok) {
-            notify.markSent(user, "dailyDigest", notify.localDateKey(now, prefs.timezone));
-            fired.push("dailyDigest");
+            notify.markSent(user, "salahTimings", notify.localDateKey(now, prefs.timezone));
+            fired.push("salahTimings");
         }
     }
 
