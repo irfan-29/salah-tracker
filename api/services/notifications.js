@@ -13,6 +13,7 @@
 
 const { sendTelegramMessage, buildStreakSummary } = require("../utils/telegram.js");
 const { cachedJsonOrNull } = require("../utils/quranCache.js");
+const mongoose = require("mongoose");
 
 const EVENT_KEYS = ["challenges", "salahTracker", "newPost", "salahTimings", "ayahOfTheDay"];
 // Only these two are time-based. The rest fire from the request that caused
@@ -176,6 +177,60 @@ function buildNewPostMessage(post) {
     return lines.join("\n");
 }
 
+// Preview for one module, used by the per-module "Send now" buttons so a user
+// can check exactly what that notification will look like before relying on it.
+async function buildModulePreview(user, module, { dateLabel } = {}) {
+    switch (module) {
+        case "challenges": {
+            const challenges = (user.challenges || []).map((c) => ({
+                id: String(c._id),
+                name: c.challenge,
+                currentStreak: c.currentStreak || 0,
+                maxStreak: c.maxStreak || 0
+            }));
+            if (!challenges.length) {
+                return "<b>Salah Tracker</b> — Challenges\n\nYou haven't added any challenges yet.";
+            }
+            // Nothing ticked: this is a preview of the current standings.
+            return buildStreakSummary({ date: dateLabel || "", completed: [], challenges });
+        }
+        case "salahTracker":
+            return buildSalahLogMessage(user, dateLabel || "");
+        case "salahTimings":
+            return await buildSalahTimingsMessage(user);
+        case "ayahOfTheDay": {
+            const AyahOfTheDay = require("../models/AyahOfTheDay.js");
+            const now = new Date();
+            const key = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}-${String(now.getUTCDate()).padStart(2, "0")}`;
+            const ayah = await AyahOfTheDay.findOne({ date: key }).lean();
+            if (!ayah) {
+                return "<b>Ayah of the day</b>\n\nNot available yet — open the Quran page once to generate today's ayah.";
+            }
+            const lines = ["<b>Ayah of the day</b>", ""];
+            if (ayah.arabicText) lines.push(escapeHtml(ayah.arabicText));
+            if (ayah.translationText) {
+                lines.push("");
+                lines.push(`<i>${escapeHtml(ayah.translationText)}</i>`);
+            }
+            const label = ayah.surahName
+                ? `${ayah.surahName} ${ayah.ayahNo}`
+                : `Surah ${ayah.surahNo} ${ayah.ayahNo}`;
+            lines.push("", escapeHtml(ayah.translationLabel || ""), escapeHtml(label));
+            return lines.join("\n");
+        }
+        case "newPost": {
+            const Posts = mongoose.models.Posts;
+            if (Posts) {
+                const latest = await Posts.find({}).sort({ _id: -1 }).limit(1).lean();
+                if (latest.length) return buildNewPostMessage(latest[0]);
+            }
+            return "<b>Salah Tracker</b> — New post\n\nNo posts yet. This is what subscribers will be sent when you add one.";
+        }
+        default:
+            return null;
+    }
+}
+
 function summariseChallenges(challenges, completedIds) {
     if (!challenges.length) return "No challenges yet.";
     const done = challenges.filter((c) => completedIds.includes(String(c._id)));
@@ -224,6 +279,7 @@ module.exports = {
     buildSalahTimingsMessage,
     buildSalahLogMessage,
     buildNewPostMessage,
+    buildModulePreview,
     summariseChallenges,
     deliver,
     safeDeliver,

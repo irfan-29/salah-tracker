@@ -203,52 +203,82 @@
       <div class="tg-modules">
         <div class="tg-title tg-title-sm">What to send</div>
 
-        <label class="tg-row">
-          <input type="checkbox" name="tgEventChallenges" <%= tgPrefs.events.challenges ? 'checked' : '' %>>
-          <span class="tg-check material-symbols-rounded" aria-hidden="true"></span>
-          <span><strong>Challenges</strong><em>Sent when you update your streaks</em></span>
-        </label>
+        <%# Each module: an enable checkbox plus its own "Send now" button.
+            The button uses formaction so it posts this form to /test-telegram
+            instead of saving - which avoids nesting a second <form> (browsers
+            ignore those, which broke the chat-id lookup earlier). %>
+        <div class="tg-module">
+          <label class="tg-row tg-row-module">
+            <input type="checkbox" name="tgEventChallenges" <%= tgPrefs.events.challenges ? 'checked' : '' %>>
+            <span class="tg-check material-symbols-rounded" aria-hidden="true"></span>
+            <span><strong>Challenges</strong><em>Sent when you update your streaks</em></span>
+          </label>
+          <button type="submit" class="tg-send-btn" formaction="/test-telegram" name="module" value="challenges"
+                  title="Send a Challenges notification now">
+            <span class="material-symbols-rounded">send</span>Send now
+          </button>
+        </div>
 
-        <label class="tg-row">
-          <input type="checkbox" name="tgEventSalahTracker" <%= tgPrefs.events.salahTracker ? 'checked' : '' %>>
-          <span class="tg-check material-symbols-rounded" aria-hidden="true"></span>
-          <span><strong>Salah Tracker</strong><em>Sent when you log a prayer</em></span>
-        </label>
+        <div class="tg-module">
+          <label class="tg-row tg-row-module">
+            <input type="checkbox" name="tgEventSalahTracker" <%= tgPrefs.events.salahTracker ? 'checked' : '' %>>
+            <span class="tg-check material-symbols-rounded" aria-hidden="true"></span>
+            <span><strong>Salah Tracker</strong><em>Sent when you log a prayer</em></span>
+          </label>
+          <button type="submit" class="tg-send-btn" formaction="/test-telegram" name="module" value="salahTracker"
+                  title="Send a Salah Tracker notification now">
+            <span class="material-symbols-rounded">send</span>Send now
+          </button>
+        </div>
 
-        <label class="tg-row">
-          <input type="checkbox" name="tgEventNewPost" <%= tgPrefs.events.newPost ? 'checked' : '' %>>
-          <span class="tg-check material-symbols-rounded" aria-hidden="true"></span>
-          <span><strong>New post</strong><em>When a post or video is added</em></span>
-        </label>
+        <div class="tg-module">
+          <label class="tg-row tg-row-module">
+            <input type="checkbox" name="tgEventNewPost" <%= tgPrefs.events.newPost ? 'checked' : '' %>>
+            <span class="tg-check material-symbols-rounded" aria-hidden="true"></span>
+            <span><strong>New post</strong><em>When a post or video is added</em></span>
+          </label>
+          <button type="submit" class="tg-send-btn" formaction="/test-telegram" name="module" value="newPost"
+                  title="Send a New post notification now">
+            <span class="material-symbols-rounded">send</span>Send now
+          </button>
+        </div>
 
-        <label class="tg-row">
-          <input type="checkbox" name="tgEventSalahTimings" <%= tgPrefs.events.salahTimings ? 'checked' : '' %>>
-          <span class="tg-check material-symbols-rounded" aria-hidden="true"></span>
-          <span><strong>Salah timings</strong><em>Sent once a day</em></span>
-        </label>
+        <div class="tg-module">
+          <label class="tg-row tg-row-module">
+            <input type="checkbox" name="tgEventSalahTimings" <%= tgPrefs.events.salahTimings ? 'checked' : '' %>>
+            <span class="tg-check material-symbols-rounded" aria-hidden="true"></span>
+            <span><strong>Salah timings</strong><em>Sent once a day</em></span>
+          </label>
+          <button type="submit" class="tg-send-btn" formaction="/test-telegram" name="module" value="salahTimings"
+                  title="Send today's Salah timings now">
+            <span class="material-symbols-rounded">send</span>Send now
+          </button>
+          <% if (tgPrefs.events.salahTimings) { %>
+          <div class="form-floating tg-time">
+            <input class="form-control" type="time" id="tgSalahTime" name="tgSalahTime" value="<%= tgPrefs.times.salahTimings %>">
+            <label for="tgSalahTime">Send at</label>
+          </div>
+          <% } %>
+        </div>
 
-        <label class="tg-row">
-          <input type="checkbox" name="tgEventAyah" <%= tgPrefs.events.ayahOfTheDay ? 'checked' : '' %>>
-          <span class="tg-check material-symbols-rounded" aria-hidden="true"></span>
-          <span><strong>Ayah of the day</strong><em>Sent once a day</em></span>
-        </label>
+        <div class="tg-module">
+          <label class="tg-row tg-row-module">
+            <input type="checkbox" name="tgEventAyah" <%= tgPrefs.events.ayahOfTheDay ? 'checked' : '' %>>
+            <span class="tg-check material-symbols-rounded" aria-hidden="true"></span>
+            <span><strong>Ayah of the day</strong><em>Sent once a day</em></span>
+          </label>
+          <button type="submit" class="tg-send-btn" formaction="/test-telegram" name="module" value="ayahOfTheDay"
+                  title="Send today's Ayah of the day now">
+            <span class="material-symbols-rounded">send</span>Send now
+          </button>
+          <% if (tgPrefs.events.ayahOfTheDay) { %>
+          <div class="form-floating tg-time">
+            <input class="form-control" type="time" id="tgAyahTime" name="tgAyahTime" value="<%= tgPrefs.times.ayahOfTheDay %>">
+            <label for="tgAyahTime">Send at</label>
+          </div>
+          <% } %>
+        </div>
       </div>
-
-      <%# A time only makes sense for the two daily modules. The other three fire
-          the instant the action happens, so asking for a clock time would mislead. %>
-      <% if (tgPrefs.events.salahTimings) { %>
-      <div class="form-floating">
-        <input class="form-control" type="time" id="tgSalahTime" name="tgSalahTime" value="<%= tgPrefs.times.salahTimings %>">
-        <label for="tgSalahTime">Send salah timings at</label>
-      </div>
-      <% } %>
-
-      <% if (tgPrefs.events.ayahOfTheDay) { %>
-      <div class="form-floating">
-        <input class="form-control" type="time" id="tgAyahTime" name="tgAyahTime" value="<%= tgPrefs.times.ayahOfTheDay %>">
-        <label for="tgAyahTime">Send ayah of the day at</label>
-      </div>
-      <% } %>
 
       <p class="form-section-hint">
         Times are in your own timezone (<%= tgPrefs.timezone %>). A message is sent
@@ -284,14 +314,6 @@
         </button>
       </form>
     </div>
-    <% } else { %>
-    <form action="/test-telegram" method="POST" class="wa-test-form">
-      <input type="hidden" name="redirectTo" value="/settings">
-      <button type="submit" class="btn btn-outline">
-        <span class="material-symbols-rounded">send</span>
-        Send test message
-      </button>
-    </form>
     <% } %>
   <% } %>
 </div>

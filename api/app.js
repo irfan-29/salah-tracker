@@ -1208,18 +1208,42 @@ app.post("/logout", function(req, res, next){
     });
 });
 
-app.post("/test-telegram", async function(req, res){
+// Sends one module's notification on demand - this is what each per-module
+// "Send now" button posts to. `module` decides which message is produced.
+app.post("/test-telegram", requireLogin, async function(req, res){
     const redirectTo = pickField(req.body.redirectTo) || '/settings';
     try {
         if (!botIsConfigured()) return res.redirect(`${redirectTo}?tg=bot-missing`);
+
         const chatId = await userData.getTelegramChatId(req);
         if (!chatId) return res.redirect(`${redirectTo}?tg=missing`);
 
-        const result = await sendTelegramMessage({
-            chatId,
-            text: `<b>Salah Tracker</b> — test message\n\nTelegram notifications are connected.`,
-        });
-        res.redirect(`${redirectTo}?tg=${result.sent ? 'sent' : result.code}`);
+        const module = pickField(req.body.module);
+        const known = notify.EVENT_KEYS.concat(["all"]);
+        if (module && !known.includes(module)) {
+            return res.redirect(`${redirectTo}?tg=unknown-module`);
+        }
+
+        const label = (key) => ({
+            challenges: "Challenges",
+            salahTracker: "Salah Tracker",
+            newPost: "New post",
+            salahTimings: "Salah timings",
+            ayahOfTheDay: "Ayah of the day"
+        }[key] || key);
+
+        const dateLabel = scheduler.dateLabelIn(
+            (req.user.telegram && req.user.telegram.timezone) || "UTC", new Date()
+        );
+
+        const text = module
+            ? await notify.buildModulePreview(req.user, module, { dateLabel })
+            : `<b>Salah Tracker</b> — test message\n\nTelegram notifications are connected.`;
+
+        if (!text) return res.redirect(`${redirectTo}?tg=unknown-module`);
+
+        const result = await sendTelegramMessage({ chatId, text });
+        res.redirect(`${redirectTo}?tg=${result.sent ? "sent" : result.code}&mod=${encodeURIComponent(module || "all")}`);
     } catch (err) {
         console.error(err);
         res.redirect(`${redirectTo}?tg=error`);
