@@ -11,7 +11,7 @@
     "build": "echo success",
     "test": "echo \"Error: no test specified\" && exit 1",
     "qstash:schedule": "node scripts/qstash-schedule.js",
-    "qstash:schedule": "node scripts/qstash-schedule.js"
+    "check:secrets": "node scripts/check-secrets.js"
   },
   "keywords": [],
   "author": "Mohammed Irfan U",

@@ -44,7 +44,21 @@ app.use(express.static(path.join(__dirname, "../public")));
 app.set("views", path.join(__dirname, "../views"));
 
 mongoose.set({strictQuery: true});
-const MONGO_URI = process.env.MONGO_URI || "mongodb+srv://admin-irfan:Irf6360944@cluster0.jo7etur.mongodb.net/salahDB";
+
+// No hard-coded fallback. This line used to carry a real Atlas credential,
+// which put a live username/password into a public repository from the first
+// commit onward. Connection strings belong in the environment, so an unset
+// MONGO_URI now stops the boot with a clear message instead of quietly
+// connecting - or, worse, shipping somebody else's database in a fork.
+const MONGO_URI = process.env.MONGO_URI;
+if (!MONGO_URI) {
+    console.error(
+        "MONGO_URI is not set.\n" +
+        "  local:  add it to .env (see .env.example)\n" +
+        "  deploy: set it in the Vercel project's environment variables"
+    );
+    process.exit(1);
+}
 mongoose.connect(MONGO_URI);
 
 // Cookie + session secrets. These are REQUIRED in production: without them the
