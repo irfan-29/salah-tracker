@@ -1,0 +1,42 @@
+name: Scheduled notifications
+
+# Vercel Hobby only allows cron jobs that run once per day, which is far too
+# coarse for per-user reminder times. GitHub Actions is free and unaffected by
+# the Vercel plan, so it drives the sweep instead.
+#
+# The endpoint only sends messages whose chosen time has passed in the user's own
+# timezone and that have not already been sent today, so running this often is
+# safe and does not duplicate anything.
+
+on:
+  schedule:
+    # Every 5 minutes. The app de-duplicates, so a missed tick is harmless.
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: notify-sweep
+  cancel-in-progress: false
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger the notification sweep
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$APP_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "APP_URL and CRON_SECRET secrets are not configured - skipping."
+            exit 0
+          fi
+          url="${APP_URL%/}/api/due-notifications/sweep?key=${CRON_SECRET}"
+          code=$(curl -s -o /tmp/sweep.json -w '%{http_code}' --max-time 60 "$url" || echo 000)
+          echo "HTTP $code"
+          cat /tmp/sweep.json 2>/dev/null || true
+          echo
+          if [ "$code" != "200" ]; then
+            echo "Sweep did not succeed."
+            exit 1
+          fi
