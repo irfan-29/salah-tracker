@@ -1252,22 +1252,65 @@ app.post("/test-telegram", requireLogin, async function(req, res){
 
 // Reads back the user's most recent message to the bot so they never have to
 // hunt down their own chat id.
-// Step 1: issue a setup code. It lives in the session (not the account) so it
-// expires with the login and never becomes a long-lived shared secret.
-app.post("/telegram-setup-code", function(req, res){
+// Persist the notification preferences carried by a settings submit. Shared by
+// /settings and by the setup-code / connect buttons, which post the same form
+// via formaction - without this, following the setup steps discarded the toggle
+// the user had just switched on, because those requests re-render the page.
+async function saveTelegramPrefs(req, body) {
+    if (!req.isAuthenticated()) return;
+
+    const telegramChatId = pickField(body.telegramChatId);
+    const tgEnabled = String(body.tgEnabled || "") === "on";
+    const tgTimezone = String(body.tgTimezone || "").trim();
+    const tgAyahTime = notify.normaliseHhMm(pickField(body.tgAyahTime), "05:30");
+    const tgSalahTime = notify.normaliseHhMm(pickField(body.tgSalahTime), "05:00");
+
+    const user = req.user;
+    user.telegram = user.telegram || {};
+    user.telegram.enabled = tgEnabled;
+    if (tgTimezone) user.telegram.timezone = tgTimezone;
+    user.telegram.events = {
+        ...(user.telegram.events || {}),
+        challenges: String(body.tgEventChallenges) === "on",
+        salahTracker: String(body.tgEventSalahTracker) === "on",
+        newPost: String(body.tgEventNewPost) === "on",
+        salahTimings: String(body.tgEventSalahTimings) === "on",
+        ayahOfTheDay: String(body.tgEventAyah) === "on"
+    };
+    user.telegram.times = { ayahOfTheDay: tgAyahTime, salahTimings: tgSalahTime };
+
+    // Only accept a chat id that actually looks like one.
+    const cleanChat = normalizeChatId(telegramChatId);
+    if (cleanChat) user.telegramChatId = cleanChat;
+
+    await user.save();
+}
+
+// Issue a setup code. It lives in the session (not the account) so it expires
+// with the login and never becomes a long-lived shared secret.
+app.post("/telegram-setup-code", requireLogin, async function(req, res){
     const redirectTo = pickField(req.body.redirectTo) || '/settings';
-    if (!botIsConfigured()) return res.redirect(`${redirectTo}?tg=bot-missing`);
-    req.session.tgVerifyCode = makeVerifyCode();
-    req.session.tgVerifyCodeAt = Date.now();
-    res.redirect(`${redirectTo}?tg=code`);
+    try {
+        if (!botIsConfigured()) return res.redirect(`${redirectTo}?tg=bot-missing`);
+        // Keep the toggle the user just flipped.
+        await saveTelegramPrefs(req, req.body);
+        req.session.tgVerifyCode = makeVerifyCode();
+        req.session.tgVerifyCodeAt = Date.now();
+        res.redirect(`${redirectTo}?tg=code`);
+    } catch (err) {
+        console.error("telegram-setup-code:", err.message);
+        res.redirect(`${redirectTo}?tg=error`);
+    }
 });
 
-// Step 2: the user has sent that code to the bot, so bind their chat to their
-// account. Matching on the code is what keeps multiple users apart.
+// The user has sent that code to the bot, so bind their chat to their account.
+// Matching on the code is what keeps multiple users apart.
 app.post("/telegram-chat-id", requireLogin, async function(req, res){
     const redirectTo = pickField(req.body.redirectTo) || '/settings';
     try {
         if (!botIsConfigured()) return res.redirect(`${redirectTo}?tg=bot-missing`);
+
+        await saveTelegramPrefs(req, req.body);
 
         const code = req.session.tgVerifyCode;
         const issuedAt = req.session.tgVerifyCodeAt || 0;
@@ -1370,18 +1413,6 @@ app.post("/settings", function(req, res){
     const primaryTranslation = pickField(body.primaryTranslation);
     const redirectTo = pickField(body.redirectTo);
     const telegramChatId = pickField(body.telegramChatId);
-    const tgEnabled = String(body.tgEnabled || "") === "on";
-    const tgTimezone = String(body.tgTimezone || "").trim();
-    const tgAyahTime = notify.normaliseHhMm(pickField(body.tgAyahTime), "05:30");
-    const tgSalahTime = notify.normaliseHhMm(pickField(body.tgSalahTime), "05:00");
-
-    const tgEvents = {
-        challenges: String(body.tgEventChallenges) === "on",
-        salahTracker: String(body.tgEventSalahTracker) === "on",
-        newPost: String(body.tgEventNewPost) === "on",
-        salahTimings: String(body.tgEventSalahTimings) === "on",
-        ayahOfTheDay: String(body.tgEventAyah) === "on"
-    };
 
     // Parse the JSON string sent from the frontend hidden input
     let parsedEditions = [];
@@ -1420,26 +1451,9 @@ app.post("/settings", function(req, res){
         theme: theme || 'light'
     })
     .then(async () => {
-        if (!telegramRejected && cleanChatId) {
-            await userData.setTelegramChatId(req, cleanChatId);
-        }
         // Notification preferences belong to the account, so a guest toggling
-        // them here is meaningless - skip until they are signed in.
-        if (req.isAuthenticated()) {
-            const user = req.user;
-            user.telegram = user.telegram || {};
-            // Store the user's intent as given. Delivery separately requires a
-            // chat id (see telegramPrefs/deliver), so saving "on" before
-            // connecting is what surfaces the setup steps instead of dead-ending.
-            user.telegram.enabled = tgEnabled;
-            user.telegram.timezone = tgTimezone || user.telegram.timezone || "UTC";
-            user.telegram.events = { ...(user.telegram.events || {}), ...tgEvents };
-            user.telegram.times = {
-                ayahOfTheDay: tgAyahTime,
-                salahTimings: tgSalahTime
-            };
-            await user.save();
-        }
+        // them here is meaningless - the helper no-ops for signed-out users.
+        await saveTelegramPrefs(req, req.body);
         const target = redirectTo || '/settings';
         res.redirect(telegramRejected ? `${target}?tg=incomplete` : target);
     })

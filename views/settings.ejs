@@ -289,31 +289,26 @@
     <input type="hidden" id="tgTimezoneField" name="tgTimezone" value="<%= tgPrefs.timezone %>">
     <% } %>
 
+    <%# These post the settings form itself (formaction), so the toggle the user
+        just flipped is persisted at the same time. Separate forms would re-render
+        the page and silently discard it. %>
+    <% if (isLoggedIn) { %>
+    <div class="wa-test-form tg-panel" data-tg-panel="connect" <%= tgPrefs.enabled && !tgPrefs.chatId ? '' : 'hidden' %>>
+      <button type="submit" class="btn btn-primary" formaction="/telegram-setup-code" name="redirectTo" value="/settings">
+        <span class="material-symbols-rounded">key</span>
+        Get setup code
+      </button>
+      <button type="submit" class="btn btn-outline" formaction="/telegram-chat-id" name="redirectTo" value="/settings">
+        <span class="material-symbols-rounded">link</span>
+        Connect
+      </button>
+    </div>
+    <% } %>
+
     <div class="new-task" style="margin-top: 1.5rem; display: flex; gap: 0.75rem; flex-wrap: wrap; justify-content: center;">
       <button type="submit" class="btn btn-primary" value="add" name="add">Save Settings</button>
     </div>
   </form>
-
-  <%# Connection controls track the same switch, so they appear the moment it is
-      flipped rather than after a save. %>
-  <% if (isLoggedIn) { %>
-    <div class="wa-test-form tg-panel" data-tg-panel="connect" <%= tgPrefs.enabled && !tgPrefs.chatId ? '' : 'hidden' %>>
-      <form action="/telegram-setup-code" method="POST" style="display:inline">
-        <input type="hidden" name="redirectTo" value="/settings">
-        <button type="submit" class="btn btn-primary">
-          <span class="material-symbols-rounded">key</span>
-          Get setup code
-        </button>
-      </form>
-      <form action="/telegram-chat-id" method="POST" style="display:inline">
-        <input type="hidden" name="redirectTo" value="/settings">
-        <button type="submit" class="btn btn-outline">
-          <span class="material-symbols-rounded">link</span>
-          Connect
-        </button>
-      </form>
-    </div>
-  <% } %>
 </div>
 
 <script>
