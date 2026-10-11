@@ -20,6 +20,8 @@ const { passport, requireLogin, attachUser } = require("./middleware/auth.js");
 const userData = require("./services/userData.js");
 const { mergeGuestIntoUser } = require("./utils/guestStore.js");
 const { cachedJson, cachedJsonOrNull } = require("./utils/quranCache.js");
+const notify = require("./services/notifications.js");
+const scheduler = require("./services/notifyScheduler.js");
 const User = require("./models/User.js");
 
 
@@ -131,21 +133,7 @@ const settingsSchema = new mongoose.Schema({
 });
 const Settings = mongoose.model("Settings", settingsSchema);
 
-const ayahOfTheDaySchema = new mongoose.Schema({
-    date: { type: String, unique: true },
-    surahNo: Number,
-    ayahNo: Number,
-    // Resolved text is cached so the daily ayah costs one external fetch per
-    // day rather than one per page view, and so guests (who have no saved
-    // translation preference) still see it.
-    surahName: String,
-    surahNameArabic: String,
-    arabicText: String,
-    translationText: String,
-    translationLabel: String,
-    resolvedAt: Date
-});
-const AyahOfTheDay = mongoose.model("AyahOfTheDay", ayahOfTheDaySchema);
+const AyahOfTheDay = require("./models/AyahOfTheDay.js");
 
 // Duplicate form fields (same name twice) arrive as an array. Coerce them to a
 // single sane value so a duplicate can never build a broken path like
@@ -503,6 +491,8 @@ const SKIP_MIDDLEWARE_URLS = ["/hide-audio"];
         reference: reference
     });
     post.save();
+    // Announce to every subscriber who asked for new-post alerts.
+    await broadcastNewPost(post).catch((err) => console.error("notify: new post -", err.message));
     res.redirect("/posts");
   });
 
@@ -532,8 +522,25 @@ const SKIP_MIDDLEWARE_URLS = ["/hide-audio"];
         isVideo: true
     });
     post.save();
+    await broadcastNewPost(post).catch((err) => console.error("notify: new video -", err.message));
     res.redirect("/posts");
   });
+
+  // Fan a new post out to subscribers. Bounded so a large subscriber list cannot
+  // blow the invocation timeout; the rest catch up on their next visit.
+  async function broadcastNewPost(post) {
+    if (!botIsConfigured()) return;
+    const subs = await User.find({
+      "telegram.enabled": true,
+      "telegram.events.newPost": true,
+      telegramChatId: { $exists: true, $ne: "" },
+    }).limit(100);
+
+    const text = notify.buildNewPostMessage(post);
+    for (const sub of subs) {
+      await notify.safeDeliver(sub, text);
+    }
+  }
 
 
 
@@ -951,6 +958,8 @@ app.get("/settings", async (req, res) => {
         telegramChatId: telegramChatId,
         botConfigured: botIsConfigured(),
         tgSetupCode: (req.session && req.session.tgVerifyCode) || "",
+        tgPrefs: notify.telegramPrefs(res.locals.currentUser),
+        isLoggedIn: Boolean(res.locals.currentUser),
         tgStatus: Object.prototype.hasOwnProperty.call(ERROR_MESSAGES, req.query.tg || "") ||
                   req.query.tg === "sent" ? req.query.tg : "",
         tgFoundChatId: normalizeChatId(req.query.chat || ""),
@@ -978,6 +987,11 @@ app.post("/salah", requireLogin, async function(req, res){
         name: name,
         value: value
     });
+
+    // Event-driven: this request is the trigger, so no scheduler is involved.
+    if (req.isAuthenticated && notify.wantsEvent(req.user, "salahTracker")) {
+        await notify.safeDeliver(req.user, notify.buildSalahLogMessage(req.user, formattedDate));
+    }
     res.redirect("/salah");
 });
 
@@ -1057,17 +1071,17 @@ app.post('/update-streaks', requireLogin, async (req, res) => {
 
 async function notifyStreakUpdate(req, { formattedDate, completed, updatedChallenges }) {
     if (!botIsConfigured()) return;
+    // Only the person who acted is notified, and only if they opted into this
+    // module. Addressed by their own chat id - never broadcast.
+    if (!req.isAuthenticated || !notify.wantsEvent(req.user, "challenges")) return;
 
-    const chatId = await userData.getTelegramChatId(req);
-    if (!chatId) return;
-
-    const text = buildStreakSummary({
+    const text = notify.buildStreakSummary({
         date: formattedDate,
         completed,
         challenges: updatedChallenges,
     });
 
-    await sendTelegramMessage({ chatId, text });
+    await notify.safeDeliver(req.user, text);
 }
 
 
@@ -1254,6 +1268,44 @@ app.post("/telegram-chat-id", requireLogin, async function(req, res){
     }
 });
 
+// Called on app load to deliver anything a signed-in user is owed (ayah of the
+// day, daily digest). This is what makes scheduled times work without a
+// long-running worker.
+app.get("/api/due-notifications", async function(req, res){
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "login-required" });
+    try {
+        const fired = await scheduler.runDueForCurrentUser(req);
+        res.json({ ok: true, fired });
+    } catch (err) {
+        console.error("due-notifications:", err.message);
+        res.status(500).json({ error: "failed" });
+    }
+});
+
+// Cron entry point. Protected by a shared token because a public sweep would let
+// anyone trigger sends for every subscriber.
+app.get("/api/due-notifications/sweep", async function(req, res){
+    const expected = process.env.CRON_SECRET;
+    const provided = req.query.key || (req.get("authorization") || "").replace(/^Bearer\s+/i, "");
+
+    if (!expected) {
+        // Fail closed. Without a secret this endpoint would let anyone trigger a
+        // send for every subscriber, so refuse rather than run wide open.
+        console.error("sweep: CRON_SECRET is not set - refusing to run.");
+        return res.status(503).json({ error: "cron-not-configured" });
+    }
+    if (provided !== expected) {
+        return res.status(401).json({ error: "unauthorised" });
+    }
+    try {
+        const result = await scheduler.sweepAllUsers();
+        res.json({ ok: true, ...result });
+    } catch (err) {
+        console.error("sweep:", err.message);
+        res.status(500).json({ error: "failed" });
+    }
+});
+
 app.post("/location", function(req, res) {
     const location = req.body.location;
     const redirectTo = req.body.redirectTo;
@@ -1294,6 +1346,18 @@ app.post("/settings", function(req, res){
     const primaryTranslation = pickField(body.primaryTranslation);
     const redirectTo = pickField(body.redirectTo);
     const telegramChatId = pickField(body.telegramChatId);
+    const tgEnabled = String(body.tgEnabled || "") === "on";
+    const tgTimezone = String(body.tgTimezone || "").trim();
+    const tgAyahTime = notify.normaliseHhMm(pickField(body.tgAyahTime), "05:30");
+    const tgDigestTime = notify.normaliseHhMm(pickField(body.tgDigestTime), "20:00");
+
+    const tgEvents = {
+        challenges: String(body.tgEventChallenges) === "on",
+        salahTracker: String(body.tgEventSalahTracker) === "on",
+        newPost: String(body.tgEventNewPost) === "on",
+        salahTimings: String(body.tgEventSalahTimings) === "on",
+        ayahOfTheDay: String(body.tgEventAyah) === "on"
+    };
 
     // Parse the JSON string sent from the frontend hidden input
     let parsedEditions = [];
@@ -1334,6 +1398,23 @@ app.post("/settings", function(req, res){
     .then(async () => {
         if (!telegramRejected && cleanChatId) {
             await userData.setTelegramChatId(req, cleanChatId);
+        }
+        // Notification preferences belong to the account, so a guest toggling
+        // them here is meaningless - skip until they are signed in.
+        if (req.isAuthenticated()) {
+            const user = req.user;
+            user.telegram = user.telegram || {};
+            // Store the user's intent as given. Delivery separately requires a
+            // chat id (see telegramPrefs/deliver), so saving "on" before
+            // connecting is what surfaces the setup steps instead of dead-ending.
+            user.telegram.enabled = tgEnabled;
+            user.telegram.timezone = tgTimezone || user.telegram.timezone || "UTC";
+            user.telegram.events = { ...(user.telegram.events || {}), ...tgEvents };
+            user.telegram.times = {
+                ayahOfTheDay: tgAyahTime,
+                dailyDigest: tgDigestTime
+            };
+            await user.save();
         }
         const target = redirectTo || '/settings';
         res.redirect(telegramRejected ? `${target}?tg=incomplete` : target);

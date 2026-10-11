@@ -129,6 +129,25 @@
   </aside>
 
   <main class="main-content">
+
+  <%# Deliver any notification the signed-in user is owed (ayah of the day,
+      daily digest). Nothing runs at a chosen time on a serverless host, so the
+      check happens here instead. The server de-duplicates per day. %>
+  <% if (typeof currentUser !== 'undefined' && currentUser) { %>
+  <script>
+    (function () {
+      if (!navigator.onLine) return;
+      var KEY = 'st_due_checked';
+      // Cheap client-side guard so a burst of navigation doesn't hammer the
+      // endpoint; the server is still authoritative.
+      if (Date.now() - (sessionStorage.getItem(KEY) || 0) < 60 * 1000) return;
+      sessionStorage.setItem(KEY, String(Date.now()));
+      fetch('/api/due-notifications', { credentials: 'same-origin' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .catch(function () { /* never surface this to the user */ });
+    })();
+  </script>
+  <% } %>
 
   <script>
     const sidebar = document.querySelector(".sidebar");

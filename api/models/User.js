@@ -44,6 +44,30 @@ const userSchema = new mongoose.Schema({
     // Chat the app-level Salah Tracker bot should notify. Never a bot token:
     // one shared bot, many subscribers.
     telegramChatId: String,
+    // Notification preferences. Time-based ones are evaluated in the user's own
+    // timezone because Vercel cron is always UTC.
+    telegram: {
+        enabled: { type: Boolean, default: false },
+        timezone: { type: String, default: "UTC" },
+        events: {
+            challenges: { type: Boolean, default: true },
+            salahTracker: { type: Boolean, default: false },
+            newPost: { type: Boolean, default: false },
+            salahTimings: { type: Boolean, default: false },
+            ayahOfTheDay: { type: Boolean, default: true }
+        },
+        times: {
+            // HH:MM in the user's timezone.
+            ayahOfTheDay: { type: String, default: "05:30" },
+            dailyDigest: { type: String, default: "20:00" }
+        },
+        // Date keys ("YYYY-MM-DD") of the last time each scheduled event fired,
+        // so a due-check never sends the same day's message twice.
+        lastSent: {
+            ayahOfTheDay: String,
+            dailyDigest: String
+        }
+    },
     claimsMigratedAt: Date
 });
 

@@ -135,13 +135,28 @@
     </div>
 
     <div class="form-section-title">Telegram Notifications</div>
-    <p class="form-section-hint">
-      Get a summary on Telegram each time you update your streaks.
-      <strong>1.</strong> Open <a href="https://t.me/SalahTracker_UMI_Bot" target="_blank" rel="noopener">the Salah Tracker bot</a>.
-      <strong>2.</strong> Press <strong>Get setup code</strong> below.
-      <strong>3.</strong> Send that code to the bot.
-      <strong>4.</strong> Press <strong>Connect</strong>.
-    </p>
+
+    <% if (!isLoggedIn) { %>
+      <!-- Locked: blur the panel so it reads as unavailable, and explain why. -->
+      <div class="tg-locked">
+        <div class="tg-locked-inner">
+          <div class="tg-row tg-row-head">
+            <div>
+              <div class="tg-title">Telegram notifications</div>
+              <div class="tg-sub">Daily reminders and streak summaries</div>
+            </div>
+            <label class="tg-switch" aria-disabled="true">
+              <input type="checkbox" disabled>
+              <span class="tg-slider"></span>
+            </label>
+          </div>
+          <div class="tg-locked-note">
+            <span class="material-symbols-rounded">lock</span>
+            Sign in to turn on Telegram notifications.
+          </div>
+        </div>
+      </div>
+    <% } else { %>
 
     <% if (typeof botConfigured !== 'undefined' && !botConfigured) { %>
       <div class="wa-status wa-status-bad">
@@ -150,31 +165,103 @@
       </div>
     <% } %>
 
-    <% if (typeof tgStatus !== 'undefined' && tgStatus) { %>
-      <div class="wa-status wa-status-<%= tgStatus === 'sent' ? 'ok' : 'bad' %>">
-        <span class="material-symbols-rounded"><%= tgStatus === 'sent' ? 'check_circle' : 'error' %></span>
-        <%= tgStatus === 'sent' ? 'Test message sent.' : (tgMessages[tgStatus] || tgMessages.unknown) %>
+    <div class="tg-row tg-row-head">
+      <div>
+        <div class="tg-title">Telegram notifications</div>
+        <div class="tg-sub">Daily reminders and streak summaries</div>
       </div>
+      <label class="tg-switch">
+        <input type="checkbox" name="tgEnabled" <%= tgPrefs.enabled ? 'checked' : '' %>>
+        <span class="tg-slider"></span>
+      </label>
+    </div>
+
+    <% if (tgPrefs.enabled && !tgPrefs.chatId) { %>
+      <!-- Enabled but not connected yet: show the setup steps. -->
+      <div class="tg-steps">
+        <div class="tg-step"><span class="tg-step-n">1</span>
+          <span>Open <a href="https://t.me/SalahTracker_UMI_Bot" target="_blank" rel="noopener">the Salah Tracker bot</a> in Telegram.</span>
+        </div>
+        <div class="tg-step"><span class="tg-step-n">2</span>
+          <span>Press <strong>Get setup code</strong> below and send the code to the bot.</span>
+        </div>
+        <div class="tg-step"><span class="tg-step-n">3</span>
+          <span>Press <strong>Connect</strong>.</span>
+        </div>
+      </div>
+
+      <% if (typeof tgSetupCode !== 'undefined' && tgSetupCode) { %>
+        <div class="wa-status wa-status-ok">
+          <span class="material-symbols-rounded">key</span>
+          Send this code to the bot, then press Connect:
+          <strong class="tg-code"><%= tgSetupCode %></strong>
+        </div>
+      <% } %>
     <% } %>
 
-    <% if (typeof tgFoundChatId !== 'undefined' && tgFoundChatId) { %>
+    <% if (tgPrefs.enabled && tgPrefs.chatId) { %>
       <div class="wa-status wa-status-ok">
         <span class="material-symbols-rounded">check_circle</span>
-        Connected to chat <strong><%= tgFoundChatId %></strong> &mdash; it's filled in below. Save to keep it.
+        Connected to chat <strong><%= tgPrefs.chatId %></strong>.
+      </div>
+
+      <div class="tg-modules">
+        <div class="tg-title tg-title-sm">What to send</div>
+
+        <label class="tg-row">
+          <input type="checkbox" name="tgEventChallenges" <%= tgPrefs.events.challenges ? 'checked' : '' %>>
+          <span class="tg-check material-symbols-rounded" aria-hidden="true"></span>
+          <span><strong>Challenges</strong><em>Sent when you update your streaks</em></span>
+        </label>
+
+        <label class="tg-row">
+          <input type="checkbox" name="tgEventSalahTracker" <%= tgPrefs.events.salahTracker ? 'checked' : '' %>>
+          <span class="tg-check material-symbols-rounded" aria-hidden="true"></span>
+          <span><strong>Salah Tracker</strong><em>Sent when you log a prayer</em></span>
+        </label>
+
+        <label class="tg-row">
+          <input type="checkbox" name="tgEventNewPost" <%= tgPrefs.events.newPost ? 'checked' : '' %>>
+          <span class="tg-check material-symbols-rounded" aria-hidden="true"></span>
+          <span><strong>New post</strong><em>When a post or video is added</em></span>
+        </label>
+
+        <label class="tg-row">
+          <input type="checkbox" name="tgEventSalahTimings" <%= tgPrefs.events.salahTimings ? 'checked' : '' %>>
+          <span class="tg-check material-symbols-rounded" aria-hidden="true"></span>
+          <span><strong>Salah timings</strong><em>Included in your daily digest</em></span>
+        </label>
+
+        <label class="tg-row">
+          <input type="checkbox" name="tgEventAyah" <%= tgPrefs.events.ayahOfTheDay ? 'checked' : '' %>>
+          <span class="tg-check material-symbols-rounded" aria-hidden="true"></span>
+          <span><strong>Ayah of the day</strong><em>Sent once a day</em></span>
+        </label>
+      </div>
+
+      <div class="tg-title tg-title-sm">Delivery times</div>
+      <p class="form-section-hint">
+        Times are in your own timezone (<%= tgPrefs.timezone %>).
+        A message is sent the first time you open the app after its time.
+      </p>
+
+      <div class="form-floating">
+        <input class="form-control" type="time" id="tgAyahTime" name="tgAyahTime" value="<%= tgPrefs.times.ayahOfTheDay %>">
+        <label for="tgAyahTime">Ayah of the day</label>
+      </div>
+
+      <div class="form-floating">
+        <input class="form-control" type="time" id="tgDigestTime" name="tgDigestTime" value="<%= tgPrefs.times.dailyDigest %>">
+        <label for="tgDigestTime">Daily digest</label>
       </div>
     <% } %>
 
-    <% if (typeof tgSetupCode !== 'undefined' && tgSetupCode) { %>
-      <div class="wa-status wa-status-ok">
-        <span class="material-symbols-rounded">key</span>
-        Send this code to the bot, then press Connect:
-        <strong class="tg-code"><%= tgSetupCode %></strong>
-      </div>
+    <input type="hidden" id="tgTimezoneField" name="tgTimezone" value="<%= tgPrefs.timezone %>">
     <% } %>
 
     <div class="form-floating">
       <input class="form-control" type="text" id="telegramChatId" name="telegramChatId"
-             placeholder="123456789" value="<%= tgFoundChatId || telegramChatId || '' %>">
+             placeholder="123456789" value="<%= tgPrefs.chatId || telegramChatId || '' %>">
       <label for="telegramChatId">Chat ID</label>
     </div>
 
@@ -183,21 +270,24 @@
     </div>
   </form>
 
-  <form action="/telegram-setup-code" method="POST" class="wa-test-form">
-    <input type="hidden" name="redirectTo" value="/settings">
-    <button type="submit" class="btn btn-outline">
-      <span class="material-symbols-rounded">key</span>
-      Get setup code
-    </button>
-  </form>
-
-  <form action="/telegram-chat-id" method="POST" class="wa-test-form">
-    <input type="hidden" name="redirectTo" value="/settings">
-    <button type="submit" class="btn btn-outline">
-      <span class="material-symbols-rounded">link</span>
-      Connect
-    </button>
-  </form>
+  <% if (isLoggedIn && tgPrefs.enabled && !tgPrefs.chatId) { %>
+  <div class="wa-test-form">
+    <form action="/telegram-setup-code" method="POST" style="display:inline">
+      <input type="hidden" name="redirectTo" value="/settings">
+      <button type="submit" class="btn btn-primary">
+        <span class="material-symbols-rounded">key</span>
+        Get setup code
+      </button>
+    </form>
+    <form action="/telegram-chat-id" method="POST" style="display:inline">
+      <input type="hidden" name="redirectTo" value="/settings">
+      <button type="submit" class="btn btn-outline">
+        <span class="material-symbols-rounded">link</span>
+        Connect
+      </button>
+    </form>
+  </div>
+  <% } %>
 
   <form action="/test-telegram" method="POST" class="wa-test-form">
     <input type="hidden" name="redirectTo" value="/settings">
@@ -210,6 +300,21 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+  // Delivery times are stored in the visitor's own timezone, but the server has
+  // no way to know it - so read it from the browser and submit it with the form.
+  const tzField = document.getElementById('tgTimezoneField');
+  if (tzField) {
+    try {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      if (tz) tzField.value = tz;
+    } catch (e) { /* keep the stored value */ }
+  }
+
+  // Fade the locked panel in only once signed in, so the page doesn't flash the
+  // blurred state for someone who is actually logged in.
+  const locked = document.querySelector('.tg-locked');
+  if (locked) requestAnimationFrame(() => locked.classList.add('is-visible'));
+
   document.querySelectorAll('.theme-picker-option input').forEach(radio => {
     radio.addEventListener('change', function () {
       document.querySelectorAll('.theme-picker-option').forEach(opt => opt.classList.remove('active'));
