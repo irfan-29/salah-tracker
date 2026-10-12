@@ -19,9 +19,12 @@
 <div class="post-card<%= post.isVideo ? ' post-card-video' : '' %>">
   <div class="post-card-head">
     <% if (handle) { %>
+      <%# A handle, not a link. Styled explicitly below because the browser
+          default (blue + underline) makes every post look like a hyperlink
+          soup and reads as UI rather than as authorship. %>
       <a class="post-author" href="/u/<%= handle %>">
         <span class="material-symbols-rounded">account_circle</span>
-        <%= handle %>
+        <span class="post-author-at">@</span><%= handle %>
       </a>
     <% } else if (post.authorName) { %>
       <span class="post-author post-author-anonymous"><%= post.authorName %></span>

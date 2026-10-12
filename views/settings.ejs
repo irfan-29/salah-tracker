@@ -134,44 +134,6 @@
       <input type="hidden" name="location" id="inputLocation" value="<%= location %>">
     </div>
 
-    <div class="form-section-title">Username</div>
-
-    <% if (usernameError) { %>
-      <div class="auth-alert" role="alert">
-        <span class="material-symbols-rounded">error</span>
-        <%= usernameError %>
-      </div>
-    <% } %>
-
-    <%# Posts on this form belong to the general settings submit, so this uses
-        formaction to reuse the same flow rather than nesting a second form. %>
-    <div class="username-row">
-      <div>
-        <div class="tg-title">Your public profile</div>
-        <div class="tg-sub">
-          Shared as <code>/u/<%= username || 'your-name' %></code>
-          <% if (username) { %>
-            <a href="/u/<%= username %>" target="_blank" rel="noopener">view</a>
-          <% } %>
-        </div>
-      </div>
-      <% if (isLoggedIn) { %>
-        <div class="username-input">
-          <input class="form-control" type="text" name="username" id="inputUsername"
-                 value="<%= username || '' %>" placeholder="your-name"
-                 pattern="[a-zA-Z0-9._]{3,30}" maxlength="30"
-                 autocomplete="off" autocapitalize="none" spellcheck="false">
-          <button type="submit" class="btn btn-primary" formaction="/settings/username" name="redirectTo" value="/settings">
-            <span class="material-symbols-rounded">check</span>
-            Update
-          </button>
-        </div>
-        <p class="tg-hint">3-30 characters: letters, numbers, dots and underscores. Changing this breaks links people already shared.</p>
-      <% } else { %>
-        <p class="tg-hint"><a href="/login">Sign in</a> to set a username.</p>
-      <% } %>
-    </div>
-
     <div class="form-section-title">Telegram Notifications</div>
 
     <div class="tg-row tg-row-head">

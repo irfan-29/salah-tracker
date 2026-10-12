@@ -2554,21 +2554,55 @@ hr {
   margin-bottom: 0.75rem;
 }
 
+/* A username reads as authorship, not as a hyperlink. Kept in the normal text
+   colour rather than the brand colour, and never underlined - the browser
+   default (blue + underline) turns a feed into a wall of links and reads as
+   interface chrome instead of content. */
 .post-author {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.3rem;
+  padding: 0.15rem 0.4rem;
+  margin-left: -0.4rem;
+  border-radius: 999px;
   font-weight: 600;
   font-size: 0.9375rem;
-  color: var(--color-primary);
+  color: var(--color-text);
+  text-decoration: none;
+  transition: background-color var(--transition), color var(--transition);
+}
+
+.post-author .material-symbols-rounded {
+  font-size: 1.15rem;
+  color: var(--color-text-muted);
+}
+
+.post-author-at { color: var(--color-text-muted); font-weight: 500; }
+
+.post-author:hover {
+  background: var(--color-border-light);
+  color: var(--color-text);
   text-decoration: none;
 }
 
-.post-author:hover { text-decoration: underline; }
+.post-author:hover .material-symbols-rounded,
+.post-author:hover .post-author-at { color: var(--color-text-secondary); }
+
+/* Focus must stay visible - for a keyboard user it is the only affordance that
+   this is interactive at all. */
+.post-author:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
 
 /* An author with no username (deleted account, or the pre-username seed post)
    must not look like a link, because there is nothing to link to. */
-.post-author-anonymous { color: var(--color-text-secondary); }
+.post-author-anonymous {
+  color: var(--color-text-secondary);
+  font-weight: 500;
+  padding-left: 0;
+  margin-left: 0;
+}
 
 .post-share {
   display: inline-flex;
@@ -2694,3 +2728,82 @@ hr {
   font-size: 0.8125rem;
   color: var(--color-text-secondary);
 }
+
+/* ---------- Account ---------- */
+
+.account-card {
+  display: flex;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1rem;
+  background: var(--color-surface, #fff);
+  border: 1px solid var(--color-border, #e0e0e0);
+  border-radius: 12px;
+}
+
+.account-avatar .material-symbols-rounded {
+  font-size: 3rem;
+  color: var(--color-primary);
+}
+
+.account-body { flex: 1 1 200px; }
+
+.account-handle {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.account-sub { color: var(--color-text-secondary); font-size: 0.9375rem; }
+
+.account-field { flex: 1 1 100%; }
+
+.account-label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.account-value {
+  padding: 0.5rem 0.75rem;
+  background: rgba(0, 0, 0, 0.03);
+  border: 1px solid var(--color-border, #e0e0e0);
+  border-radius: 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.9375rem;
+}
+
+.account-hint {
+  margin: 0.25rem 0 0.75rem;
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+}
+
+.account-verified,
+.account-unverified {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-weight: 600;
+}
+
+.account-verified { color: #16a34a; }
+.account-unverified { color: #d97706; }
+
+.account-verified .material-symbols-rounded,
+.account-unverified .material-symbols-rounded { font-size: 1.05rem; }
+
+.auth-alert-ok {
+  color: #16a34a;
+  background: rgba(22, 163, 74, 0.1);
+  border-color: rgba(22, 163, 74, 0.3);
+}
+
+/* The nav user chip became a link, so it needs to look clickable. */
+.nav-user {
+  text-decoration: none;
+  color: inherit;
+  border-radius: 8px;
+}
+
+.nav-user:hover { text-decoration: none; }

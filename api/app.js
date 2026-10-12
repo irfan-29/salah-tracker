@@ -1034,13 +1034,31 @@ app.get("/settings", async (req, res) => {
         tgMessages: ERROR_MESSAGES,
         tarteelFonts: tarteelFonts,
         reciters: recitersJson,
-        editions: editionsByLanguage,
-        username: (res.locals.currentUser && res.locals.currentUser.username) || "",
-        usernameError: req.query.un || ""
+        editions: editionsByLanguage
     });
 });
 
-// Change the public handle. On its own formaction rather than part of the general
+// Account: identity only - username, profile link, and the email address.
+// Settings stays about app preferences (theme, reciter, notifications), so the
+// username field moved here rather than sitting among unrelated options.
+app.get("/account", requireLogin, function(req, res){
+    const user = req.user;
+    // Fall back to the email local-part so the page is usable for an account
+    // that predates the username backfill.
+    const username = user.username || "";
+    res.render("account", {
+        username,
+        displayName: username || user.name || (user.email || "?").split("@")[0],
+        email: user.email,
+        // emailVerifiedAt only exists on accounts created since OTP signup; the
+        // older ones are genuinely verified in practice but have no stamp.
+        verified: Boolean(user.emailVerifiedAt),
+        usernameError: req.query.un || "",
+        usernameOk: req.query.un_ok === "1"
+    });
+});
+
+// Change the public handle. On its own formaction rather than part of a larger
 // settings save, because it has to be validated and de-duplicated on its own -
 // quietly failing on a duplicate would leave someone stuck re-saving settings.
 app.post("/settings/username", requireLogin, async function(req, res){
@@ -1050,8 +1068,11 @@ app.post("/settings/username", requireLogin, async function(req, res){
     // are the only things forgiven; anything else is rejected and explained.
     const requested = String(req.body.username || "").trim().toLowerCase();
 
+    // Allow-list, not a prefix test: "//evil.example.com" is protocol-relative
+    // and a naive `startsWith("/")` would treat it as a local path.
+    const target = String(req.body.redirectTo || "") === "/settings" ? "/settings" : "/account";
     const done = (usernameError, ok) =>
-        res.redirect(`/settings?un=${encodeURIComponent(usernameError)}${ok ? "&un_ok=1" : ""}`);
+        res.redirect(`${target}?un=${encodeURIComponent(usernameError)}${ok ? "&un_ok=1" : ""}`);
 
     if (!requested) return done("Enter a username.");
     // Reserved words are checked before the shape test: isValid() also rejects

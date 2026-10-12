@@ -86,6 +86,13 @@
       <div class="nav-section-label">Account</div>
       <ul class="nav-list secondary-nav">
         <li class="nav-item">
+          <a href="/account" class="nav-link" data-path="/account">
+            <span class="nav-icon material-symbols-rounded">account_circle</span>
+            <span class="nav-label">Account</span>
+          </a>
+          <span class="nav-tooltip">Account</span>
+        </li>
+        <li class="nav-item">
           <a href="/settings" class="nav-link" data-path="/settings">
             <span class="nav-icon material-symbols-rounded">settings</span>
             <span class="nav-label">Settings</span>
@@ -94,10 +101,18 @@
         </li>
         <% if (typeof currentUser !== 'undefined' && currentUser) { %>
         <li class="nav-item nav-user-chip">
-          <div class="nav-user">
-            <span class="nav-avatar"><%= (currentUser.name || currentUser.email).charAt(0).toUpperCase() %></span>
-            <span class="nav-label nav-user-name"><%= currentUser.name || currentUser.email %></span>
-          </div>
+          <%# The username is the public identity, so it is what the nav shows.
+              The full email address stays on /account and never appears here -
+              it is personal, and this label is visible on a shared screen. %>
+          <%
+            const navHandle = currentUser.username
+              || currentUser.name
+              || (currentUser.email ? currentUser.email.split("@")[0] : "?");
+          %>
+          <a href="/account" class="nav-user" data-path="/account">
+            <span class="nav-avatar"><%= navHandle.charAt(0).toUpperCase() %></span>
+            <span class="nav-label nav-user-name"><%= navHandle %></span>
+          </a>
         </li>
         <li class="nav-item">
           <form action="/logout" method="POST" class="nav-logout-form">
