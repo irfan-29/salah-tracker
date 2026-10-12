@@ -19,12 +19,12 @@
 <div class="post-card<%= post.isVideo ? ' post-card-video' : '' %>">
   <div class="post-card-head">
     <% if (handle) { %>
-      <%# A handle, not a link. Styled explicitly below because the browser
-          default (blue + underline) makes every post look like a hyperlink
-          soup and reads as UI rather than as authorship. %>
+      <%# Instagram-style: a circular letter avatar beside the handle, with no
+          "@" prefix. The letter is the same one used in the nav, the profile and
+          the account page, so a person looks the same everywhere. %>
       <a class="post-author" href="/u/<%= handle %>">
-        <span class="material-symbols-rounded">account_circle</span>
-        <span class="post-author-at">@</span><%= handle %>
+        <span class="post-author-avatar" aria-hidden="true"><%= handle.charAt(0).toUpperCase() %></span>
+        <span class="post-author-name"><%= handle %></span>
       </a>
     <% } else if (post.authorName) { %>
       <span class="post-author post-author-anonymous"><%= post.authorName %></span>

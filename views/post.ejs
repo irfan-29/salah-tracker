@@ -6,7 +6,7 @@
     <%# author is a populate() and can be null if the account was deleted, so
         this must not assume it resolved. %>
     <% if (post.author && post.author.username) { %>
-      <a class="post-author" href="/u/<%= post.author.username %>"><span class="post-author-at">@</span><%= post.author.username %></a>
+      <a class="post-author" href="/u/<%= post.author.username %>"><span class="post-author-avatar" aria-hidden="true"><%= post.author.username.charAt(0).toUpperCase() %></span><span class="post-author-name"><%= post.author.username %></span></a>
     <% } else if (post.authorName) { %>
       by <span class="post-author-anonymous"><%= post.authorName %></span>
     <% } %>
