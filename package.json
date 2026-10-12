@@ -13,7 +13,8 @@
     "qstash:schedule": "node scripts/qstash-schedule.js",
     "check:secrets": "node scripts/check-secrets.js",
     "verify:passwords": "node scripts/verify-password-compat.js",
-    "backfill:usernames": "node scripts/backfill-usernames.js"
+    "backfill:usernames": "node scripts/backfill-usernames.js",
+    "check:email": "node scripts/check-email.js"
   },
   "keywords": [],
   "author": "Mohammed Irfan U",
