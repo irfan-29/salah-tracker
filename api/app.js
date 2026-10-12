@@ -1303,15 +1303,17 @@ app.post("/register", async function(req, res){
 
     const sent = await emailService.sendOtpEmail({ to: email, code });
 
-    if (!sent) {
+    if (!sent.ok) {
         // Do not leave a half-started signup behind: without a delivered code
         // there is nothing the user can do but retry.
         delete req.session.pendingSignup;
-        const problem = emailService.warning();
-        console.error("register: OTP not sent -", problem);
-        return fail(problem
-            ? "We could not send a verification email. Please try again shortly."
-            : "We could not send a verification email. Please try again shortly.");
+        // Two distinct causes, and telling them apart is the difference between
+        // "check Vercel env vars" and "regenerate your App Password". The detail
+        // stays in the server log; the user gets the actionable half.
+        console.error("register: OTP not delivered -", sent.reason);
+        return fail(sent.reason === "not-configured"
+            ? "We could not send a verification email - the site has no email service set up yet. Please try again shortly."
+            : "We could not send a verification email. Please check the address and try again.");
     }
 
     res.render("verify-email", {
@@ -1365,8 +1367,9 @@ app.post("/resend-otp", async function(req, res){
     req.session.pendingSignup = pending;
 
     const sent = await emailService.sendOtpEmail({ to: pending.email, code });
-    res.status(sent ? 200 : 502).render("verify-email", {
-        authError: sent ? null : "We could not send another code. Please try again.",
+    if (!sent.ok) console.error("resend-otp: delivery failed -", sent.reason);
+    res.status(sent.ok ? 200 : 502).render("verify-email", {
+        authError: sent.ok ? null : "We could not send another code. Please try again.",
         pendingEmail: pending.email,
         canResend: true
     });
@@ -1778,4 +1781,18 @@ module.exports.handler = serverless(app);
 
 app.listen(process.env.PORT || 3000, function(){
     console.log("Server is running on port 3000");
+
+    // Startup summary for the email transport, because a missing App Password
+    // otherwise surfaces only as a signup form that quietly refuses - and the
+    // request log in the Vercel UI does not include function stdout, so the
+    // operator needs this in the Function Logs tab.
+    //
+    // Reports the provider and whether it looks usable. Never prints the token,
+    // the App Password or the SMTP user: these land in log aggregation.
+    const emailWarning = emailService.warning();
+    console.log(
+        `email transport: provider=${emailService.resolvedProvider()}`
+        + ` configured=${emailService.isConfigured()}`
+        + (emailWarning ? ` PROBLEM=${emailWarning}` : "")
+    );
 });

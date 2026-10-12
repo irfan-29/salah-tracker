@@ -194,8 +194,16 @@ function devEchoEnabled() {
 }
 
 /**
- * Deliver an OTP. Returns true on success, false on any failure - never throws,
- * because the caller can offer a resend but cannot handle an exception here.
+ * Deliver an OTP.
+ *
+ * Returns { ok, reason } rather than a bare boolean, because the two failure
+ * modes need different fixes and the caller should be able to tell them apart:
+ *
+ *   not-configured - nobody set up an email transport. Operator's problem.
+ *   send-failed    - transport exists but the provider refused. Usually an
+ *                    invalid or revoked App Password.
+ *
+ * Never throws: the caller can offer a resend but cannot handle an exception.
  */
 async function sendOtpEmail({ to, code }) {
     const provider = resolvedProvider();
@@ -203,25 +211,32 @@ async function sendOtpEmail({ to, code }) {
     if (!isConfigured()) {
         if (devEchoEnabled()) {
             console.warn(`email: no transport configured - DEV ONLY, code for ${to}: ${code}`);
-            return true;
+            return { ok: true, reason: "dev-echo" };
         }
-        console.error("email: transport not configured - OTP not sent. " + (warning() || ""));
-        return false;
+        const problem = warning() || "no transport configured";
+        console.error(`email: NOT CONFIGURED - OTP not sent. ${problem}`);
+        return { ok: false, reason: "not-configured" };
     }
 
     try {
-        return provider === "gmail"
+        provider === "gmail"
             ? await sendViaGmail({ to, code })
             : await sendViaResend({ to, code });
+        return { ok: true, reason: null };
     } catch (err) {
-        // Gmail surfaces 535 "Invalid credentials" for a wrong App Password and
-        // 534 for 2FA not being enabled; both are misconfiguration rather than
-        // a transient fault, so say so rather than logging a bare failure.
-        const authHint = err && err.responseCode === 535
-            ? " - Gmail rejected the App Password (check it is current and 2FA is on)"
-            : "";
-        console.error(`email: ${provider} send failed -${err.message}${authHint}`);
-        return false;
+        // Gmail reports 535 for a wrong/revoked App Password and 534 when 2FA is
+        // off; both are misconfiguration rather than a transient fault, so name
+        // them instead of logging a bare failure the operator has to decode.
+        let hint = "";
+        if (err && err.responseCode === 535) {
+            hint = " - Gmail rejected the App Password. Regenerate it at myaccount.google.com/apppasswords and update Vercel.";
+        } else if (err && err.responseCode === 534) {
+            hint = " - Gmail requires 2-Step Verification to be on before App Passwords will work.";
+        } else if (err && err.responseCode === 421) {
+            hint = " - Gmail is temporarily blocking this sign-in. Wait a few minutes and retry.";
+        }
+        console.error(`email: ${provider} SEND FAILED - ${err.message}${hint}`);
+        return { ok: false, reason: "send-failed" };
     }
 }
 
