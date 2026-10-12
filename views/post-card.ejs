@@ -1,0 +1,49 @@
+<%#
+  One post, used by the feed, a profile and a permalink.
+
+  Expects `post`. `post.author` may or may not be populated, so the handle falls
+  back to the denormalised authorName - a post whose author was deleted still
+  renders rather than showing "@undefined".
+
+  Locals:
+    permalinkBase - origin used to build the shareable absolute URL. Falls back
+                    to a relative path when the view is rendered without it
+                    (e.g. from an email), since window is not available in EJS.
+%>
+<%
+  const authorDoc = post.author && post.author.username ? post.author : null;
+  const handle = authorDoc ? authorDoc.username : null;
+  const origin = typeof permalinkBase !== 'undefined' && permalinkBase ? permalinkBase : '';
+  const permalink = origin + '/post/' + post._id;
+%>
+<div class="post-card<%= post.isVideo ? ' post-card-video' : '' %>">
+  <div class="post-card-head">
+    <% if (handle) { %>
+      <a class="post-author" href="/u/<%= handle %>">
+        <span class="material-symbols-rounded">account_circle</span>
+        <%= handle %>
+      </a>
+    <% } else if (post.authorName) { %>
+      <span class="post-author post-author-anonymous"><%= post.authorName %></span>
+    <% } %>
+
+    <button type="button" class="post-share" data-share-url="<%= permalink %>" title="Copy link to this post">
+      <span class="material-symbols-rounded">link</span>
+      <span class="post-share-label">Share</span>
+    </button>
+  </div>
+
+  <% if (post.isVideo) { %>
+    <div class="post-video-embed">
+      <iframe src="https://www.youtube.com/embed/<%= post.content %>" allowfullscreen></iframe>
+    </div>
+    <% if (post.reference) { %><p class="post-reference"><%= post.reference %></p><% } %>
+  <% } else { %>
+    <p class="post-content"><%= post.content %></p>
+    <% if (post.reference) { %><p class="post-reference">Reference: <%= post.reference %></p><% } %>
+  <% } %>
+
+  <p class="post-date">
+    <a class="post-permalink" href="/post/<%= post._id %>"><%= post.postedDate %></a>
+  </p>
+</div>

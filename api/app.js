@@ -23,6 +23,9 @@ const { cachedJson, cachedJsonOrNull } = require("./utils/quranCache.js");
 const notify = require("./services/notifications.js");
 const scheduler = require("./services/notifyScheduler.js");
 const qstash = require("./utils/qstash.js");
+const usernameUtil = require("./utils/username.js");
+const emailService = require("./services/email.js");
+const passwordUtil = require("./utils/password.js");
 const User = require("./models/User.js");
 
 
@@ -490,7 +493,7 @@ const SKIP_MIDDLEWARE_URLS = ["/hide-audio"];
   app.get("/posts", async(req, res) => {
     // Newest first, with the author populated for attribution.
     const post = await Posts.find({}).sort({ _id: -1 }).populate("author", "name username");
-    res.render('posts', { post });
+    res.render('posts', { post, permalinkBase: originOf(req) });
   });
 
   app.get("/add-post", requireLogin, async(req, res) => {
@@ -498,7 +501,50 @@ const SKIP_MIDDLEWARE_URLS = ["/hide-audio"];
   });
 
 
-  app.post("/add-post", requireLogin, async(req, res) => {
+  // Public profile: /u/<username>. Posts stay public (the feed already is), so
+// this is intentionally NOT behind requireLogin - it is the thing a user shares
+// a link to. Lookup is case-insensitive to match how usernames are stored.
+// Absolute origin for share links. `trust proxy` is configured, so req.protocol
+// and the host header reflect the public URL rather than an internal hop.
+function originOf(req) {
+    const host = req.get("host");
+    return host ? `${req.protocol || "https"}://${host}` : "";
+}
+
+app.get("/u/:username", async function(req, res){
+    const wanted = String(req.params.username || "").toLowerCase();
+    const author = await User.findOne({ username: wanted }).select("username name emailVerifiedAt createdAt");
+
+    if (!author) {
+        return res.status(404).render("error", { err: "No profile with that username." });
+    }
+
+    const posts = await Posts.find({ author: author._id }).sort({ _id: -1 });
+
+    res.render("profile", {
+        // Posts render their own author line; passing the owner keeps the header
+        // and the list consistent without a second lookup.
+        owner: author,
+        post: posts,
+        permalinkBase: originOf(req),
+        isOwner: Boolean(req.isAuthenticated() && req.user && String(req.user._id) === String(author._id))
+    });
+});
+
+// Permalink for a single post, so a post can be shared directly rather than
+// only as "the one at the top of the feed".
+app.get("/post/:id", async function(req, res){
+    if (!mongoose.isValidObjectId(req.params.id)) {
+        return res.status(404).render("error", { err: "That post does not exist." });
+    }
+    const post = await Posts.findById(req.params.id).populate("author", "username name");
+    if (!post) {
+        return res.status(404).render("error", { err: "That post does not exist." });
+    }
+    res.render("post", { post, permalinkBase: originOf(req) });
+});
+
+app.post("/add-post", requireLogin, async(req, res) => {
     let date = new Date(req.query.date);
     if(isNaN(date.getTime())) date = new Date();
     const options = { weekday: "long", month: "short", day: "2-digit", year: "numeric" };
@@ -987,9 +1033,67 @@ app.get("/settings", async (req, res) => {
         tgFoundChatId: normalizeChatId(req.query.chat || ""),
         tgMessages: ERROR_MESSAGES,
         tarteelFonts: tarteelFonts,
-        reciters: recitersJson, 
-        editions: editionsByLanguage
+        reciters: recitersJson,
+        editions: editionsByLanguage,
+        username: (res.locals.currentUser && res.locals.currentUser.username) || "",
+        usernameError: req.query.un || ""
     });
+});
+
+// Change the public handle. On its own formaction rather than part of the general
+// settings save, because it has to be validated and de-duplicated on its own -
+// quietly failing on a duplicate would leave someone stuck re-saving settings.
+app.post("/settings/username", requireLogin, async function(req, res){
+    // Unlike signup, a username chosen here is NOT run through sanitize(). That
+    // would silently turn "my name" into "myname" and leave the user wondering
+    // why their profile is not what they typed. Case and surrounding whitespace
+    // are the only things forgiven; anything else is rejected and explained.
+    const requested = String(req.body.username || "").trim().toLowerCase();
+
+    const done = (usernameError, ok) =>
+        res.redirect(`/settings?un=${encodeURIComponent(usernameError)}${ok ? "&un_ok=1" : ""}`);
+
+    if (!requested) return done("Enter a username.");
+    // Reserved words are checked before the shape test: isValid() also rejects
+    // them, so testing shape first would report "letters, numbers, dots or
+    // underscores" for "posts" and never reach the explanation below.
+    if (usernameUtil.isReserved(requested)) {
+        return done("That username is reserved.");
+    }
+    if (!usernameUtil.isValid(requested)) {
+        return done("Usernames must be 3-30 characters: letters, numbers, dots or underscores.");
+    }
+
+    try {
+        // Exclude self, otherwise re-saving your own unchanged username would
+        // collide with itself and report "taken".
+        if (await User.exists({ username: requested, _id: { $ne: req.user._id } })) {
+            return done("That username is already taken.");
+        }
+        if (req.user.username === requested) {
+            return done("", true);
+        }
+
+        const previous = req.user.username;
+        req.user.username = requested;
+        await req.user.save();
+
+        // Posts store a denormalised authorName, but they link by author id, so
+        // existing posts and shared /u/<name> links follow the change. Only the
+        // denormalised copy needs rewriting, for the anonymous fallback.
+        if (previous) {
+            await mongoose.connection.collection("posts").updateMany(
+                { authorName: previous },
+                { $set: { authorName: requested } }
+            );
+        }
+
+        return done("", true);
+    } catch (err) {
+        if (err && err.code === 11000) return done("That username is already taken.");
+        console.error("settings/username:", err.message);
+        return done("Could not update your username.");
+    }
 });
 
 
@@ -1171,25 +1275,189 @@ app.post("/register", async function(req, res){
     if (password !== confirm) return fail("Passwords do not match.");
 
     try {
-        // passport-local-mongoose v9 exposes register() as a Model static, not
-        // an instance method (v8 had it on both).
-        const user = await User.register({ email: email }, password);
+        if (await User.exists({ email })) return fail("That email is already registered.");
+    } catch (err) {
+        console.error("register: existence check failed -", err.message);
+        return fail("Could not create the account. Please try again.");
+    }
+
+    // No User is created here. Making the row first would let anyone reserve an
+    // email they do not own simply by typing it - the owner could then never
+    // sign up. Instead the intent lives in the session until the emailed code
+    // proves control of the address.
+    const code = emailService.makeOtp();
+    const { hash, salt } = passwordUtil.createPasswordRecord(password);
+    req.session.pendingSignup = {
+        email,
+        // Stored hashed, not in plaintext: the session lives in the database, and
+        // a leaked session should not hand over a working password.
+        hash,
+        salt,
+        otpHash: emailService.hashOtp(code),
+        // 10 minutes is long enough to find an email and short enough to keep
+        // the window small.
+        expiresAt: Date.now() + 10 * 60 * 1000,
+        attempts: 0,
+        sentAt: Date.now()
+    };
+
+    const sent = await emailService.sendOtpEmail({ to: email, code });
+
+    if (!sent) {
+        // Do not leave a half-started signup behind: without a delivered code
+        // there is nothing the user can do but retry.
+        delete req.session.pendingSignup;
+        const problem = emailService.warning();
+        console.error("register: OTP not sent -", problem);
+        return fail(problem
+            ? "We could not send a verification email. Please try again shortly."
+            : "We could not send a verification email. Please try again shortly.");
+    }
+
+    res.render("verify-email", {
+        authError: null,
+        pendingEmail: email,
+        canResend: true,
+        resendIn: 0
+    });
+});
+
+// Cooldown between resends. Without it the resend button is a way to mail-bomb
+// an address, and Resend's own limit would be hit by a single impatient user.
+const OTP_RESEND_COOLDOWN_MS = 30 * 1000;
+const OTP_MAX_ATTEMPTS = 5;
+
+function pendingSignup(req) {
+    const p = req.session.pendingSignup;
+    if (!p) return { ok: false, reason: "no-pending" };
+    if (Date.now() > p.expiresAt) {
+        delete req.session.pendingSignup;
+        return { ok: false, reason: "expired" };
+    }
+    return { ok: true, pending: p };
+}
+
+app.post("/resend-otp", async function(req, res){
+    const { ok, pending, reason } = pendingSignup(req);
+    if (!ok) {
+        return res.status(400).render("login", {
+            authError: "That verification session has expired. Please register again.",
+            authEmail: String(req.body.email || ""),
+            authMode: "register"
+        });
+    }
+
+    const elapsed = Date.now() - (pending.sentAt || 0);
+    if (elapsed < OTP_RESEND_COOLDOWN_MS) {
+        const wait = Math.ceil((OTP_RESEND_COOLDOWN_MS - elapsed) / 1000);
+        return res.status(429).render("verify-email", {
+            authError: `Please wait ${wait} seconds before requesting another code.`,
+            pendingEmail: pending.email,
+            canResend: false,
+            resendIn: wait
+        });
+    }
+
+    const code = emailService.makeOtp();
+    pending.otpHash = emailService.hashOtp(code);
+    pending.sentAt = Date.now();
+    pending.attempts = 0;
+    req.session.pendingSignup = pending;
+
+    const sent = await emailService.sendOtpEmail({ to: pending.email, code });
+    res.status(sent ? 200 : 502).render("verify-email", {
+        authError: sent ? null : "We could not send another code. Please try again.",
+        pendingEmail: pending.email,
+        canResend: true
+    });
+});
+
+app.post("/verify-email", async function(req, res){
+    const code = String(req.body.code || "").replace(/\D/g, "");
+    const { ok, pending, reason } = pendingSignup(req);
+
+    const retry = (authError, extra = {}) => res.status(400).render("verify-email", {
+        authError,
+        pendingEmail: pending ? pending.email : String(req.body.email || ""),
+        canResend: Boolean(pending),
+        ...extra
+    });
+
+    if (!ok) {
+        return res.status(400).render("login", {
+            authError: reason === "expired"
+                ? "That code has expired. Please register again."
+                : "Start by registering again.",
+            authEmail: String(req.body.email || ""),
+            authMode: "register"
+        });
+    }
+
+    if (code.length !== 6) return retry("Enter the 6-digit code from the email.");
+    if (!emailService.otpMatches(pending.otpHash, code)) {
+        // Count attempts so a 6-digit code cannot be brute-forced. 10^6 is small
+        // enough that an unthrottled attacker would get through it.
+        pending.attempts = (pending.attempts || 0) + 1;
+        if (pending.attempts >= OTP_MAX_ATTEMPTS) {
+            delete req.session.pendingSignup;
+            return res.status(400).render("login", {
+                authError: "Too many incorrect attempts. Please register again.",
+                authEmail: pending.email,
+                authMode: "register"
+            });
+        }
+        const left = OTP_MAX_ATTEMPTS - pending.attempts;
+        return retry(`That code is not correct. ${left} attempt${left === 1 ? "" : "s"} left.`);
+    }
+
+    try {
+        const user = await User.create({
+            email: pending.email,
+            hash: pending.hash,
+            salt: pending.salt,
+            username: await allocateUsername(pending.email),
+            emailVerifiedAt: new Date()
+        });
+
+        delete req.session.pendingSignup;
         await mergeGuestIntoUser(req, user);
         req.logIn(user, (err) => {
             if (err) return res.status(500).send("Could not sign you in.");
             userData.clearGuestCookie(req, res);
-            res.redirect(req.session.returnTo || "/challenges");
+            res.redirect("/settings?welcome=1");
         });
     } catch (err) {
-        // The plugin signals a duplicate with UserExistsError or a 11000 key
-        // violation, depending on how the race resolves.
-        const isDuplicate = (err && err.code === 11000)
-            || (err && err.name === "UserExistsError");
-        if (isDuplicate) return fail("That email is already registered.");
-        console.error(err);
-        return fail("Could not create the account. Please try again.");
+        // The email can only become taken between the check in /register and
+        // here, but that race is exactly what this catches.
+        const isDuplicate = (err && err.code === 11000) || (err && err.name === "UserExistsError");
+        if (isDuplicate) {
+            delete req.session.pendingSignup;
+            return res.status(400).render("login", {
+                authError: "That email is already registered.",
+                authEmail: pending.email,
+                authMode: "register"
+            });
+        }
+        console.error("verify-email:", err);
+        res.status(500).render("login", {
+            authError: "Could not create the account. Please try again.",
+            authEmail: pending.email,
+            authMode: "register"
+        });
     }
 });
+
+// Resolve a free username for an email, querying the users collection directly
+// because `taken` is called in a loop until it finds a gap.
+async function allocateUsername(email, excludeUserId = null) {
+    const name = await usernameUtil.allocate(usernameUtil.fromEmail(email), async (candidate) => {
+        const filter = { username: candidate };
+        if (excludeUserId) filter._id = { $ne: excludeUserId };
+        return Boolean(await User.exists(filter));
+    });
+    if (!name) throw new Error("could not allocate a username");
+    return name;
+}
 
 app.post("/login", function(req, res, next){
     const email = String(req.body.email || "").trim().toLowerCase();

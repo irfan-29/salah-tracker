@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Verify your email · Track My Salah</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css" rel="stylesheet"
+    integrity="sha384-Zenh87qX5JnK2Jl0vWa8Ck2rdkQ2Bzep5IDxbcnCeuOxjzrPF/et3URy9Bv1WTRi" crossorigin="anonymous" />
+  <link rel="stylesheet" href="/css/styles.css" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" />
+</head>
+<body class="auth-body">
+
+  <div class="auth-wrap">
+    <div class="auth-card">
+      <div class="auth-brand">
+        <span class="auth-logo material-symbols-rounded">mark_email_read</span>
+        <h1 class="auth-title">Check your email</h1>
+        <p class="auth-sub">We sent a 6-digit code to <%= pendingEmail %></p>
+      </div>
+
+      <% if (authError) { %>
+        <div class="auth-alert" role="alert">
+          <span class="material-symbols-rounded">error</span>
+          <%= authError %>
+        </div>
+      <% } %>
+
+      <form action="/verify-email" method="POST" class="auth-form">
+        <div class="form-floating">
+          <input class="form-control" type="text" id="code" name="code" required
+                 inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autofocus
+                 autocomplete="one-time-code" placeholder="000000">
+          <label for="code">Verification code</label>
+        </div>
+        <p class="auth-hint">The code expires in 10 minutes.</p>
+
+        <button type="submit" class="btn btn-primary auth-submit">
+          Verify and continue
+        </button>
+      </form>
+
+      <% if (canResend) { %>
+        <form action="/resend-otp" method="POST">
+          <button type="submit" class="auth-switch" style="background:none;border:none;cursor:pointer;">
+            Didn't get it? Send another code
+          </button>
+        </form>
+      <% } %>
+
+      <p class="auth-switch"><a href="/login">Use a different account</a></p>
+    </div>
+  </div>
+
+</body>
+</html>

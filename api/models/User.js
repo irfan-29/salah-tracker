@@ -36,6 +36,16 @@ const settingsSchema = new mongoose.Schema({
 
 const userSchema = new mongoose.Schema({
     name: String,
+    // Public handle, derived from the email local-part at signup and used in
+    // /u/<username>. Unique because two people may share a local-part across
+    // different providers (irfan@gmail.com vs irfan@yahoo.com) - the collision
+    // is resolved with a numeric suffix by api/utils/username.js.
+    // sparse so an account that predates this field does not collide with
+    // every other account at the single null value.
+    username: { type: String, unique: true, sparse: true },
+    // Set once the emailed OTP is confirmed. Signup does not create a User at
+    // all until then, so this is a backstop rather than the primary gate.
+    emailVerifiedAt: Date,
     phone: String,
     lastReadSurahs: [String],
     challenges: [challengeSchema],
@@ -84,6 +94,11 @@ userSchema.plugin(passportLocalMongoose, {
 
 userSchema.pre("save", function (next) {
     if (this.isModified("email") && this.email) this.email = this.email.trim().toLowerCase();
+    // Usernames are compared case-insensitively everywhere, so normalise on the
+    // way in rather than relying on every reader to remember to lower-case.
+    if (this.isModified("username") && this.username) {
+        this.username = this.username.trim().toLowerCase();
+    }
     if (!this.settings) this.settings = {};
     next();
 });

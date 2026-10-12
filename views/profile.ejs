@@ -1,0 +1,38 @@
+<%- include("navbar") -%>
+
+<div class="profile-header">
+  <div class="profile-avatar">
+    <span class="material-symbols-rounded">account_circle</span>
+  </div>
+  <div class="profile-meta">
+    <h1 class="profile-handle"><%= owner.username %></h1>
+    <p class="profile-stats">
+      <strong><%= post.length %></strong> <%= post.length === 1 ? 'post' : 'posts' %>
+      <% if (isOwner) { %>
+        <span class="profile-badge">This is you</span>
+      <% } %>
+    </p>
+  </div>
+  <div class="profile-actions">
+    <%# Copies the profile URL so it can be shared as a whole page, the way a
+        social profile link works. Falls back to selecting the text if the
+        clipboard API is unavailable (http origins, older browsers). %>
+    <button type="button" class="btn btn-outline-primary profile-share"
+            data-share-url="<%= permalinkBase %>/u/<%= owner.username %>">
+      <span class="material-symbols-rounded" style="font-size:1.1rem;">share</span>
+      Share profile
+    </button>
+  </div>
+</div>
+
+<% if (!post.length) { %>
+  <p class="post-empty">
+    <%= isOwner ? "You have not posted anything yet." : "This user has not posted anything yet." %>
+  </p>
+<% } %>
+
+<% post.forEach(function(p) { %>
+  <%- include("post-card", { post: p, permalinkBase }) %>
+<% }); %>
+
+<%- include('footer') %>

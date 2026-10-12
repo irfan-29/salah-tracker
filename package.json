@@ -11,7 +11,9 @@
     "build": "echo success",
     "test": "echo \"Error: no test specified\" && exit 1",
     "qstash:schedule": "node scripts/qstash-schedule.js",
-    "check:secrets": "node scripts/check-secrets.js"
+    "check:secrets": "node scripts/check-secrets.js",
+    "verify:passwords": "node scripts/verify-password-compat.js",
+    "backfill:usernames": "node scripts/backfill-usernames.js"
   },
   "keywords": [],
   "author": "Mohammed Irfan U",
@@ -31,6 +33,7 @@
     "node-fetch": "^2.7.0",
     "passport": "^0.7.0",
     "passport-local-mongoose": "^9.2.1",
+    "resend": "^6.32.1",
     "serverless-http": "^3.2.0"
   },
   "description": "",

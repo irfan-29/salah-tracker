@@ -48,6 +48,65 @@
     </audio>
   </div>
 
+  <%# Share buttons: copy the permalink, or hand it to the OS share sheet.
+      Delegated on document because the buttons are rendered inside page
+      content, not in a stable container of their own. %>
+  <script>
+    (function () {
+      const RESET_MS = 1600;
+
+      function flashCopied(button) {
+        const label = button.querySelector('.post-share-label');
+        button.dataset.copied = 'true';
+        if (label) label.textContent = 'Link copied';
+        setTimeout(function () {
+          delete button.dataset.copied;
+          if (label) label.textContent = 'Share';
+        }, RESET_MS);
+      }
+
+      async function share(button) {
+        const url = button.dataset.shareUrl;
+        if (!url) return;
+
+        // navigator.share is the better experience where it exists, but it is
+        // absent on desktop Chrome and on any non-secure origin, so the
+        // clipboard has to be the real path rather than the fallback.
+        if (navigator.share) {
+          try {
+            await navigator.share({ title: document.title, url: url });
+            return;
+          } catch (err) {
+            if (err && err.name === 'AbortError') return;
+            // Fall through to copying.
+          }
+        }
+
+        try {
+          await navigator.clipboard.writeText(url);
+          flashCopied(button);
+        } catch (err) {
+          // Clipboard API needs a secure context. Select the text instead of
+          // silently doing nothing.
+          const field = document.createElement('textarea');
+          field.value = url;
+          field.setAttribute('readonly', '');
+          field.style.position = 'absolute';
+          field.style.left = '-9999px';
+          document.body.appendChild(field);
+          field.select();
+          try { document.execCommand('copy'); flashCopied(button); } catch (e) {}
+          document.body.removeChild(field);
+        }
+      }
+
+      document.addEventListener('click', function (event) {
+        const button = event.target.closest('[data-share-url]');
+        if (button) share(button);
+      });
+    })();
+  </script>
+
   <script>
     (function () {
       const audio = document.getElementById('globalAudio');

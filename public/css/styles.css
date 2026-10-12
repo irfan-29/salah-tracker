@@ -2543,3 +2543,154 @@ hr {
   max-width: 260px;
   padding-top: 1.6rem;
 }
+
+/* ---------- Posts: author line, share, permalink ---------- */
+
+.post-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.post-author {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.post-author:hover { text-decoration: underline; }
+
+/* An author with no username (deleted account, or the pre-username seed post)
+   must not look like a link, because there is nothing to link to. */
+.post-author-anonymous { color: var(--color-text-secondary); }
+
+.post-share {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.6rem;
+  font: inherit;
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: 1px solid var(--color-border, #e0e0e0);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.post-share .material-symbols-rounded { font-size: 1rem; }
+
+.post-share:hover {
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+/* Brief confirmation after copying, so the click is visibly acknowledged.
+   Falls back to grey if the app never sets data-copied. */
+.post-share[data-copied="true"] {
+  color: #fff;
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.post-permalink { color: inherit; text-decoration: none; }
+.post-permalink:hover { text-decoration: underline; }
+
+.post-empty {
+  padding: 2rem 1rem;
+  text-align: center;
+  color: var(--color-text-secondary);
+}
+
+.post-back { margin-top: 1.5rem; }
+
+/* ---------- Profile ---------- */
+
+.profile-header {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  background: var(--color-surface, #fff);
+  border: 1px solid var(--color-border, #e0e0e0);
+  border-radius: 12px;
+}
+
+.profile-avatar .material-symbols-rounded {
+  font-size: 3.5rem;
+  color: var(--color-primary);
+}
+
+.profile-meta { flex: 1 1 200px; }
+
+.profile-handle {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.profile-stats {
+  margin: 0.25rem 0 0;
+  color: var(--color-text-secondary);
+  font-size: 0.9375rem;
+}
+
+.profile-badge {
+  display: inline-block;
+  margin-left: 0.5rem;
+  padding: 0.1rem 0.5rem;
+  font-size: 0.75rem;
+  color: var(--color-primary);
+  background: rgba(0, 123, 255, 0.1);
+  border-radius: 999px;
+}
+
+.profile-share { display: inline-flex; align-items: center; gap: 0.4rem; }
+
+/* ---------- Settings: username ---------- */
+
+.username-row { margin-bottom: 1.5rem; }
+
+.username-input {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-top: 0.75rem;
+  max-width: 420px;
+}
+
+.username-input .form-control {
+  text-transform: lowercase;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.username-input .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+}
+
+.username-input .material-symbols-rounded { font-size: 1.1rem; }
+
+.username-row code {
+  padding: 0.1rem 0.35rem;
+  background: rgba(0, 123, 255, 0.08);
+  border-radius: 4px;
+  font-size: 0.875rem;
+}
+
+.tg-hint {
+  margin-top: 0.5rem;
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+}
