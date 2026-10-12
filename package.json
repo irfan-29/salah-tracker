@@ -31,6 +31,7 @@
     "express-session": "^1.19.0",
     "mongoose": "^8.24.4",
     "node-fetch": "^2.7.0",
+    "nodemailer": "^10.1.0",
     "passport": "^0.7.0",
     "passport-local-mongoose": "^9.2.1",
     "resend": "^6.32.1",
