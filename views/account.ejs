@@ -19,9 +19,12 @@
 <% } %>
 
 <section class="account-card">
-  <div class="account-avatar">
-    <span class="material-symbols-rounded">account_circle</span>
-  </div>
+  <%# Letter avatar, matching the nav and the public profile. A Google or
+      uploaded image is deliberately not used here: a Google photo needs OAuth,
+      and Google profile photos are not Gravatars, so the only options that
+      actually work are a file upload or a second sign-in path. Revisit if a
+      real need appears. %>
+  <div class="account-avatar" aria-hidden="true"><%= displayName.charAt(0).toUpperCase() %></div>
 
   <div class="account-body">
     <div class="account-handle"><%= displayName %></div>

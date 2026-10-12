@@ -2659,10 +2659,36 @@ hr {
   border-radius: 12px;
 }
 
-.profile-avatar .material-symbols-rounded {
-  font-size: 3.5rem;
-  color: var(--color-primary);
+.profile-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1;
+  flex-shrink: 0;
 }
+
+.account-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
 
 .profile-meta { flex: 1 1 200px; }
 
@@ -2742,10 +2768,6 @@ hr {
   border-radius: 12px;
 }
 
-.account-avatar .material-symbols-rounded {
-  font-size: 3rem;
-  color: var(--color-primary);
-}
 
 .account-body { flex: 1 1 200px; }
 

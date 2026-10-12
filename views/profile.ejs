@@ -1,9 +1,9 @@
 <%- include("navbar") -%>
 
 <div class="profile-header">
-  <div class="profile-avatar">
-    <span class="material-symbols-rounded">account_circle</span>
-  </div>
+  <%# Same letter avatar as the nav, so a user looks identical everywhere.
+      No image upload for now - see the note in account.ejs. %>
+  <div class="profile-avatar" aria-hidden="true"><%= owner.username.charAt(0).toUpperCase() %></div>
   <div class="profile-meta">
     <h1 class="profile-handle"><%= owner.username %></h1>
     <p class="profile-stats">
