@@ -5,134 +5,205 @@
   <p>Read, listen, and reflect on the Holy Quran</p>
 </div>
 
-<div class="container1">
-  <div class="featured-label">Ayah of the Day</div>
-  <a href="/surah/<%= ayahOfTheDay.surahNo %>?ayah=<%= ayahOfTheDay.ayahNo %>">
-    <div class="featured-surah">
-      <div class="featured-ayah-ref">
-        <p class="featured-ayah-cite">Surah <%= ayahOfTheDay.surahNo %> · Ayah <%= ayahOfTheDay.ayahNo %></p>
-        <p class="featured-ayah-surah">
-          <%= ayahOfTheDay.surahName %>
-          <% if (ayahOfTheDay.surahNameArabic) { %> · <%= ayahOfTheDay.surahNameArabic %><% } %>
-        </p>
-      </div>
-      <% if (ayahOfTheDay.arabicText) { %>
-        <p class="featured-ayah-arabic" style="font-family: '<%= favoriteFont %>', serif;"><%= ayahOfTheDay.arabicText %></p>
-      <% } %>
-      <% if (ayahOfTheDay.translationText) { %>
-        <% if (ayahOfTheDay.translationLabel) { %>
-          <p class="featured-ayah-edition"><%= ayahOfTheDay.translationLabel %></p>
-        <% } %>
-        <p class="featured-ayah-translation"><%= ayahOfTheDay.translationText %></p>
-      <% } %>
-    </div>
-  </a>
+<%# Client-side tabs, deliberately. Each sub-module is rendered server-side so
+    the page is complete and shareable on first paint, but switching swaps the
+    panels in place rather than navigating - a navigation would destroy the
+    <audio> element in the footer and stop playback mid-ayah. %>
+<div class="quran-tabs" role="tablist" aria-label="Quran sections">
+  <button type="button" class="quran-tab is-active" role="tab"
+          aria-selected="true" aria-controls="quran-panel-read" id="quran-tab-read"
+          data-tab="read">
+    <span class="material-symbols-rounded">menu_book</span>
+    Read
+  </button>
+  <button type="button" class="quran-tab" role="tab"
+          aria-selected="false" aria-controls="quran-panel-audio" id="quran-tab-audio"
+          data-tab="audio">
+    <span class="material-symbols-rounded">headphones</span>
+    Audio
+  </button>
+  <button type="button" class="quran-tab" role="tab"
+          aria-selected="false" aria-controls="quran-panel-favourites" id="quran-tab-favourites"
+          data-tab="favourites">
+    <span class="material-symbols-rounded">favorite</span>
+    Favourites
+    <span class="quran-tab-count" id="favouriteTabCount"><%= favourites.length %></span>
+  </button>
 </div>
 
-<% if (lastReadSurahs && lastReadSurahs.length > 0) { %>
-<div class="container1">
-  <div class="card-header">
-    <h3>Continue Reading</h3>
-  </div>
-  <div class="scrollable-container">
-    <% lastReadSurahs.forEach(function(surahNo) { %>
-      <a href="/surah/<%= surahNo %>" class="surah-pill">
-        <%= surahNo %>. <%= surahs[surahNo - 1].surahName %>
-      </a>
-    <% }) %>
-  </div>
-</div>
-<% } %>
-
-<div class="container1">
-  <div class="card-header">
-    <h3>Find a Surah</h3>
-  </div>
-  <div class="surah-search-wrapper">
-    <input type="text" id="selectedSurah" class="surah-search-input" placeholder="Search by number or name" readonly required>
-    <div id="surahDropdownContainer" class="surah-dropdown">
-      <input type="text" id="searchSurah" class="dropdown-search-custom" placeholder="Search Surah Number or Name...">
-      <div id="surahOptions">
-        <% surahs.forEach(function(surah, index) { %>
-          <div class="surah-option"
-            data-surahid="<%= index + 1 %>"
-            data-name="<%= surah.surahName %>">
-            <%= index + 1 %>. <%= surah.surahName %>
-          </div>
-        <% }); %>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div class="container1">
-  <div class="card-header">
-    <h3>All Surahs</h3>
-    <span class="badge badge-primary">114 Surahs</span>
-  </div>
-  <div class="surah-grid">
-    <% for (let i = 0; i < surahs.length; i++) {
-      const surah = surahs[i]; %>
-      <a href="/surah/<%= i + 1 %>" class="surah-card">
-        <span class="surah-card-number"><%= i + 1 %></span>
-        <div class="surah-card-content">
-          <p class="surah-name"><%= surah.surahName %></p>
-          <p class="surah-arabic"><%= surah.surahNameArabic %></p>
-          <p class="surah-translation"><%= surah.surahNameTranslation %></p>
-          <p class="surah-meta"><%= surah.revelationPlace %> · <%= surah.totalAyah %> Ayahs</p>
-        </div>
-        <span class="material-symbols-rounded surah-card-arrow">chevron_right</span>
-      </a>
-    <% } %>
-  </div>
-</div>
+<%- include("quran-read") %>
+<%- include("quran-audio") %>
+<%- include("quran-favourites") %>
+<%- include("quran-favourites-client") %>
 
 <button onclick="topFunction()" id="myBtn" title="Go to Top" aria-label="Scroll to top">
   <span class="material-symbols-rounded">keyboard_arrow_up</span>
 </button>
 
+<%# Config the client needs, as JSON rather than inline interpolation, so a
+    quote inside a surah name cannot break out of the script tag. %>
+<script id="quranConfig" type="application/json">
+<%- JSON.stringify({ reciter: activeReciter }) %>
+</script>
+
 <script>
-  document.addEventListener('DOMContentLoaded', function() {
-    const selectedInput = document.getElementById('selectedSurah');
-    const dropdown = document.getElementById('surahDropdownContainer');
-    const searchInput = document.getElementById('searchSurah');
-    const optionsContainer = document.getElementById('surahOptions');
+(function () {
+  const config = JSON.parse(document.getElementById('quranConfig').textContent);
 
-    selectedInput.addEventListener('click', function() {
-      dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
-      if (dropdown.style.display === 'block') searchInput.focus();
+  // ---- Tabs -------------------------------------------------------------
+  const tabs = Array.from(document.querySelectorAll('.quran-tab'));
+  const panels = Array.from(document.querySelectorAll('[data-tab-panel]'));
+
+  function selectTab(name, { updateHash = true } = {}) {
+    tabs.forEach(function (tab) {
+      const active = tab.dataset.tab === name;
+      tab.classList.toggle('is-active', active);
+      tab.setAttribute('aria-selected', String(active));
+      tab.tabIndex = active ? 0 : -1;
     });
-
-    optionsContainer.addEventListener('click', function(e) {
-      const option = e.target.closest('.surah-option');
-      if (option) {
-        window.location.href = "/surah/" + option.getAttribute('data-surahid');
-      }
+    panels.forEach(function (panel) {
+      panel.hidden = panel.dataset.tabPanel !== name;
     });
+    if (updateHash) {
+      // replaceState, not location.hash: assigning the hash makes the browser
+      // scroll to a matching id and jump the page.
+      history.replaceState(null, '', '#' + name);
+    }
+    if (name === 'favourites' && window.quranFavourites) window.quranFavourites.load();
+  }
 
-    searchInput.addEventListener('input', function() {
-      const term = this.value.trim().toLowerCase();
-      optionsContainer.querySelectorAll('.surah-option').forEach(function(option) {
-        const name = option.getAttribute('data-name').toLowerCase();
-        const num = option.getAttribute('data-surahid').toLowerCase();
-        option.style.display = (name.includes(term) || num.includes(term)) ? 'block' : 'none';
-      });
-    });
-
-    document.addEventListener('click', function(e) {
-      if (!dropdown.contains(e.target) && e.target !== selectedInput) {
-        dropdown.style.display = 'none';
-      }
+  tabs.forEach(function (tab) {
+    tab.addEventListener('click', function () { selectTab(tab.dataset.tab); });
+    // Left/right arrows move between tabs, which is what a tablist is expected
+    // to do for keyboard users. Without this, tabbing walks all three.
+    tab.addEventListener('keydown', function (event) {
+      const delta = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0;
+      if (!delta) return;
+      event.preventDefault();
+      const index = tabs.indexOf(tab);
+      const next = tabs[(index + delta + tabs.length) % tabs.length];
+      next.focus();
+      selectTab(next.dataset.tab);
     });
   });
 
-  const mybutton = document.getElementById("myBtn");
-  window.onscroll = function() {
-    mybutton.style.display = (document.documentElement.scrollTop > 20) ? "flex" : "none";
-  };
-  function topFunction() {
-    document.documentElement.scrollTop = 0;
+  const initial = (location.hash || '').replace('#', '');
+  if (['read', 'audio', 'favourites'].includes(initial)) selectTab(initial, { updateHash: false });
+
+  // ---- Favourites -------------------------------------------------------
+  // Lives in the shared partial (quran-favourites-client.ejs) because the surah
+  // reader needs the exact same toggle logic; two copies would drift.
+
+  // ---- Audio tab --------------------------------------------------------
+  const reciterSelect = document.getElementById('reciterSelect');
+  const saveReciterBtn = document.getElementById('saveReciterBtn');
+  const reciterStatus = document.getElementById('reciterStatus');
+
+  if (saveReciterBtn && reciterSelect) {
+    saveReciterBtn.addEventListener('click', async function () {
+      saveReciterBtn.disabled = true;
+      try {
+        const response = await fetch('/reciter', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reciter: reciterSelect.value })
+        });
+        if (reciterStatus) {
+          reciterStatus.textContent = response.ok ? 'Saved.' : 'Could not save.';
+        }
+      } catch (err) {
+        if (reciterStatus) reciterStatus.textContent = 'Could not save.';
+      } finally {
+        saveReciterBtn.disabled = false;
+      }
+    });
   }
+
+  // Picking a surah hands it to the footer player rather than opening a local
+  // <audio>, so there is exactly one audio element on the page.
+  document.addEventListener('click', async function (event) {
+    const option = event.target.closest('.audio-surah-option');
+    if (!option) return;
+
+    const surahNo = option.dataset.surahid;
+    const reciter = reciterSelect ? reciterSelect.value : config.reciter;
+
+    option.classList.add('is-loading');
+    try {
+      const response = await fetch('/quran/audio?surahNo=' + encodeURIComponent(surahNo) + '&reciter=' + encodeURIComponent(reciter));
+      if (!response.ok) throw new Error('audio lookup failed');
+      const track = await response.json();
+      if (window.quranAudio && window.quranAudio.play) {
+        window.quranAudio.play({
+          url: track.url,
+          surahNo: track.surahNo,
+          surahName: track.surahName,
+          reciterName: track.reciter,
+          startAt: 0
+        });
+        // Reveal the bar if it was hidden, since nothing may have been playing.
+        if (window.quranAudio.show) window.quranAudio.show();
+      }
+    } catch (err) {
+      if (reciterStatus) reciterStatus.textContent = 'Could not load that audio. Please try again.';
+    } finally {
+      option.classList.remove('is-loading');
+    }
+  });
+
+  // ---- Search dropdowns -------------------------------------------------
+  function wireDropdown(options) {
+    if (!options) return;
+    const { selected, container, search, list } = options;
+    if (!selected || !container || !search || !list) return;
+
+    selected.addEventListener('click', function () {
+      container.style.display = container.style.display === 'block' ? 'none' : 'block';
+      if (container.style.display === 'block') search.focus();
+    });
+
+    search.addEventListener('input', function () {
+      const term = this.value.trim().toLowerCase();
+      list.querySelectorAll('[data-surahid]').forEach(function (option) {
+        const name = option.dataset.name.toLowerCase();
+        const num = option.dataset.surahid.toLowerCase();
+        option.style.display = (name.includes(term) || num.includes(term)) ? '' : 'none';
+      });
+    });
+
+    document.addEventListener('click', function (e) {
+      if (!container.contains(e.target) && e.target !== selected) {
+        container.style.display = 'none';
+      }
+    });
+  }
+
+  wireDropdown({
+    selected: document.getElementById('selectedSurah'),
+    container: document.getElementById('surahDropdownContainer'),
+    search: document.getElementById('searchSurah'),
+    list: document.getElementById('surahOptions')
+  });
+
+  wireDropdown({
+    selected: document.getElementById('audioSearch'),
+    container: document.getElementById('audioDropdownContainer'),
+    search: document.getElementById('audioSearchInput'),
+    list: document.getElementById('audioOptions')
+  });
+
+  // Read tab is the only one that navigates; Audio and Favourites stay put.
+  document.addEventListener('click', function (event) {
+    const option = event.target.closest('#surahOptions .surah-option');
+    if (option) window.location.href = '/surah/' + option.dataset.surahid;
+  });
+
+  const mybutton = document.getElementById('myBtn');
+  window.onscroll = function () {
+    mybutton.style.display = (document.documentElement.scrollTop > 20) ? 'flex' : 'none';
+  };
+  window.topFunction = function () { document.documentElement.scrollTop = 0; };
+})();
 </script>
 
 <%- include('footer') %>

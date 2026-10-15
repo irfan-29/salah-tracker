@@ -48,6 +48,15 @@ const userSchema = new mongoose.Schema({
     emailVerifiedAt: Date,
     phone: String,
     lastReadSurahs: [String],
+    // Ayahs the user has starred. Stored as { surahNo, ayahNo } rather than the
+    // text itself: the text is served from the same cached upstream the reader
+    // uses, so copying it would freeze one translation per favourite and make
+    // changing edition pointless.
+    favoriteAyahs: [{
+        surahNo: { type: Number, required: true },
+        ayahNo: { type: Number, required: true },
+        addedAt: { type: Date, default: Date.now }
+    }],
     challenges: [challengeSchema],
     salahLog: [salahEntrySchema],
     settings: { type: settingsSchema, default: () => ({}) },
@@ -112,7 +121,37 @@ userSchema.methods.pushLastReadSurah = function (surahNo) {
     this.lastReadSurahs = [value, ...existing.filter((n) => String(n) !== value)].slice(0, 5);
 };
 
+// Favourites are capped for the same reason as last-read: unbounded growth on a
+// single user document eventually hits the 16MB document limit.
+const MAX_FAVORITE_AYAHS = 300;
+
+// Star or unstar an ayah. Returns true when it ended up favourited, so the
+// caller can answer the click without re-reading the array.
+userSchema.methods.toggleFavoriteAyah = function (surahNo, ayahNo) {
+    const s = Number(surahNo);
+    const a = Number(ayahNo);
+    const list = Array.from(this.favoriteAyahs || []);
+    const index = list.findIndex((f) => Number(f.surahNo) === s && Number(f.ayahNo) === a);
+
+    if (index !== -1) {
+        list.splice(index, 1);
+        this.favoriteAyahs = list;
+        return false;
+    }
+
+    // Newest first, so the favourites list reads in the order things were added.
+    this.favoriteAyahs = [{ surahNo: s, ayahNo: a, addedAt: new Date() }, ...list].slice(0, MAX_FAVORITE_AYAHS);
+    return true;
+};
+
+userSchema.methods.isFavoriteAyah = function (surahNo, ayahNo) {
+    const s = Number(surahNo);
+    const a = Number(ayahNo);
+    return Array.from(this.favoriteAyahs || []).some((f) => Number(f.surahNo) === s && Number(f.ayahNo) === a);
+};
+
 module.exports = mongoose.model("User", userSchema);
+module.exports.MAX_FAVORITE_AYAHS = MAX_FAVORITE_AYAHS;
 module.exports.challengeSchema = challengeSchema;
 module.exports.salahEntrySchema = salahEntrySchema;
 module.exports.settingsSchema = settingsSchema;

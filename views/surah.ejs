@@ -1,5 +1,13 @@
 <%- include("navbar") -%>
 
+<%# Hearts are painted server-side so a favourited ayah is already filled in on
+    first render, rather than flashing empty outlines then correcting itself.
+    Set lookup, not indexOf: Al-Baqarah has 286 ayahs. %>
+<%
+  const favSet = new Set(favouriteKeys || []);
+  const isFavAyah = (n) => favSet.has(surahNo + ':' + n);
+%>
+
 <div class="page-header">
   <h1><%= surah.surahName %></h1>
   <p><%= surah.surahNameArabic %> · <%= surah.surahNameTranslation %></p>
@@ -10,66 +18,11 @@
     <p class="surah-meta"><%= surah.revelationPlace %> · <%= surah.totalAyah %> Ayahs</p>
   </div>
 
-  <form action="/reciter" method="POST" style="margin: 1.25rem 0;">
-    <input type="hidden" name="redirectTo" value="/surah/<%= surahNo %>">
-    <div class="form-row">
-      <div class="form-floating">
-        <select name="reciter" id="reciter" required class="form-control">
-          <% Object.keys(surah.audio).forEach(function(key) { %>
-            <option value="<%= key %>" <%= key === favoriteReciter ? 'selected' : '' %>><%= surah.audio[key].reciter %></option>
-          <% }); %>
-        </select>
-        <label for="reciter">Preferred Reciter</label>
-      </div>
-      <button type="submit" class="btn btn-primary" value="add" name="add">Save</button>
-    </div>
-  </form>
-
-  <% if (surah.audio[favoriteReciter] && alwaysShowAudio) { %>
-    <div class="surah-audio-card">
-      <h5 style="font-weight: 600; margin-bottom: 0.75rem; font-size: 0.9375rem;"><%= surah.audio[favoriteReciter].reciter %></h5>
-      <div id="audioLoader" style="display: flex; align-items: center; justify-content: center; height: 45px;">
-        <img src="/images/40.gif" alt="Loading..." style="height: 14px;" />
-      </div>
-      <audio id="surahAudio" controls style="width: 100%; display: none;">
-        <source src="<%= surah.audio[favoriteReciter].originalUrl %>" type="audio/mpeg">
-      </audio>
-    </div>
-
-    <script>
-      const audio = document.getElementById('surahAudio');
-      const loader = document.getElementById('audioLoader');
-      const savedTime = <%= JSON.stringify(audioTime || 0) %>;
-
-      if (audio) {
-        let isAudioPlaying = false;
-        let lastSentTime = 0;
-        loader.style.display = 'flex';
-        audio.style.display = 'none';
-
-        audio.addEventListener('loadedmetadata', () => {
-          if (savedTime > 0 && !isNaN(savedTime)) audio.currentTime = savedTime;
-        });
-        audio.addEventListener('canplaythrough', () => {
-          loader.style.display = 'none';
-          audio.style.display = 'block';
-        });
-        audio.addEventListener('play', () => { isAudioPlaying = true; });
-        audio.addEventListener('pause', () => { isAudioPlaying = false; });
-
-        setInterval(() => {
-          if (!isAudioPlaying || audio.paused || audio.ended || isNaN(audio.currentTime)) return;
-          if (Math.abs(audio.currentTime - lastSentTime) < 5) return;
-          lastSentTime = audio.currentTime;
-          fetch('/update-audio-time', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ surahNo: "<%= surahNo %>", surahName: "<%= surah.surahName %>", time: audio.currentTime })
-          }).catch(err => console.error('Update failed:', err));
-        }, 5000);
-      }
-    </script>
-  <% } %>
+  <%# The reciter selector and the inline <audio> that used to live here are
+      gone. Both moved to the Audio tab: a second audio element on the page
+      meant the reader and the footer player were independent, so reading in one
+      and navigating left the other paused on a different track. The footer bar
+      is now the only player. %>
 
   <hr>
 
@@ -83,13 +36,24 @@
     </div>
   </div>
 
-  <hr>
-
   <% for (let i = 0; i < surah.arabic1.length; i++) { %>
+    <% const ayahNo = i + 1; %>
+    <% const isFav = isFavAyah(ayahNo); %>
     <div class="ayah-block" style="margin-bottom: 2.5rem;">
-      <p id="<%= i+1 %>" style="color: var(--color-text-muted); font-size: 0.75rem; font-weight: 600; margin-bottom: 0.5rem;">
-        Ayah <%= i+1 %>
-      </p>
+      <div class="ayah-head">
+        <p id="<%= ayahNo %>" class="ayah-number" style="color: var(--color-text-muted); font-size: 0.75rem; font-weight: 600; margin-bottom: 0;">
+          Ayah <%= ayahNo %>
+        </p>
+        <button type="button"
+                class="fav-btn<%= isFav ? ' is-active' : '' %>"
+                data-fav-surah="<%= surahNo %>"
+                data-fav-ayah="<%= ayahNo %>"
+                aria-pressed="<%= isFav ? 'true' : 'false' %>"
+                aria-label="<%= isFav ? 'Remove from' : 'Add to' %> favourites"
+                title="<%= isFav ? 'Remove from' : 'Add to' %> favourites">
+          <span class="material-symbols-rounded"><%= isFav ? 'favorite' : 'favorite_border' %></span>
+        </button>
+      </div>
 
       <% const styling = { fontFamily: favoriteFont, lineHeight: '2', fontSize: '28px' }; %>
       <p class="quran-text-display" style="
@@ -125,6 +89,8 @@
   <% } %>
 </div>
 
+<%- include("quran-favourites-client") -%>
+
 <button onclick="topFunction()" id="myBtn" title="Go to Top" aria-label="Scroll to top">
   <span class="material-symbols-rounded">keyboard_arrow_up</span>
 </button>
@@ -142,32 +108,33 @@
       ayahElement.style.backgroundColor = "rgba(245, 158, 11, 0.2)";
       ayahElement.style.borderRadius = "6px";
       ayahElement.style.padding = "4px 8px";
-      setTimeout(() => {
+      setTimeout(function() {
         ayahElement.style.backgroundColor = "";
         ayahElement.style.padding = "";
       }, 2000);
     }
   }
 
-  document.addEventListener('DOMContentLoaded', function () {
-    const highlightAyah = <%= JSON.stringify(highlightAyah || null) %>;
+  document.addEventListener('DOMContentLoaded', function() {
+    const params = new URLSearchParams(window.location.search);
     const hashAyah = window.location.hash.replace('#', '');
-    const ayahNumber = highlightAyah || (hashAyah ? parseInt(hashAyah, 10) : null);
+    const ayahNumber = params.get('ayah') || hashAyah;
     if (ayahNumber && !isNaN(ayahNumber)) {
       const range = document.getElementById('ayahRange');
       range.value = ayahNumber;
       updateAyahLabel();
-      setTimeout(goToAyah, 250);
+      // Deep links land on the ayah itself, so scroll once the DOM has the block.
+      setTimeout(goToAyah, 120);
     }
   });
 
-  const mybutton = document.getElementById("myBtn");
+  const mybutton = document.getElementById('myBtn');
   window.onscroll = function() {
-    mybutton.style.display = (document.documentElement.scrollTop > 20) ? "flex" : "none";
+    mybutton.style.display = (document.documentElement.scrollTop > 20) ? 'flex' : 'none';
   };
-  function topFunction() {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
+  window.topFunction = function() {
+    document.documentElement.scrollTop = 0;
+  };
 </script>
 
 <%- include('footer') %>

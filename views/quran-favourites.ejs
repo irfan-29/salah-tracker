@@ -1,0 +1,59 @@
+<%# Favourites tab. Server-rendered on first paint so it is useful without a
+    fetch, then refreshed over JSON after a toggle so the list stays in step
+    with the hearts in the reader. %>
+<div class="quran-tab-panel" data-tab-panel="favourites" hidden>
+  <div class="container1">
+    <div class="card-header">
+      <h3>Saved Ayahs</h3>
+      <span class="badge badge-primary" id="favouriteCount"><%= favourites.length %></span>
+    </div>
+
+    <div id="favouritesBody">
+      <% if (!isLoggedIn) { %>
+        <div class="gate-notice">
+          <span class="material-symbols-rounded">lock</span>
+          <div>
+            <p class="gate-title">Sign in to save ayahs</p>
+            <p class="gate-text">
+              Favourites are tied to your account, so they follow you across devices.
+              <a href="/login">Sign in</a> or <a href="/register">create an account</a> to start saving.
+            </p>
+          </div>
+        </div>
+      <% } else if (!favourites.length) { %>
+        <p class="post-empty">
+          No saved ayahs yet. Tap the heart beside any ayah while reading.
+        </p>
+      <% } else { %>
+        <% favourites.forEach(function(f) { %>
+          <article class="favourite-card">
+            <header class="favourite-head">
+              <a class="favourite-ref" href="/surah/<%= f.surahNo %>?ayah=<%= f.ayahNo %>">
+                <%= f.surahName %>
+                <% if (f.surahNameArabic) { %> · <%= f.surahNameArabic %><% } %>
+              </a>
+              <span class="favourite-num">Ayah <%= f.ayahNo %></span>
+              <button type="button" class="favourite-remove"
+                      data-surah="<%= f.surahNo %>" data-ayah="<%= f.ayahNo %>"
+                      title="Remove from favourites" aria-label="Remove from favourites">
+                <span class="material-symbols-rounded">heart_broken</span>
+              </button>
+            </header>
+
+            <% if (f.unavailable) { %>
+              <p class="favourite-missing">This ayah could not be loaded just now.</p>
+            <% } else { %>
+              <p class="favourite-arabic" dir="rtl" lang="ar"><%= f.arabicText %></p>
+              <% if (f.translationText) { %>
+                <% if (f.translationLabel) { %>
+                  <p class="favourite-edition"><%= f.translationLabel %></p>
+                <% } %>
+                <p class="favourite-translation"><%= f.translationText %></p>
+              <% } %>
+            <% } %>
+          </article>
+        <% }); %>
+      <% } %>
+    </div>
+  </div>
+</div>

@@ -263,6 +263,27 @@ function clearGuestCookie(req, res) {
   clearGuest(req, res);
 }
 
+// Favourite ayahs are account-only. Unlike challenges or last-read, there is no
+// guest equivalent: an anonymous reader has no durable store big enough for
+// coordinates plus text, and a guest who signs in would find their stars gone
+// with nothing to merge. The UI therefore prompts for a sign-in rather than
+// offering a favourite that silently disappears.
+function listFavourites(req) {
+    if (!req.isAuthenticated || !req.isAuthenticated()) return [];
+    return Array.from(req.user.favoriteAyahs || [])
+        .map((f) => ({ surahNo: Number(f.surahNo), ayahNo: Number(f.ayahNo) }))
+        .filter((f) => Number.isInteger(f.surahNo) && Number.isInteger(f.ayahNo));
+}
+
+async function toggleFavourite(req, { surahNo, ayahNo }) {
+    if (!req.isAuthenticated || !req.isAuthenticated()) {
+        return { ok: false, reason: "login-required", favorited: false };
+    }
+    const nowFavorited = req.user.toggleFavoriteAyah(surahNo, ayahNo);
+    await req.user.save();
+    return { ok: true, favorited: nowFavorited };
+}
+
 module.exports = {
   attachResponse,
   getSettings,
@@ -279,6 +300,8 @@ module.exports = {
   recordSalah,
   getTelegramChatId,
   setTelegramChatId,
+  listFavourites,
+  toggleFavourite,
   clearGuestCookie,
   defaults
 };

@@ -26,6 +26,7 @@ const qstash = require("./utils/qstash.js");
 const usernameUtil = require("./utils/username.js");
 const emailService = require("./services/email.js");
 const passwordUtil = require("./utils/password.js");
+const favourites = require("./services/favourites.js");
 const User = require("./models/User.js");
 
 
@@ -363,10 +364,14 @@ const SKIP_MIDDLEWARE_URLS = ["/hide-audio"];
         console.error("ayah of the day: lookup failed -", err.message);
       }
 
-      // Skip footer audio on surah pages (they have their own inline player)
-      if (req.path.startsWith("/surah")) {
-        return next();
-      }
+      // The audio bar is rendered on every page of the Quran module, not only
+      // when something is already playing. Surah pages used to carry their own
+      // inline <audio>, which meant the site had two audio elements sharing no
+      // state: play in the reader, navigate, and the footer arrived paused on a
+      // different element. One player, everywhere.
+      res.locals.audioShell = req.path === "/quran"
+        || req.path.startsWith("/quran/")
+        || req.path.startsWith("/surah");
 
       if (settings.audioProgress && settings.audioProgress.surahNo) {
          const audioSurah = await cachedJsonOrNull(
@@ -443,14 +448,10 @@ const SKIP_MIDDLEWARE_URLS = ["/hide-audio"];
       res.redirect(referer);
     });
 
-  app.post('/play-surah', (req, res) => {
-    req.session.favoriteReciterName = req.body.reciterName;
-    req.session.favoriteReciterUrl = req.body.audioUrl;
-    req.session.canShowAudio = true;
-    
-    const referer = req.get("Referer") || "/";
-    res.redirect(referer);
-  });
+  // POST /play-surah was removed. It wrote session.favoriteReciterName /
+  // .favoriteReciterUrl / .canShowAudio, and every line that read them was
+  // commented out - it had been dead for some time. The Audio tab now calls
+  // window.quranAudio.play() directly against the footer player instead.
 
 //   app.post('/update-audio-time', async (req, res) => {
 //     // if(!req.locals.canShowAudio)
@@ -634,6 +635,12 @@ app.get("/", async (req, res) => {
 });
 
 
+// --- Quran module ---------------------------------------------------------
+// Three sub-modules sharing one page: Read, Audio and Favourites. They switch
+// client-side so the audio element in the footer is never destroyed - a page
+// load would stop playback mid-ayah, which is the bug the Audio module exists
+// to fix.
+
 app.get("/quran", async(req, res) => {
     const data = await cachedJsonOrNull(`https://quranapi.pages.dev/api/surah.json`);
     if (!data) return res.status(503).send("Could not load the surah index.");
@@ -658,6 +665,17 @@ app.get("/quran", async(req, res) => {
     }
     const surahMeta = data[ayahEntry.surahNo - 1] || {};
 
+    // Reciters come from one surah's payload and apply to all of them, so a
+    // single cached read populates the whole Audio tab.
+    const reciterSource = await cachedJsonOrNull(`https://quranapi.pages.dev/api/1.json`);
+    const reciters = reciterSource && reciterSource.audio
+        ? Object.entries(reciterSource.audio).map(([id, a]) => ({
+            id: String(id),
+            name: a.reciter,
+            url: a.originalUrl
+        }))
+        : [];
+
     res.render("quran", {
         surahs: data,
         lastReadSurahs: lastReadSurahs,
@@ -670,8 +688,108 @@ app.get("/quran", async(req, res) => {
             arabicText: ayahEntry.arabicText || '',
             translationText: ayahEntry.translationText || '',
             translationLabel: ayahEntry.translationLabel || ''
-        }
+        },
+        reciters,
+        activeReciter: settings.favoriteReciter ? String(settings.favoriteReciter) : "1",
+        // The reader marks hearts from this list; sent on every page that can
+        // show one so the initial paint is correct without a round trip.
+        favouriteKeys: Array.from(favourites.keysFor(req)),
+        // Resolved server-side so the Favourites tab is populated on first
+        // paint rather than flashing empty while a fetch completes.
+        favourites: await favourites.resolveFavourites(req, {
+            loadSurah: (n) => cachedJsonOrNull(`https://quranapi.pages.dev/api/${n}.json`),
+            loadEdition: (id, n) => cachedJson(`https://cdn.jsdelivr.net/gh/fawazahmed0/quran-api@1/editions/${id}/${n}.json`),
+            editionId: (() => { const p = getPrimaryEdition(settings); const parsed = p ? parseEdition(p) : null; return parsed ? parsed.id : ""; })(),
+            editionLabel: (() => { const p = getPrimaryEdition(settings); const parsed = p ? parseEdition(p) : null; return parsed ? `${parsed.language || "Translation"} - ${parsed.author || parsed.id}` : ""; })()
+        }).catch((err) => {
+            // A failure here must not take the whole Quran module down - the
+            // Read and Audio tabs do not depend on it.
+            console.error("quran: favourites render failed -", err.message);
+            return [];
+        }),
+        isLoggedIn: Boolean(req.isAuthenticated && req.isAuthenticated())
     });
+});
+
+// Resolves one surah's audio URL for the Audio tab. Fetched on demand rather
+// than up front: the surah index carries no audio, so building a full 114-surah
+// player would mean 114 upstream reads on first load.
+app.get("/quran/audio", async(req, res) => {
+    const surahNo = parseInt(req.query.surahNo, 10);
+    if (!Number.isInteger(surahNo) || surahNo < 1 || surahNo > 114) {
+        return res.status(400).json({ error: "invalid-surah" });
+    }
+
+    const settings = await userData.getSettings(req);
+    const requested = String(req.query.reciter || settings.favoriteReciter || "1");
+
+    try {
+        const surah = await cachedJsonOrNull(`https://quranapi.pages.dev/api/${surahNo}.json`);
+        if (!surah || !surah.audio) return res.status(404).json({ error: "no-audio" });
+
+        const track = surah.audio[requested] || surah.audio[1];
+        if (!track) return res.status(404).json({ error: "no-audio" });
+
+        res.json({
+            url: track.originalUrl,
+            reciter: track.reciter,
+            reciterId: surah.audio[requested] ? requested : "1",
+            surahNo,
+            surahName: surah.surahName,
+            totalAyah: surah.totalAyah
+        });
+    } catch (err) {
+        console.error("quran/audio:", err.message);
+        res.status(500).json({ error: "failed" });
+    }
+});
+
+// Favourites for the tab. JSON rather than a page fragment so toggling one
+// ayah refreshes the list without a reload.
+app.get("/quran/favourites", async(req, res) => {
+    if (!req.isAuthenticated || !req.isAuthenticated()) {
+        return res.status(401).json({ error: "login-required" });
+    }
+    try {
+        const settings = await userData.getSettings(req);
+        const editionId = getPrimaryEdition(settings);
+        const parsed = editionId ? parseEdition(editionId) : null;
+
+        const entries = await favourites.resolveFavourites(req, {
+            loadSurah: (n) => cachedJsonOrNull(`https://quranapi.pages.dev/api/${n}.json`),
+            loadEdition: (id, n) => cachedJson(`https://cdn.jsdelivr.net/gh/fawazahmed0/quran-api@1/editions/${id}/${n}.json`),
+            editionId: parsed ? parsed.id : "",
+            editionLabel: parsed ? `${parsed.language || "Translation"} - ${parsed.author || parsed.id}` : ""
+        });
+
+        res.json({ ok: true, entries });
+    } catch (err) {
+        console.error("quran/favourites:", err.message);
+        res.status(500).json({ error: "failed" });
+    }
+});
+
+app.post("/quran/favourites/toggle", requireLogin, async(req, res) => {
+    const settings = await userData.getSettings(req);
+    // The surah's real length is enforced when it is known, so an out-of-range
+    // ayah is rejected rather than stored and left permanently unresolvable.
+    const surahNo = parseInt(req.body.surahNo, 10);
+    let totalAyah;
+    if (Number.isInteger(surahNo) && surahNo >= 1 && surahNo <= 114) {
+        const meta = await cachedJsonOrNull(`https://quranapi.pages.dev/api/surah.json`).catch(() => null);
+        totalAyah = meta && meta[surahNo - 1] ? meta[surahNo - 1].totalAyah : undefined;
+    }
+
+    const pair = favourites.normalise(surahNo, req.body.ayahNo, totalAyah);
+    if (!pair) return res.status(400).json({ error: "invalid-reference" });
+
+    try {
+        const result = await userData.toggleFavourite(req, pair);
+        res.json({ ok: true, favorited: result.favorited, surahNo: pair.surahNo, ayahNo: pair.ayahNo });
+    } catch (err) {
+        console.error("quran/favourites/toggle:", err.message);
+        res.status(500).json({ error: "failed" });
+    }
 });
 
 
@@ -754,10 +872,12 @@ app.get("/surah/:surahNo", async (req, res, next) => {
         favoriteReciter: String(reciter),
         favoriteFont: favoriteFont,
         surahNo: surahNo,
-        audioTime: time,
-        alwaysShowAudio: true,
+        // audioTime / alwaysShowAudio fed the inline player that moved to the
+        // Audio tab. The footer bar reads its own state from the middleware.
         primaryTranslationId: primaryTranslationId,
         highlightAyah: parseInt(req.query.ayah, 10) || null,
+        favouriteKeys: Array.from(favourites.keysFor(req)),
+        isLoggedIn: Boolean(req.isAuthenticated && req.isAuthenticated())
     });
 });  
   
@@ -1249,12 +1369,25 @@ app.post("/reciter", function(req, res){
     const reciter = req.body.reciter;
     const redirectTo = req.body.redirectTo;
 
+    // The Audio tab posts JSON and expects JSON back, rather than a redirect it
+    // would never follow. Same validation either way: an unknown reciter id
+    // would otherwise persist and silently break the player later.
+    const wantsJson = String(req.get("accept") || "").includes("application/json")
+        || String(req.get("content-type") || "").includes("application/json");
+
+    if (!/^\d+$/.test(String(reciter || ""))) {
+        if (wantsJson) return res.status(400).json({ ok: false, error: "invalid-reciter" });
+        return res.redirect(redirectTo || "/quran");
+    }
+
     userData.updateSettings(req, { favoriteReciter: reciter })
         .then(() => {
+            if (wantsJson) return res.json({ ok: true });
             res.redirect(redirectTo);
         })
         .catch((err) => {
             console.error(err);
+            if (wantsJson) return res.status(500).json({ ok: false, error: "failed" });
             res.status(500).send("Error updating reciter.");
         });
 });
