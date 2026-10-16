@@ -14,7 +14,12 @@
     "check:secrets": "node scripts/check-secrets.js",
     "verify:passwords": "node scripts/verify-password-compat.js",
     "backfill:usernames": "node scripts/backfill-usernames.js",
-    "check:email": "node scripts/check-email.js"
+    "check:email": "node scripts/check-email.js",
+    "frontend:install": "cd frontend && npm install",
+    "frontend:dev": "cd frontend && npm run dev",
+    "frontend:build": "cd frontend && npm run build",
+    "install:all": "npm install && npm run frontend:install",
+    "dev:all": "concurrently -n api,web -c cyan,magenta \"npm run dev\" \"npm run frontend:dev\""
   },
   "keywords": [],
   "author": "Mohammed Irfan U",
@@ -40,6 +45,7 @@
   },
   "description": "",
   "devDependencies": {
-    "nodemon": "^3.1.14"
+    "nodemon": "^3.1.14",
+    "concurrently": "^9.0.1"
   }
 }

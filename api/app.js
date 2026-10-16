@@ -714,7 +714,7 @@ app.get("/quran", async(req, res) => {
 // Resolves one surah's audio URL for the Audio tab. Fetched on demand rather
 // than up front: the surah index carries no audio, so building a full 114-surah
 // player would mean 114 upstream reads on first load.
-app.get("/quran/audio", async(req, res) => {
+const handleQuranAudio = async(req, res) => {
     const surahNo = parseInt(req.query.surahNo, 10);
     if (!Number.isInteger(surahNo) || surahNo < 1 || surahNo > 114) {
         return res.status(400).json({ error: "invalid-surah" });
@@ -742,11 +742,16 @@ app.get("/quran/audio", async(req, res) => {
         console.error("quran/audio:", err.message);
         res.status(500).json({ error: "failed" });
     }
-});
+};
+// Two paths, one handler. The EJS tabs call /quran/audio; the React client
+// calls /api/quran/audio. Registering the handler twice rather than having two
+// copies is what stopped the two clients drifting - as they already had.
+app.get("/quran/audio", handleQuranAudio);
+app.get("/api/quran/audio", handleQuranAudio);
 
 // Favourites for the tab. JSON rather than a page fragment so toggling one
 // ayah refreshes the list without a reload.
-app.get("/quran/favourites", async(req, res) => {
+const handleQuranFavourites = async(req, res) => {
     if (!req.isAuthenticated || !req.isAuthenticated()) {
         return res.status(401).json({ error: "login-required" });
     }
@@ -767,9 +772,11 @@ app.get("/quran/favourites", async(req, res) => {
         console.error("quran/favourites:", err.message);
         res.status(500).json({ error: "failed" });
     }
-});
+};
+app.get("/quran/favourites", handleQuranFavourites);
+app.get("/api/quran/favourites", handleQuranFavourites);
 
-app.post("/quran/favourites/toggle", requireLogin, async(req, res) => {
+const handleToggleFavourite = async(req, res) => {
     const settings = await userData.getSettings(req);
     // The surah's real length is enforced when it is known, so an out-of-range
     // ayah is rejected rather than stored and left permanently unresolvable.
@@ -790,9 +797,9 @@ app.post("/quran/favourites/toggle", requireLogin, async(req, res) => {
         console.error("quran/favourites/toggle:", err.message);
         res.status(500).json({ error: "failed" });
     }
-});
-
-
+};
+app.post("/quran/favourites/toggle", requireLogin, handleToggleFavourite);
+app.post("/api/quran/favourites/toggle", requireLogin, handleToggleFavourite);
 
 app.get("/surah/:surahNo", async (req, res, next) => {
     const surahNo = parseInt(req.params.surahNo);
@@ -1949,4 +1956,195 @@ app.listen(process.env.PORT || 3000, function(){
         + ` configured=${emailService.isConfigured()}`
         + (emailWarning ? ` PROBLEM=${emailWarning}` : "")
     );
+});
+
+// ============================================================================
+// JSON API for the React frontend.
+//
+// Everything above renders HTML. These endpoints return JSON for the same data,
+// so the SPA can render a page without a server round trip through EJS.
+//
+// They deliberately reuse the existing helpers (cachedJson, editions, the
+// preferences service) rather than reimplementing them: two code paths for one
+// feature is how the EJS and React versions drift apart.
+// ============================================================================
+
+// Everything the Quran module needs for first paint, in one request. Splitting
+// this into four would mean four round trips before anything is visible.
+app.get("/api/quran/index", async function(req, res){
+    const surahs = await cachedJsonOrNull(`https://quranapi.pages.dev/api/surah.json`);
+    if (!surahs) return res.status(503).json({ error: "surah-index-unavailable" });
+
+    const settings = await userData.getSettings(req);
+    const edition = getPrimaryEdition(settings);
+    const parsed = edition ? parseEdition(edition) : null;
+
+    // Reciters are identical across surahs, so one surah's payload covers all.
+    const reciterSource = await cachedJsonOrNull(`https://quranapi.pages.dev/api/1.json`);
+
+    let ayah = null;
+    try {
+        const entry = res.locals.ayahOfTheDay || await getOrCreateAyahOfTheDay(surahs);
+        if (entry) {
+            if (!entry.translationText) await resolveAyahText(entry, edition);
+            const meta = surahs[entry.surahNo - 1] || {};
+            ayah = {
+                surahNo: entry.surahNo,
+                ayahNo: entry.ayahNo,
+                surahName: entry.surahName || meta.surahName || '',
+                surahNameArabic: entry.surahNameArabic || meta.surahNameArabic || '',
+                arabicText: entry.arabicText || '',
+                translationText: entry.translationText || '',
+                translationLabel: entry.translationLabel || ''
+            };
+        }
+    } catch (err) {
+        // The daily ayah is a nicety; failing it must not fail the page.
+        console.error("api/quran/index: ayah of the day -", err.message);
+    }
+
+    res.json({
+        surahs,
+        ayahOfTheDay: ayah,
+        lastReadSurahs: await userData.getLastReadSurahs(req),
+        favoriteFont: settings.favoriteFont || 'Amiri',
+        activeReciter: settings.favoriteReciter ? String(settings.favoriteReciter) : "1",
+        reciters: reciterSource && reciterSource.audio
+            ? Object.entries(reciterSource.audio).map(([id, a]) => ({ id: String(id), name: a.reciter }))
+            : [],
+        edition: parsed ? { id: parsed.id, label: `${parsed.language || 'Translation'} - ${parsed.author || parsed.id}` } : null,
+        favouriteKeys: Array.from(favourites.keysFor(req)),
+        isLoggedIn: Boolean(req.isAuthenticated && req.isAuthenticated())
+    });
+});
+
+// One surah: Arabic plus the reader's chosen translations. This is the payload
+// the reader page renders from, so it carries no HTML.
+app.get("/api/quran/surah/:surahNo", async function(req, res){
+    const surahNo = parseInt(req.params.surahNo, 10);
+    if (!Number.isInteger(surahNo) || surahNo < 1 || surahNo > 114) {
+        return res.status(400).json({ error: "invalid-surah" });
+    }
+
+    const settings = await userData.getSettings(req);
+    const surah = await cachedJsonOrNull(`https://quranapi.pages.dev/api/${surahNo}.json`);
+    if (!surah) return res.status(503).json({ error: "surah-unavailable" });
+
+    const favoriteEdition = getFavoriteEditions(settings);
+    const translations = [];
+
+    // Parallel, and each failure isolated: one missing edition should not blank
+    // the whole reader.
+    await Promise.all(favoriteEdition.map(async (combined) => {
+        const parts = combined.split(':');
+        const id = parts[0];
+        const language = parts[1] || '';
+        const author = parts[2] || id;
+        try {
+            const data = await cachedJson(`https://cdn.jsdelivr.net/gh/fawazahmed0/quran-api@1/editions/${id}/${surahNo}.json`);
+            if (data && Array.isArray(data.chapter)) {
+                translations.push({ id, label: `${language} - ${author}`, texts: data.chapter.map((c) => c.text) });
+            }
+        } catch (err) {
+            console.error(`api/quran/surah: edition ${id} -`, err.message);
+        }
+    }));
+
+    res.json({
+        surahNo,
+        surahName: surah.surahName,
+        surahNameArabic: surah.surahNameArabic || "",
+        surahNameTranslation: surah.surahNameTranslation || "",
+        revelationPlace: surah.revelationPlace || "",
+        totalAyah: surah.totalAyah,
+        arabic: surah.arabic1 || [],
+        translations,
+        primaryTranslationId: (() => {
+            const primary = getPrimaryEdition(settings);
+            const parsed = primary ? parseEdition(primary) : null;
+            return parsed ? parsed.id : null;
+        })(),
+        favoriteFont: settings.favoriteFont || 'Amiri',
+        favouriteKeys: Array.from(favourites.keysFor(req)),
+        isLoggedIn: Boolean(req.isAuthenticated && req.isAuthenticated())
+    });
+});
+
+app.get("/api/quran/reciters", async function(req, res){
+    const surah = await cachedJsonOrNull(`https://quranapi.pages.dev/api/1.json`);
+    if (!surah || !surah.audio) return res.status(503).json({ error: "reciters-unavailable" });
+    res.json({
+        reciters: Object.entries(surah.audio).map(([id, a]) => ({ id: String(id), name: a.reciter }))
+    });
+});
+
+app.post("/api/quran/reciter", async function(req, res){
+    const reciter = String(req.body.reciter || "");
+    // Rejected here rather than persisted: an unknown id would silently break
+    // playback later, with the user having no way to tell why.
+    const surah = await cachedJsonOrNull(`https://quranapi.pages.dev/api/1.json`).catch(() => null);
+    if (!surah || !surah.audio || !surah.audio[reciter]) {
+        return res.status(400).json({ error: "invalid-reciter" });
+    }
+    try {
+        await userData.updateSettings(req, { favoriteReciter: reciter });
+        res.json({ ok: true });
+    } catch (err) {
+        console.error("api/quran/reciter:", err.message);
+        res.status(500).json({ error: "failed" });
+    }
+});
+
+// Where the SPA should send a signed-out visitor when they tap a heart.
+app.get("/api/session", function(req, res){
+    res.json({
+        isLoggedIn: Boolean(req.isAuthenticated && req.isAuthenticated()),
+        username: (req.isAuthenticated && req.isAuthenticated() && req.user.username) || null
+    });
+});
+
+// Position persistence for the React player. Separate from /update-audio-time
+// because that one redirects (it is form-driven, from the EJS pages) while the
+// SPA needs JSON.
+app.post("/api/quran/progress", async function(req, res){
+    const surahNo = parseInt(req.body.surahNo, 10);
+    if (!Number.isInteger(surahNo) || surahNo < 1 || surahNo > 114) {
+        return res.status(400).json({ error: "invalid-surah" });
+    }
+    const time = Number(req.body.time);
+    if (!isFinite(time) || time < 0) return res.status(400).json({ error: "invalid-time" });
+
+    try {
+        await userData.recordSurahReadAndProgress(req, {
+            surahNo,
+            surahName: String(req.body.surahName || ""),
+            time
+        });
+        res.json({ ok: true });
+    } catch (err) {
+        console.error("api/quran/progress:", err.message);
+        res.status(500).json({ error: "failed" });
+    }
+});
+
+// Restore the saved position on first load, so a page refresh resumes the
+// recitation rather than starting over.
+app.get("/api/quran/progress", async function(req, res){
+    const settings = await userData.getSettings(req);
+    const progress = settings.audioProgress;
+    if (!progress || !progress.surahNo) return res.json({ track: null });
+
+    const surah = await cachedJsonOrNull(`https://quranapi.pages.dev/api/${progress.surahNo}.json`).catch(() => null);
+    const track = surah && surah.audio ? (surah.audio[settings.favoriteReciter] || surah.audio[1]) : null;
+    if (!track) return res.json({ track: null });
+
+    res.json({
+        track: {
+            url: track.originalUrl,
+            surahNo: Number(progress.surahNo),
+            surahName: progress.surahName || surah.surahName,
+            reciterName: track.reciter,
+            startAt: Number(progress.time) || 0
+        }
+    });
 });

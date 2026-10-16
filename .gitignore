@@ -1,3 +1,10 @@
 node_modules/
 .env
-.vercel
+.env.local
+*.log
+.DS_Store
+
+# Frontend build output and local caches
+frontend/dist/
+frontend/node_modules/
+frontend/.vite/

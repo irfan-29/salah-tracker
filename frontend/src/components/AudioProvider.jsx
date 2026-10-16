@@ -1,0 +1,149 @@
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { quran } from '../services/api';
+
+// The persistent player.
+//
+// This is the entire point of the rewrite: the <audio> element is owned here,
+// mounted once, above the router. Previously the reader had one element and the
+// footer had another, so navigating tore down whichever one was playing and the
+// other arrived paused. Nothing below this component can destroy it - React
+// re-renders routes, it does not remount this tree.
+
+const AudioContext = createContext(null);
+
+export function AudioProvider({ children }) {
+  const audioRef = useRef(null);
+  if (audioRef.current === null && typeof Audio !== 'undefined') {
+    audioRef.current = new Audio();
+    audioRef.current.preload = 'metadata';
+  }
+  const audio = audioRef.current;
+
+  const [track, setTrack] = useState(null);
+  const [playing, setPlaying] = useState(false);
+  const [position, setPosition] = useState(0);
+  const [duration, setDuration] = useState(0);
+
+  // Persist the position so a full page load or a return visit resumes where
+  // the user stopped. Throttled while playing, and forced on pause/unload -
+  // the previous implementation only saved every 5s during playback, so closing
+  // the tab mid-recitation lost up to five seconds.
+  const lastSaved = useRef(0);
+
+  const savePosition = useCallback(async (force = false) => {
+    if (!audio || !track || !audio.src) return;
+    if (!force && Math.abs(audio.currentTime - lastSaved.current) < 5) return;
+    lastSaved.current = audio.currentTime;
+    try {
+      await quran.saveProgress({
+        surahNo: track.surahNo,
+        surahName: track.surahName,
+        time: audio.currentTime,
+      });
+    } catch (err) {
+      // Losing a position is not worth interrupting playback over.
+    }
+  }, [audio, track]);
+
+  const play = useCallback(async (next) => {
+    if (!audio || !next || !next.url) return;
+    const changed = !track || track.url !== next.url;
+
+    setTrack({ ...next, surahNo: Number(next.surahNo) });
+    audio.src = next.url;
+    if (changed) {
+      audio.currentTime = Number(next.startAt) || 0;
+    }
+    try {
+      await audio.play();
+    } catch (err) {
+      // Autoplay can be refused when play() is not the direct result of a user
+      // gesture. The UI stays correct either way - it simply shows paused.
+    }
+  }, [audio, track]);
+
+  const toggle = useCallback(() => {
+    if (!audio || !track) return;
+    if (audio.paused) audio.play().catch(() => {});
+    else audio.pause();
+  }, [audio, track]);
+
+  // Load a track into the bar WITHOUT starting it. Separate from play() because
+  // conflating them meant restoring a saved position auto-played, which browsers
+  // refuse anyway and which is intrusive when it does not.
+  const load = useCallback((next) => {
+    if (!audio || !next || !next.url) return;
+    setTrack({ ...next, surahNo: Number(next.surahNo) });
+    audio.src = next.url;
+    audio.load();
+    const startAt = Number(next.startAt) || 0;
+    if (startAt > 0) {
+      const apply = () => { try { audio.currentTime = startAt; } catch (e) {} };
+      if (audio.readyState >= 1) apply();
+      else audio.addEventListener('loadedmetadata', apply, { once: true });
+    }
+  }, [audio]);
+
+  const seek = useCallback((fraction) => {
+    if (!audio || !isFinite(audio.duration) || audio.duration <= 0) return;
+    audio.currentTime = fraction * audio.duration;
+  }, [audio]);
+
+  const close = useCallback(() => {
+    if (!audio) return;
+    audio.pause();
+    audio.removeAttribute('src');
+    audio.load();
+    setTrack(null);
+    setPosition(0);
+    setDuration(0);
+  }, [audio]);
+
+  useEffect(() => {
+    if (!audio) return undefined;
+
+    const onLoaded = () => setDuration(isFinite(audio.duration) ? audio.duration : 0);
+    const onTime = () => {
+      setPosition(audio.currentTime);
+      savePosition(false);
+    };
+    const onPlay = () => setPlaying(true);
+    const onPause = () => { setPlaying(false); savePosition(true); };
+    const onEnded = () => { setPlaying(false); savePosition(true); };
+
+    audio.addEventListener('loadedmetadata', onLoaded);
+    audio.addEventListener('timeupdate', onTime);
+    audio.addEventListener('play', onPlay);
+    audio.addEventListener('pause', onPause);
+    audio.addEventListener('ended', onEnded);
+
+    // pagehide rather than beforeunload: mobile Safari often skips the latter.
+    const onHide = () => { savePosition(true); };
+    window.addEventListener('pagehide', onHide);
+    document.addEventListener('visibilitychange', onHide);
+
+    return () => {
+      audio.removeEventListener('loadedmetadata', onLoaded);
+      audio.removeEventListener('timeupdate', onTime);
+      audio.removeEventListener('play', onPlay);
+      audio.removeEventListener('pause', onPause);
+      audio.removeEventListener('ended', onEnded);
+      window.removeEventListener('pagehide', onHide);
+      document.removeEventListener('visibilitychange', onHide);
+    };
+  }, [audio, savePosition]);
+
+  const value = useMemo(() => ({
+    track, playing, position, duration,
+    play, load, toggle, seek, close, savePosition,
+    hasTrack: Boolean(track),
+  }), [track, playing, position, duration, play, load, toggle, seek, close, savePosition]);
+
+  return <AudioContext.Provider value={value}>{children}</AudioContext.Provider>;
+}
+
+export function useAudio() {
+  const ctx = useContext(AudioContext);
+  if (!ctx) throw new Error('useAudio must be used inside <AudioProvider>');
+  return ctx;
+}
