@@ -7,6 +7,10 @@ import react from '@vitejs/plugin-react';
 // configuration is needed anywhere.
 export default defineConfig({
   plugins: [react()],
+  // Serve the app's existing public assets rather than duplicating them into
+  // the frontend: /images/audio-player.webp and the Quran fonts are referenced
+  // by the shared stylesheet and by the player bar.
+  publicDir: '../public',
   server: {
     port: 5173,
     proxy: {

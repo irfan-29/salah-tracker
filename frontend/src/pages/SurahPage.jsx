@@ -27,31 +27,33 @@ export default function SurahPage() {
     return new Set((data?.favouriteKeys) || []);
   }, [favourites, data]);
 
-  if (error) return <div className="page"><h1>Surah</h1><p className="error-text">{error}</p></div>;
-  if (!data) return <div className="page"><p className="loading-text">Loading…</p></div>;
+  if (error) return <><div className="page-header"><h1>Surah</h1></div><div className="container1"><p className="post-empty">{error}</p></div></>;
+  if (!data) return <div className="container1"><p className="post-empty">Loading…</p></div>;
 
   const targetAyah = params.get('ayah');
 
   return (
-    <div className="page">
+    <>
       <header className="page-header">
         <h1>{data.surahName}</h1>
         <p>{data.surahNameArabic} · {data.surahNameTranslation}</p>
       </header>
 
-      <section className="panel">
-        <p className="empty-text">
-          {data.revelationPlace} · {data.totalAyah} Ayahs
-        </p>
-      </section>
+      {/* Mirrors the .container1 > .surah-item block in views/surah.ejs, down to
+          the inline overrides, so the spacing matches exactly. */}
+      <div className="container1" style={{ textAlign: 'left' }}>
+        <div className="surah-item" style={{ borderBottom: 'none', paddingBottom: 0 }}>
+          <p className="surah-meta">{data.revelationPlace} · {data.totalAyah} Ayahs</p>
+        </div>
+      </div>
 
       {data.arabic.map((text, index) => {
         const ayahNo = index + 1;
         const on = isFavourite(data.surahNo, ayahNo) || favKeys.has(`${data.surahNo}:${ayahNo}`);
         return (
-          <article key={ayahNo} className={`ayah-block${String(ayahNo) === targetAyah ? ' is-target' : ''}`}>
-            <header className="ayah-head">
-              <span className="ayah-number">Ayah {ayahNo}</span>
+          <article key={ayahNo} id={String(ayahNo)} className="ayah-block">
+            <div className="ayah-head">
+              <p className="ayah-number">Ayah {ayahNo}</p>
               <button
                 type="button"
                 className={`fav-btn${on ? ' is-active' : ''}`}
@@ -61,9 +63,9 @@ export default function SurahPage() {
               >
                 <span className="material-symbols-rounded">{on ? 'favorite' : 'favorite_border'}</span>
               </button>
-            </header>
+            </div>
 
-            <p className="arabic" dir="rtl" lang="ar" style={{ fontFamily: `'${data.favoriteFont}', serif` }}>
+            <p className="quran-text-display" dir="rtl" lang="ar" style={{ fontFamily: `'${data.favoriteFont}', serif`, lineHeight: 2, fontSize: '28px', textAlign: 'right' }}>
               {text}
             </p>
 
@@ -72,9 +74,13 @@ export default function SurahPage() {
               if (!translated) return null;
               const isPrimary = data.primaryTranslationId === t.id;
               return (
-                <div key={t.id} className="translation">
-                  <p className="translation-label">{t.label}{isPrimary ? ' · Primary' : ''}</p>
-                  <p className="translation-text">{translated}</p>
+                <div key={t.id} style={{ textAlign: 'left', marginTop: '1rem', marginBottom: '1.25rem', padding: '0.75rem 0 0.75rem 1rem', borderLeft: '3px solid var(--color-primary)', background: 'var(--color-primary-glow)', borderRadius: '0 var(--radius-sm) var(--radius-sm) 0' }}>
+                  <p style={{ color: 'var(--color-primary)', fontSize: '0.6875rem', marginBottom: '0.375rem', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 700 }}>
+                    {t.label}{isPrimary ? ' · Primary' : ''}
+                  </p>
+                  <p style={{ fontFamily: "'Mukta Malar', sans-serif", fontSize: '1.0625rem', color: 'var(--color-text)', lineHeight: 1.6, margin: 0 }}>
+                    {translated}
+                  </p>
                 </div>
               );
             })}
@@ -82,7 +88,7 @@ export default function SurahPage() {
         );
       })}
 
-      <p className="back-link"><Link to="/quran">← Back to Quran</Link></p>
-    </div>
+      <p className="post-back"><Link to="/quran">← Back to Quran</Link></p>
+    </>
   );
 }

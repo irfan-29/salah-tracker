@@ -1,77 +1,94 @@
 import { useMemo, useState } from 'react';
 
+// Class names mirror views/quran-audio.ejs.
 export default function AudioTab({ surahs, reciters, reciter, onReciterChange, onPlaySurah }) {
   const [term, setTerm] = useState('');
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(null);
+  const [status, setStatus] = useState('');
 
   const filtered = useMemo(() => {
     const q = term.trim().toLowerCase();
     if (!q) return surahs;
-    return surahs.filter((s, i) =>
-      s.surahName.toLowerCase().includes(q) || String(i + 1).includes(q));
+    return surahs.filter((s, i) => s.surahName.toLowerCase().includes(q) || String(i + 1).includes(q));
   }, [surahs, term]);
 
   async function play(no) {
     setLoading(no);
+    setStatus('');
     try {
       await onPlaySurah(no);
+    } catch (err) {
+      setStatus('Could not load that audio. Please try again.');
     } finally {
       setLoading(null);
     }
   }
 
   return (
-    <>
-      <section className="panel">
-        <header className="panel-header"><h3>Reciter</h3></header>
+    <div className="quran-tab-panel" data-tab-panel="audio">
+      <div className="container1">
+        <div className="card-header"><h3>Reciter</h3></div>
         <div className="reciter-row">
-          <select
-            className="select"
-            value={reciter}
-            disabled={saving}
-            onChange={async (e) => { setSaving(true); try { await onReciterChange(e.target.value); } finally { setSaving(false); } }}
-          >
-            {reciters.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
-          </select>
-          <span className="hint">{saving ? 'Saving…' : 'Applies to the whole app'}</span>
+          <div className="form-floating">
+            <select
+              name="reciter"
+              id="reciterSelect"
+              className="form-control"
+              value={reciter}
+              disabled={saving}
+              onChange={async (e) => {
+                setSaving(true);
+                try { await onReciterChange(e.target.value); setStatus('Saved.'); }
+                catch (err) { setStatus('Could not save.'); }
+                finally { setSaving(false); }
+              }}
+            >
+              {reciters.map((r) => (
+                <option key={r.id} value={r.id}>{r.name}</option>
+              ))}
+            </select>
+            <label htmlFor="reciterSelect">Reciter</label>
+          </div>
         </div>
-      </section>
+        {status && <p className="tg-hint">{status}</p>}
+      </div>
 
-      <section className="panel">
-        <header className="panel-header">
+      <div className="container1">
+        <div className="card-header">
           <h3>Play</h3>
-          <span className="badge">{surahs.length} Surahs</span>
-        </header>
-        <input
-          className="search-input"
-          type="search"
-          placeholder="Search surah to play"
-          value={term}
-          onChange={(e) => setTerm(e.target.value)}
-        />
-        <ul className="audio-list">
+          <span className="badge badge-primary">114 Surahs</span>
+        </div>
+        <div className="surah-search-wrapper">
+          <input
+            type="text"
+            className="surah-search-input"
+            placeholder="Search surah to play"
+            value={term}
+            onChange={(e) => setTerm(e.target.value)}
+          />
+        </div>
+        <div className="surah-list">
           {filtered.map((surah) => {
             const no = surahs.indexOf(surah) + 1;
             return (
-              <li key={no}>
-                <button
-                  type="button"
-                  className="audio-option"
-                  disabled={loading === no}
-                  onClick={() => play(no)}
-                >
-                  <span>{no}. {surah.surahName}</span>
-                  <span className="material-symbols-rounded">
-                    {loading === no ? 'hourglass_top' : 'play_circle'}
-                  </span>
-                </button>
-              </li>
+              <button
+                key={no}
+                type="button"
+                className="surah-option audio-surah-option"
+                disabled={loading === no}
+                onClick={() => play(no)}
+              >
+                <span>{no}. {surah.surahName}</span>
+                <span className="material-symbols-rounded audio-option-icon">
+                  {loading === no ? 'hourglass_top' : 'play_circle'}
+                </span>
+              </button>
             );
           })}
-        </ul>
-        {filtered.length === 0 && <p className="empty-text">No surah matches “{term}”.</p>}
-      </section>
-    </>
+        </div>
+        {filtered.length === 0 && <p className="post-empty">No surah matches “{term}”.</p>}
+      </div>
+    </div>
   );
 }

@@ -9,20 +9,20 @@ export default function NotMigrated() {
   const { pathname } = useLocation();
 
   return (
-    <div className="page">
+    <>
       <header className="page-header">
         <h1>Not migrated yet</h1>
         <p>{pathname}</p>
       </header>
-      <section className="panel">
-        <p className="empty-text">
+      <div className="container1">
+        <p className="post-empty">
           This page is still rendered by the backend. Opening it does a full page
           load, so audio will stop. The Quran module is the first to be ported.
         </p>
         <p>
-          <a className="btn" href={pathname}>Open the server-rendered page</a>
+          <a className="btn btn-primary" href={pathname}>Open the server-rendered page</a>
         </p>
-      </section>
-    </div>
+      </div>
+    </>
   );
 }

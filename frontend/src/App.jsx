@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
-import { AudioProvider, useAudio } from './components/AudioProvider';
+import { Routes, Route } from 'react-router-dom';
+import { AudioProvider } from './components/AudioProvider';
 import Navbar from './components/Navbar';
 import Player from './components/Player';
 import QuranPage from './pages/QuranPage';
@@ -32,20 +32,20 @@ function Shell() {
   }, []);
 
   return (
-    <div className="app-shell">
+    <>
       <Navbar session={session} />
-      <main className="app-main">
+      <div className="main-content">
         <Routes>
           <Route path="/" element={<QuranPage />} />
           <Route path="/quran" element={<QuranPage />} />
           <Route path="/surah/:surahNo" element={<SurahPage />} />
-          {/* Everything else is still server-rendered EJS. These pages keep
+          {/* Everything else is still server-rendered EJS. Those pages keep
               working through the Vercel rewrite to the backend; navigating here
               is a full page load by design until they are ported. */}
           <Route path="*" element={<NotMigrated />} />
         </Routes>
-      </main>
+      </div>
       <Player />
-    </div>
+    </>
   );
 }

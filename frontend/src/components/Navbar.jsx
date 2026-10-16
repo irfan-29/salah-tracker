@@ -1,92 +1,147 @@
+import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 
-const MAIN_LINKS = [
-  { to: '/quran', label: 'Quran', icon: 'menu_book' },
-  { to: '/salah', label: 'Salah Tracker', icon: 'checklist' },
-  { to: '/salah-timings', label: 'Salah Timings', icon: 'schedule' },
-  { to: '/calendar', label: 'Islamic Calendar', icon: 'calendar_month' },
-  { to: '/challenges', label: 'Challenges', icon: 'emoji_events' },
-  { to: '/posts', label: 'Posts', icon: 'favorite' },
+// Emits the same markup and class names as views/navbar.ejs, so the shared
+// stylesheet applies unchanged. The first React version defined a parallel set
+// of class names, which is why it looked like a different site.
+
+const PRIMARY = [
+  { to: '/quran', path: '/quran', icon: 'auto_stories', label: 'Quran' },
+  { to: '/salah', path: '/salah', icon: 'checklist_rtl', label: 'Salah Tracker' },
+  { to: '/salah-timings', path: '/salah-timings', icon: 'schedule', label: 'Salah Timings' },
+  { to: '/calendar', path: '/calendar', icon: 'calendar_month', label: 'Islamic Calendar' },
+  { to: '/challenges', path: '/challenges', icon: 'emoji_events', label: 'Challenges' },
+  { to: '/posts', path: '/posts', icon: 'favorite', label: 'Posts' },
 ];
 
-const ACCOUNT_LINKS = [
-  { to: '/account', label: 'Account', icon: 'account_circle' },
-  { to: '/settings', label: 'Settings', icon: 'settings' },
+const ACCOUNT = [
+  { to: '/account', path: '/account', icon: 'account_circle', label: 'Account' },
+  { to: '/settings', path: '/settings', icon: 'settings', label: 'Settings' },
 ];
+
+// Same rule as the EJS script: exact match, plus the reader counting as part of
+// Quran so the section stays highlighted while reading an ayah.
+function isActive(pathname, linkPath) {
+  return pathname === linkPath || (linkPath === '/quran' && pathname.startsWith('/surah'));
+}
 
 export default function Navbar({ session }) {
   const { pathname } = useLocation();
+  const sidebarRef = useRef(null);
+  const menuTogglerRef = useRef(null);
+
   const handle = session.username || '';
 
+  useEffect(() => {
+    const sidebar = sidebarRef.current;
+    if (!sidebar) return undefined;
+
+    const sidebarToggler = sidebar.querySelector('.sidebar-toggler');
+    const menuToggler = sidebar.querySelector('.menu-toggler');
+
+    const onCollapse = () => sidebar.classList.toggle('collapsed');
+    const onMenu = () => {
+      sidebar.classList.toggle('menu-active');
+      const icon = menuToggler && menuToggler.querySelector('span');
+      if (icon) icon.textContent = sidebar.classList.contains('menu-active') ? 'close' : 'menu';
+    };
+    const onResize = () => {
+      if (window.innerWidth >= 1024) {
+        sidebar.classList.remove('menu-active');
+        const icon = menuToggler && menuToggler.querySelector('span');
+        if (icon) icon.textContent = 'menu';
+      }
+    };
+
+    if (sidebarToggler) sidebarToggler.addEventListener('click', onCollapse);
+    if (menuToggler) menuToggler.addEventListener('click', onMenu);
+    window.addEventListener('resize', onResize);
+
+    return () => {
+      if (sidebarToggler) sidebarToggler.removeEventListener('click', onCollapse);
+      if (menuToggler) menuToggler.removeEventListener('click', onMenu);
+      window.removeEventListener('resize', onResize);
+    };
+  }, []);
+
+  const link = (item) => (
+    <li className="nav-item" key={item.to}>
+      <Link to={item.to} className={`nav-link${isActive(pathname, item.path) ? ' active' : ''}`} data-path={item.path}>
+        <span className="nav-icon material-symbols-rounded">{item.icon}</span>
+        <span className="nav-label">{item.label}</span>
+      </Link>
+      <span className="nav-tooltip">{item.label}</span>
+    </li>
+  );
+
   return (
-    <nav className="app-nav">
-      <div className="nav-brand">
-        <span className="material-symbols-rounded">mosque</span>
-        <div>
-          <strong>Salah Tracker</strong>
-          <small>Track · Pray · Grow</small>
-        </div>
-      </div>
+    <aside className="sidebar" ref={sidebarRef}>
+      <header className="sidebar-header">
+        <Link to="/" className="header-logo">
+          <div className="logo-icon">
+            <span className="material-symbols-rounded">mosque</span>
+          </div>
+          <div className="logo-text">
+            <h5>Salah Tracker</h5>
+            <span>Track · Pray · Grow</span>
+          </div>
+        </Link>
+        <button type="button" className="sidebar-toggler" aria-label="Toggle sidebar">
+          <span className="material-symbols-rounded">chevron_left</span>
+        </button>
+        <button type="button" className="menu-toggler" ref={menuTogglerRef} aria-label="Toggle menu">
+          <span className="material-symbols-rounded">menu</span>
+        </button>
+      </header>
 
-      <div className="nav-group">
-        <p className="nav-section-label">Main</p>
-        <ul>
-          {MAIN_LINKS.map((link) => (
-            <li key={link.to}>
-              <Link to={link.to} className={pathname === link.to ? 'active' : ''}>
-                <span className="material-symbols-rounded">{link.icon}</span>
-                {link.label}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      <div className="nav-group">
-        <p className="nav-section-label">Account</p>
-        <ul>
-          {ACCOUNT_LINKS.map((link) => (
-            <li key={link.to}>
-              <Link to={link.to} className={pathname === link.to ? 'active' : ''}>
-                <span className="material-symbols-rounded">{link.icon}</span>
-                {link.label}
-              </Link>
-            </li>
-          ))}
+      <nav className="sidebar-nav">
+        <div className="nav-section-label">Main</div>
+        <ul className="nav-list primary-nav">
+          {PRIMARY.map(link)}
         </ul>
 
-        <ul>
+        <div className="nav-section-label">Account</div>
+        <ul className="nav-list secondary-nav">
+          {ACCOUNT.map(link)}
+
           {session.isLoggedIn ? (
             <>
-              {handle && (
-                <li className="nav-user">
-                  <Link to="/account">
-                    <span className="nav-avatar">{handle.charAt(0).toUpperCase()}</span>
-                    <span className="nav-user-name">{handle}</span>
-                  </Link>
-                </li>
-              )}
-              <li>
-                <form action="/logout" method="POST">
-                  <button type="submit" className="nav-link">
-                    <span className="material-symbols-rounded">logout</span>
-                    Sign out
+              <li className="nav-item nav-user-chip">
+                <div className="nav-user">
+                  <span className="nav-avatar">{(handle || '?').charAt(0).toUpperCase()}</span>
+                  <span className="nav-label nav-user-name">{handle}</span>
+                </div>
+              </li>
+              <li className="nav-item">
+                <form action="/logout" method="POST" className="nav-logout-form">
+                  <button type="submit" className="nav-link nav-logout">
+                    <span className="nav-icon material-symbols-rounded">logout</span>
+                    <span className="nav-label">Sign out</span>
                   </button>
                 </form>
+                <span className="nav-tooltip">Sign out</span>
               </li>
             </>
           ) : (
             <>
-              <li>
-                <a href="/login"><span className="material-symbols-rounded">login</span>Sign in</a>
+              <li className="nav-item">
+                <a href="/login" className="nav-link" data-path="/login">
+                  <span className="nav-icon material-symbols-rounded">login</span>
+                  <span className="nav-label">Sign in</span>
+                </a>
+                <span className="nav-tooltip">Sign in</span>
               </li>
-              <li>
-                <a href="/register"><span className="material-symbols-rounded">person_add</span>Create account</a>
+              <li className="nav-item">
+                <a href="/register" className="nav-link" data-path="/register">
+                  <span className="nav-icon material-symbols-rounded">person_add</span>
+                  <span className="nav-label">Create account</span>
+                </a>
+                <span className="nav-tooltip">Create account</span>
               </li>
             </>
           )}
         </ul>
-      </div>
-    </nav>
+      </nav>
+    </aside>
   );
 }

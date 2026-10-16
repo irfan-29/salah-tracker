@@ -39,15 +39,15 @@ export default function QuranPage() {
 
   if (error) {
     return (
-      <div className="page">
-        <h1>Quran</h1>
-        <p className="error-text">{error}</p>
-      </div>
+      <>
+        <div className="page-header"><h1>Quran</h1></div>
+        <div className="container1"><p className="post-empty">{error}</p></div>
+      </>
     );
   }
 
   if (!data) {
-    return <div className="page"><p className="loading-text">Loading…</p></div>;
+    return <div className="container1"><p className="post-empty">Loading…</p></div>;
   }
 
   async function handleReciterChange(next) {
@@ -76,11 +76,11 @@ export default function QuranPage() {
   }
 
   return (
-    <div className="page">
-      <header className="page-header">
+    <>
+      <div className="page-header">
         <h1>Quran</h1>
         <p>Read, listen, and reflect on the Holy Quran</p>
-      </header>
+      </div>
 
       <div className="quran-tabs" role="tablist" aria-label="Quran sections">
         {TABS.map((t) => (
@@ -133,6 +133,6 @@ export default function QuranPage() {
           onReload={reload}
         />
       )}
-    </div>
+    </>
   );
 }

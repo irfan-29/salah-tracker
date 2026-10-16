@@ -1,62 +1,71 @@
-export default function FavouritesTab({ entries, isLoggedIn, onToggle, onReload }) {
+// Class names mirror views/quran-favourites.ejs.
+export default function FavouritesTab({ entries, isLoggedIn, onToggle }) {
   if (!isLoggedIn) {
     return (
-      <section className="panel">
-        <p className="empty-text">
-          Favourites are tied to your account.{' '}
-          <a href="/login">Sign in</a> or <a href="/register">create an account</a> to start saving.
-        </p>
-      </section>
-    );
-  }
-
-  if (!entries.length) {
-    return (
-      <section className="panel">
-        <p className="empty-text">No saved ayahs yet. Tap the heart beside any ayah while reading.</p>
-      </section>
+      <div className="quran-tab-panel" data-tab-panel="favourites">
+        <div className="container1">
+          <div className="gate-notice">
+            <span className="material-symbols-rounded">lock</span>
+            <div>
+              <p className="gate-title">Sign in to save ayahs</p>
+              <p className="gate-text">
+                Favourites are tied to your account, so they follow you across devices.{' '}
+                <a href="/login">Sign in</a> or <a href="/register">create an account</a> to start saving.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
     );
   }
 
   return (
-    <section className="panel">
-      <header className="panel-header">
-        <h3>Saved Ayahs</h3>
-        <span className="badge">{entries.length}</span>
-      </header>
-      {entries.map((entry) => (
-        <article key={`${entry.surahNo}:${entry.ayahNo}`} className="favourite-card">
-          <header className="favourite-head">
-            <a className="favourite-ref" href={`/surah/${entry.surahNo}?ayah=${entry.ayahNo}`}>
-              {entry.surahName}
-              {entry.surahNameArabic ? ` · ${entry.surahNameArabic}` : ''}
-            </a>
-            <span className="favourite-num">Ayah {entry.ayahNo}</span>
-            <button
-              type="button"
-              className="favourite-remove"
-              onClick={() => onToggle(entry.surahNo, entry.ayahNo)}
-              aria-label="Remove from favourites"
-            >
-              <span className="material-symbols-rounded">favorite</span>
-            </button>
-          </header>
+    <div className="quran-tab-panel" data-tab-panel="favourites">
+      <div className="container1">
+        <div className="card-header">
+          <h3>Saved Ayahs</h3>
+          <span className="badge badge-primary">{entries.length}</span>
+        </div>
 
-          {entry.unavailable ? (
-            <p className="empty-text">This ayah could not be loaded just now.</p>
-          ) : (
-            <>
-              {entry.arabicText && <p className="favourite-arabic" dir="rtl" lang="ar">{entry.arabicText}</p>}
-              {entry.translationText && (
+        {entries.length === 0 ? (
+          <p className="post-empty">No saved ayahs yet. Tap the heart beside any ayah while reading.</p>
+        ) : (
+          entries.map((entry) => (
+            <article className="favourite-card" key={`${entry.surahNo}:${entry.ayahNo}`}>
+              <header className="favourite-head">
+                <a className="favourite-ref" href={`/surah/${entry.surahNo}?ayah=${entry.ayahNo}`}>
+                  {entry.surahName}
+                  {entry.surahNameArabic ? ` · ${entry.surahNameArabic}` : ''}
+                </a>
+                <span className="favourite-num">Ayah {entry.ayahNo}</span>
+                <button
+                  type="button"
+                  className="favourite-remove is-active"
+                  onClick={() => onToggle(entry.surahNo, entry.ayahNo)}
+                  title="Remove from favourites"
+                  aria-label="Remove from favourites"
+                >
+                  <span className="material-symbols-rounded">heart_broken</span>
+                </button>
+              </header>
+
+              {entry.unavailable ? (
+                <p className="favourite-missing">This ayah could not be loaded just now.</p>
+              ) : (
                 <>
-                  {entry.translationLabel && <p className="favourite-edition">{entry.translationLabel}</p>}
-                  <p className="favourite-translation">{entry.translationText}</p>
+                  <p className="favourite-arabic" dir="rtl" lang="ar">{entry.arabicText}</p>
+                  {entry.translationText && (
+                    <>
+                      {entry.translationLabel && <p className="favourite-edition">{entry.translationLabel}</p>}
+                      <p className="favourite-translation">{entry.translationText}</p>
+                    </>
+                  )}
                 </>
               )}
-            </>
-          )}
-        </article>
-      ))}
-    </section>
+            </article>
+          ))
+        )}
+      </div>
+    </div>
   );
 }

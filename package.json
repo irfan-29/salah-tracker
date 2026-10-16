@@ -17,9 +17,10 @@
     "check:email": "node scripts/check-email.js",
     "frontend:install": "cd frontend && npm install",
     "frontend:dev": "cd frontend && npm run dev",
-    "frontend:build": "cd frontend && npm run build",
+    "frontend:build": "npm run frontend:sync-css && cd frontend && npm run build",
     "install:all": "npm install && npm run frontend:install",
-    "dev:all": "concurrently -n api,web -c cyan,magenta \"npm run dev\" \"npm run frontend:dev\""
+    "dev:all": "concurrently -n api,web -c cyan,magenta \"npm run dev\" \"npm run frontend:dev\"",
+    "frontend:sync-css": "node scripts/sync-frontend-css.js"
   },
   "keywords": [],
   "author": "Mohammed Irfan U",
