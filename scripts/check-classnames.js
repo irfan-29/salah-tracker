@@ -87,26 +87,29 @@ function usedClasses(source) {
   return names;
 }
 
-// Classes the server-rendered pages use. If views/*.ejs applies a name and the
-// page looks right, the name is a legitimate structural hook even when no rule
+// Classes the server-rendered pages used. If a template applied a name and the
+// page looked right, the name is a legitimate structural hook even when no rule
 // targets it - options-list, language-group and ayah-block are all like this.
 // Deriving the allowlist from the templates beats a hand-maintained list,
-// because it stays correct as the EJS changes.
+// because it stays correct as the templates change.
 //
-// A class is only reported when it appears in NEITHER a stylesheet NOR any
-// template. That combination means it was invented during the port, which is
+// The templates are GONE now (the backend is API-only), so this reads a snapshot
+// taken from them at the last commit that still had views/. Regenerate with:
+//
+//   node scripts/snapshot-template-classes.js <ref>
+//
+// A class is only reported when it appears in NEITHER a stylesheet NOR this
+// list. That combination means it was invented during the port, which is
 // exactly the tg-module-row failure.
-function ejsClasses() {
+function templateClasses() {
+  const file = path.join(__dirname, "template-classes.txt");
+  if (!fs.existsSync(file)) {
+    console.error("Missing scripts/template-classes.txt");
+    process.exit(1);
+  }
   const names = new Set();
-  const dir = path.join(ROOT, "views");
-  for (const file of fs.readdirSync(dir)) {
-    if (!/\.ejs$/.test(file)) continue;
-    const src = fs.readFileSync(path.join(dir, file), "utf8");
-    // Only real class attributes. <% ... %> blocks may contain the word
-    // "class" in JS, which would pollute the allowlist.
-    for (const m of src.matchAll(/class="([^"]*)"/g)) {
-      m[1].split(/\s+/).forEach((c) => c && names.add(c));
-    }
+  for (const line of fs.readFileSync(file, "utf8").split("\n")) {
+    if (line.trim()) names.add(line.trim());
   }
   return names;
 }
@@ -122,7 +125,7 @@ for (const file of STYLE_FILES) {
 for (const line of fs.readFileSync(BOOTSTRAP_CLASSES, "utf8").split("\n")) {
   if (line.trim()) known.add(line.trim());
 }
-for (const c of ejsClasses()) known.add(c);
+for (const c of templateClasses()) known.add(c);
 
 const unknown = [];
 
@@ -139,8 +142,9 @@ if (unknown.length) {
   console.error("className(s) with no matching CSS rule:\n");
   for (const u of unknown) console.error(`  ${u.rel}:${u.line}  ${u.name}`);
   console.error(
-    "\nEither the class does not exist (check views/*.ejs for the name the\n" +
-    "server-rendered page used) or the markup needs restructuring."
+    "\nEither the class does not exist (check git history for the name the\n" +
+    "server-rendered page used, or scripts/template-classes.txt) or the markup\n" +
+    "needs restructuring."
   );
   process.exit(1);
 }

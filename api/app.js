@@ -4,7 +4,6 @@ const bodyParser = require("body-parser");
 const serverless = require("serverless-http");
 const path = require("path");
 const mongoose = require("mongoose");
-const ejs = require("ejs");
 const fetch = require("node-fetch");
 const cheerio = require("cheerio");
 const session = require('express-session');
@@ -14,7 +13,7 @@ const { MongoStore } = require("connect-mongo");
 // internal
 const { islamicFinderFetch } = require("../api/utils/islamic-finder.js");
 const { sendTelegramMessage, claimChatByCode, makeVerifyCode, buildStreakSummary, normalizeChatId, normalizeToken, extractToken, isValidToken, botIsConfigured, ERROR_MESSAGES } = require("../api/utils/telegram.js");
-const { passport, requireLogin, attachUser } = require("./middleware/auth.js");
+const { passport, requireLogin } = require("./middleware/auth.js");
 // Named `userData` rather than `data`: several routes bind a local `data` to a
 // fetched surah/prayer payload, which would shadow the service module.
 const userData = require("./services/userData.js");
@@ -29,11 +28,8 @@ const passwordUtil = require("./utils/password.js");
 const favourites = require("./services/favourites.js");
 const User = require("./models/User.js");
 
-
-
 const app=express();
 
-app.set('view engine', 'ejs');
 // QStash signs the raw request body, so keep an untouched copy. Without this the
 // signature cannot be verified: re-serialising the parsed JSON does not reproduce
 // the exact bytes that were signed.
@@ -43,9 +39,10 @@ app.use(express.json({
     }
 }));
 app.use(bodyParser.urlencoded({extended: true}));
-// app.use(express.static("public"));
-app.use(express.static(path.join(__dirname, "../public")));
-app.set("views", path.join(__dirname, "../views"));
+// public/ is NOT served here. Vite is configured with publicDir: '../public',
+// so the frontend's own deployment already ships css/, fonts/ and images/, and
+// every font url in the stylesheet is root-absolute. Serving them from the API
+// as well meant two hosts answering for the same assets.
 
 mongoose.set({strictQuery: true});
 
@@ -115,13 +112,8 @@ app.use(passport.session());
 
 // The guest store needs `res` to set its cookie; expose it on `req` once.
 app.use(userData.attachResponse);
-// Lets nav and views branch on sign-in state.
-app.use(attachUser);
-
-
-
-
-
+// attachUser is gone: it only set res.locals.currentUser for the EJS templates.
+// The JSON routes read req.user directly, which passport populates.
 
 // Schemas
 
@@ -276,11 +268,6 @@ const postsSchema = new mongoose.Schema({
 });
 const Posts = mongoose.model("Posts", postsSchema);
 
-
-
-
-
-
 // global constants
 
 //add new locations here - for support
@@ -292,12 +279,7 @@ const locationMap = new Map([
     ["Bengaluru", "1277333"]
 ]);
 
-
-
 const SKIP_MIDDLEWARE_URLS = ["/hide-audio"];
-
-
-
 
 // Global methods
 
@@ -314,7 +296,6 @@ const SKIP_MIDDLEWARE_URLS = ["/hide-audio"];
   
 //     next();
 // });
-
 
 // app.use(async (req, res, next) => {
 //     if (SKIP_MIDDLEWARE_URLS.includes(req.path)) {
@@ -401,17 +382,6 @@ const SKIP_MIDDLEWARE_URLS = ["/hide-audio"];
 
   
   
-    app.get("/audio-time", async (req, res) => {
-      const { surahNo } = req.query;
-      const settings = await userData.getSettings(req);
-      const progress = settings.audioProgress;
-      let audioTime = 0;
-      if (progress && String(progress.surahNo) === String(surahNo)) {
-        audioTime = progress.time || 0;
-      }
-      res.json({ time: audioTime });
-    });
-
     app.get("/api/surah-audio/:surahNo", async (req, res) => {
       const surahNo = parseInt(req.params.surahNo, 10);
       if (isNaN(surahNo) || surahNo < 1 || surahNo > 114) {
@@ -440,14 +410,6 @@ const SKIP_MIDDLEWARE_URLS = ["/hide-audio"];
     });
   
 
-    app.post("/hide-audio", async (req, res) => {
-      res.locals.canShowAudio = false; // update it here as well, instead of app.use alone, to hide audio immediately
-      res.locals = {};
-      await userData.updateSettings(req, { audioProgress: null });
-      const referer = req.get("Referer") || "/";
-      res.redirect(referer);
-    });
-
   // POST /play-surah was removed. It wrote session.favoriteReciterName /
   // .favoriteReciterUrl / .canShowAudio, and every line that read them was
   // commented out - it had been dead for some time. The Audio tab now calls
@@ -475,32 +437,7 @@ const SKIP_MIDDLEWARE_URLS = ["/hide-audio"];
 //     res.sendStatus(200);
 //   });
 
-  app.post("/update-audio-time", async (req, res) => {
-    const { surahNo, surahName, time } = req.body;
-
-    try {
-      await userData.updateSettings(req, {
-        audioProgress: { surahNo, surahName, time }
-      });
-
-      res.json({ success: true });
-    } catch (err) {
-      console.error(err);
-      res.status(500).json({ success: false });
-    }
-  });
-
   
-  app.get("/posts", async(req, res) => {
-    // Newest first, with the author populated for attribution.
-    const post = await Posts.find({}).sort({ _id: -1 }).populate("author", "name username");
-    res.render('posts', { post, permalinkBase: originOf(req) });
-  });
-
-  app.get("/add-post", requireLogin, async(req, res) => {
-    res.render("add-post");
-  });
-
 
   // Public profile: /u/<username>. Posts stay public (the feed already is), so
 // this is intentionally NOT behind requireLogin - it is the thing a user shares
@@ -511,89 +448,6 @@ function originOf(req) {
     const host = req.get("host");
     return host ? `${req.protocol || "https"}://${host}` : "";
 }
-
-app.get("/u/:username", async function(req, res){
-    const wanted = String(req.params.username || "").toLowerCase();
-    const author = await User.findOne({ username: wanted }).select("username name emailVerifiedAt createdAt");
-
-    if (!author) {
-        return res.status(404).render("error", { err: "No profile with that username." });
-    }
-
-    const posts = await Posts.find({ author: author._id }).sort({ _id: -1 });
-
-    res.render("profile", {
-        // Posts render their own author line; passing the owner keeps the header
-        // and the list consistent without a second lookup.
-        owner: author,
-        post: posts,
-        permalinkBase: originOf(req),
-        isOwner: Boolean(req.isAuthenticated() && req.user && String(req.user._id) === String(author._id))
-    });
-});
-
-// Permalink for a single post, so a post can be shared directly rather than
-// only as "the one at the top of the feed".
-app.get("/post/:id", async function(req, res){
-    if (!mongoose.isValidObjectId(req.params.id)) {
-        return res.status(404).render("error", { err: "That post does not exist." });
-    }
-    const post = await Posts.findById(req.params.id).populate("author", "username name");
-    if (!post) {
-        return res.status(404).render("error", { err: "That post does not exist." });
-    }
-    res.render("post", { post, permalinkBase: originOf(req) });
-});
-
-app.post("/add-post", requireLogin, async(req, res) => {
-    let date = new Date(req.query.date);
-    if(isNaN(date.getTime())) date = new Date();
-    const options = { weekday: "long", month: "short", day: "2-digit", year: "numeric" };
-    const formattedDate = date.toLocaleDateString("en-US", options);
-    const content=req.body.content;
-    const reference=req.body.reference;
-    const post = new Posts({
-        postedDate: formattedDate,
-        author: req.user._id,
-        authorName: req.user.name || req.user.email,
-        content: content,
-        reference: reference
-    });
-    post.save();
-    // Announce to every subscriber who asked for new-post alerts.
-    await broadcastNewPost(post).catch((err) => console.error("notify: new post -", err.message));
-    res.redirect("/posts");
-  });
-
-  app.get("/add-video", requireLogin, async(req, res) => {
-    res.render("add-video");
-  });
-
-
-  app.post("/add-video", requireLogin, async(req, res) => {
-    let date = new Date(req.query.date);
-    if(isNaN(date.getTime())) date = new Date();
-    const options = { weekday: "long", month: "short", day: "2-digit", year: "numeric" };
-    const formattedDate = date.toLocaleDateString("en-US", options);
-    const link=req.body.link;
-    const description=req.body.description;
-    // youtu.be/<id>?... -> <id>; otherwise keep whatever was pasted rather than
-    // throwing on a non-youtu.be link.
-    const raw = String(link || "");
-    const match = raw.split("youtu.be/")[1];
-    const videoId = match ? match.split("?")[0] : raw.trim();
-    const post = new Posts({
-        postedDate: formattedDate,
-        author: req.user._id,
-        authorName: req.user.name || req.user.email,
-        content: videoId,
-        reference: description,
-        isVideo: true
-    });
-    post.save();
-    await broadcastNewPost(post).catch((err) => console.error("notify: new video -", err.message));
-    res.redirect("/posts");
-  });
 
   // Fan a new post out to subscribers. Bounded so a large subscriber list cannot
   // blow the invocation timeout; the rest catch up on their next visit.
@@ -611,105 +465,13 @@ app.post("/add-post", requireLogin, async(req, res) => {
     }
   }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 // GET methods
-
-app.get("/", async (req, res) => {
-    const settings = await userData.getSettings(req);
-    res.redirect("/" + (settings.defaultHome || "salah"));
-});
-
 
 // --- Quran module ---------------------------------------------------------
 // Three sub-modules sharing one page: Read, Audio and Favourites. They switch
 // client-side so the audio element in the footer is never destroyed - a page
 // load would stop playback mid-ayah, which is the bug the Audio module exists
 // to fix.
-
-app.get("/quran", async(req, res) => {
-    const data = await cachedJsonOrNull(`https://quranapi.pages.dev/api/surah.json`);
-    if (!data) return res.status(503).send("Could not load the surah index.");
-
-    const settings = await userData.getSettings(req);
-    const lastReadSurahs = await userData.getLastReadSurahs(req);
-    const favoriteFont = settings.favoriteFont || 'Amiri';
-
-    // Middleware already resolved today's ayah (shared across users and cached
-    // on the document). Fall back to creating it if this is the first request
-    // of the day, before that middleware ran.
-    let ayahEntry = res.locals.ayahOfTheDay;
-    if (!ayahEntry) {
-        const created = await getOrCreateAyahOfTheDay(data);
-        if (created) {
-            await resolveAyahText(created, getPrimaryEdition(settings));
-            ayahEntry = created.toObject();
-        }
-    }
-    if (!ayahEntry) {
-        ayahEntry = { surahNo: 1, ayahNo: 1, surahName: '', surahNameArabic: '' };
-    }
-    const surahMeta = data[ayahEntry.surahNo - 1] || {};
-
-    // Reciters come from one surah's payload and apply to all of them, so a
-    // single cached read populates the whole Audio tab.
-    const reciterSource = await cachedJsonOrNull(`https://quranapi.pages.dev/api/1.json`);
-    const reciters = reciterSource && reciterSource.audio
-        ? Object.entries(reciterSource.audio).map(([id, a]) => ({
-            id: String(id),
-            name: a.reciter,
-            url: a.originalUrl
-        }))
-        : [];
-
-    res.render("quran", {
-        surahs: data,
-        lastReadSurahs: lastReadSurahs,
-        favoriteFont: favoriteFont,
-        ayahOfTheDay: {
-            surahNo: ayahEntry.surahNo,
-            ayahNo: ayahEntry.ayahNo,
-            surahName: ayahEntry.surahName || surahMeta.surahName || '',
-            surahNameArabic: ayahEntry.surahNameArabic || surahMeta.surahNameArabic || '',
-            arabicText: ayahEntry.arabicText || '',
-            translationText: ayahEntry.translationText || '',
-            translationLabel: ayahEntry.translationLabel || ''
-        },
-        reciters,
-        activeReciter: settings.favoriteReciter ? String(settings.favoriteReciter) : "1",
-        // The reader marks hearts from this list; sent on every page that can
-        // show one so the initial paint is correct without a round trip.
-        favouriteKeys: Array.from(favourites.keysFor(req)),
-        // Resolved server-side so the Favourites tab is populated on first
-        // paint rather than flashing empty while a fetch completes.
-        favourites: await favourites.resolveFavourites(req, {
-            loadSurah: (n) => cachedJsonOrNull(`https://quranapi.pages.dev/api/${n}.json`),
-            loadEdition: (id, n) => cachedJson(`https://cdn.jsdelivr.net/gh/fawazahmed0/quran-api@1/editions/${id}/${n}.json`),
-            editionId: (() => { const p = getPrimaryEdition(settings); const parsed = p ? parseEdition(p) : null; return parsed ? parsed.id : ""; })(),
-            editionLabel: (() => { const p = getPrimaryEdition(settings); const parsed = p ? parseEdition(p) : null; return parsed ? `${parsed.language || "Translation"} - ${parsed.author || parsed.id}` : ""; })()
-        }).catch((err) => {
-            // A failure here must not take the whole Quran module down - the
-            // Read and Audio tabs do not depend on it.
-            console.error("quran: favourites render failed -", err.message);
-            return [];
-        }),
-        isLoggedIn: Boolean(req.isAuthenticated && req.isAuthenticated())
-    });
-});
 
 // Resolves one surah's audio URL for the Audio tab. Fetched on demand rather
 // than up front: the surah index carries no audio, so building a full 114-surah
@@ -743,200 +505,6 @@ const handleQuranAudio = async(req, res) => {
         res.status(500).json({ error: "failed" });
     }
 };
-// Two paths, one handler. The EJS tabs call /quran/audio; the React client
-// calls /api/quran/audio. Registering the handler twice rather than having two
-// copies is what stopped the two clients drifting - as they already had.
-app.get("/quran/audio", handleQuranAudio);
-app.get("/api/quran/audio", handleQuranAudio);
-
-// Favourites for the tab. JSON rather than a page fragment so toggling one
-// ayah refreshes the list without a reload.
-const handleQuranFavourites = async(req, res) => {
-    if (!req.isAuthenticated || !req.isAuthenticated()) {
-        return res.status(401).json({ error: "login-required" });
-    }
-    try {
-        const settings = await userData.getSettings(req);
-        const editionId = getPrimaryEdition(settings);
-        const parsed = editionId ? parseEdition(editionId) : null;
-
-        const entries = await favourites.resolveFavourites(req, {
-            loadSurah: (n) => cachedJsonOrNull(`https://quranapi.pages.dev/api/${n}.json`),
-            loadEdition: (id, n) => cachedJson(`https://cdn.jsdelivr.net/gh/fawazahmed0/quran-api@1/editions/${id}/${n}.json`),
-            editionId: parsed ? parsed.id : "",
-            editionLabel: parsed ? `${parsed.language || "Translation"} - ${parsed.author || parsed.id}` : ""
-        });
-
-        res.json({ ok: true, entries });
-    } catch (err) {
-        console.error("quran/favourites:", err.message);
-        res.status(500).json({ error: "failed" });
-    }
-};
-app.get("/quran/favourites", handleQuranFavourites);
-app.get("/api/quran/favourites", handleQuranFavourites);
-
-const handleToggleFavourite = async(req, res) => {
-    const settings = await userData.getSettings(req);
-    // The surah's real length is enforced when it is known, so an out-of-range
-    // ayah is rejected rather than stored and left permanently unresolvable.
-    const surahNo = parseInt(req.body.surahNo, 10);
-    let totalAyah;
-    if (Number.isInteger(surahNo) && surahNo >= 1 && surahNo <= 114) {
-        const meta = await cachedJsonOrNull(`https://quranapi.pages.dev/api/surah.json`).catch(() => null);
-        totalAyah = meta && meta[surahNo - 1] ? meta[surahNo - 1].totalAyah : undefined;
-    }
-
-    const pair = favourites.normalise(surahNo, req.body.ayahNo, totalAyah);
-    if (!pair) return res.status(400).json({ error: "invalid-reference" });
-
-    try {
-        const result = await userData.toggleFavourite(req, pair);
-        res.json({ ok: true, favorited: result.favorited, surahNo: pair.surahNo, ayahNo: pair.ayahNo });
-    } catch (err) {
-        console.error("quran/favourites/toggle:", err.message);
-        res.status(500).json({ error: "failed" });
-    }
-};
-app.post("/quran/favourites/toggle", requireLogin, handleToggleFavourite);
-app.post("/api/quran/favourites/toggle", requireLogin, handleToggleFavourite);
-
-app.get("/surah/:surahNo", async (req, res, next) => {
-    const surahNo = parseInt(req.params.surahNo);
-    let reciter = 1;
-    let favoriteEdition = [];
-    let favoriteFont = 'Amiri';
-    let time = 0;
-
-    const settings = await userData.getSettings(req);
-
-    if (settings.favoriteReciter) reciter = settings.favoriteReciter;
-    favoriteEdition = getFavoriteEditions(settings);
-    if (settings.favoriteFont) favoriteFont = settings.favoriteFont;
-    if (settings.audioProgress && String(settings.audioProgress.surahNo) === String(surahNo)) {
-        time = settings.audioProgress.time || 0;
-    }
-
-    const primaryEdition = getPrimaryEdition(settings);
-    const primaryTranslationId = primaryEdition ? parseEdition(primaryEdition).id : null;
-
-    // Cached upstream reads: both sources are static, so re-fetching per request
-    // only burned the serverless invocation budget.
-    const surah = await cachedJsonOrNull(`https://quranapi.pages.dev/api/${surahNo}.json`);
-    if (!surah) {
-        return res.status(503).send("Could not load this surah right now. Please try again.");
-    }
-    const surahName = surah.surahName;
-
-    const translationData = {};
-    if (favoriteEdition.length > 0) {
-        const translationPromises = favoriteEdition.map((combinedStr) => {
-            const parts = combinedStr.split(':');
-            const id = parts[0];
-            const lan = parts[1] || "";
-            const author = parts[2] || id;
-
-            return cachedJson(`https://cdn.jsdelivr.net/gh/fawazahmed0/quran-api@1/editions/${id}/${surahNo}.json`)
-                .then((data) => {
-                    return { ...data, displayLabel: `${lan} - ${author}` };
-                })
-                .catch((err) => {
-                    console.error(`Error fetching ${id}:`, err);
-                    return null;
-                });
-        });
-
-        const results = await Promise.all(translationPromises);
-        const orderedEditions = [...favoriteEdition];
-        if (primaryEdition) {
-            const primaryIdx = orderedEditions.indexOf(primaryEdition);
-            if (primaryIdx > 0) {
-                orderedEditions.splice(primaryIdx, 1);
-                orderedEditions.unshift(primaryEdition);
-            }
-        }
-
-        orderedEditions.forEach((combinedStr) => {
-            const index = favoriteEdition.indexOf(combinedStr);
-            const id = parseEdition(combinedStr).id;
-            if (index >= 0 && results[index]) {
-                translationData[id] = results[index];
-            }
-        });
-    }
-
-    // Progress tracking is secondary to showing the surah: if the write fails
-    // the reader still gets the page instead of an error.
-    try {
-        await userData.recordSurahReadAndProgress(req, { surahNo, surahName, time });
-    } catch (err) {
-        console.error("surah: could not record progress -", err.message);
-    }
-
-    res.render("surah", {
-        surah: surah,
-        translations: translationData,
-        favoriteReciter: String(reciter),
-        favoriteFont: favoriteFont,
-        surahNo: surahNo,
-        // audioTime / alwaysShowAudio fed the inline player that moved to the
-        // Audio tab. The footer bar reads its own state from the middleware.
-        primaryTranslationId: primaryTranslationId,
-        highlightAyah: parseInt(req.query.ayah, 10) || null,
-        favouriteKeys: Array.from(favourites.keysFor(req)),
-        isLoggedIn: Boolean(req.isAuthenticated && req.isAuthenticated())
-    });
-});  
-  
-
-
-app.get("/salah", async function(req, res){
-    let date = new Date(req.query.date);
-    if(isNaN(date.getTime())) date = new Date();
-    // Marking a prayer is a personal record, so it needs an account. Guests get
-    // a read-only view plus a sign-in prompt rather than a form that would 302.
-    const canManage = req.isAuthenticated();
-    const entries = await userData.listSalah(req);
-    // Same helper as the JSON route, so the EJS page and the React page cannot
-    // disagree about which entries belong to which day.
-    const day = userData.resolveSalahDay(null);
-    res.render('salah', {
-        keyDate: day.label,
-        keySalah: userData.entriesForDay(entries, day),
-        canManage
-    });
-});
-
-
-app.get("/salah-timings", async(req, res)=>{
-    const settings = await userData.getSettings(req);
-    const location = settings.location || "Coimbatore";
-
-    const response = await islamicFinderFetch(`https://www.islamicfinder.org/prayer-widget/${locationMap.get(location)}/shafi/3/0/18.0/18.0`);
-    // Named `pageHtml`, not `data` - that identifier is the user-data service.
-    const pageHtml = await response.text();
-
-    const $ = cheerio.load(pageHtml);
-    const prayerDetails = {};
-
-    prayerDetails.location = $(".table-controller a").first().text().trim();
-    prayerDetails.hijriDate = $(".table-controller div").first().text().trim();
-    const today = new Date();
-    const options = { weekday: "long", month: "short", day: "2-digit", year: "numeric" };
-    const formattedDate = today.toLocaleDateString("en-US", options);
-    prayerDetails.date = formattedDate;
-
-    const prayerTimes = [];
-    $(".d-flex.flex-direction-row").each((index, element) => {
-        const timeType = $(element).find("p").first().text().trim();
-        const time = $(element).find("p").last().text().trim();
-        prayerTimes.push({ timeType, time });
-    });
-    prayerDetails.prayerTimes = prayerTimes;
-
-    res.render('salah-timings', { location: location, keyPrayerDetails: prayerDetails, keyData: pageHtml });
-});
-
 
 // Helper function to get current Hijri date
 async function getCurrentHijriDate() {
@@ -946,156 +514,6 @@ async function getCurrentHijriDate() {
       hijriYear: parseInt(data.data.hijri.year),
     };
   }
-
-
-
-  app.get('/calendar', async (req, res) => {
-    try{
-        let hijriMonth = parseInt(req.query.month);
-        let hijriYear = parseInt(req.query.year);
-
-        if(!hijriMonth){
-            const json1 = await cachedJson('https://api.aladhan.com/v1/currentIslamicMonth');
-            hijriMonth = json1.data;
-        }
-        if(!hijriYear){
-            const json2 = await cachedJson('https://api.aladhan.com/v1/currentIslamicYear');
-            hijriYear = json2.data;
-        }
-
-        const apiUrl = `https://api.aladhan.com/v1/hToGCalendar/${hijriMonth}/${hijriYear}`;
-        const json = await cachedJson(apiUrl);
-
-        const hijriMonthName = json.data[0].hijri.month.en;
-        const gregorianMonth = json.data[0].gregorian.month.en;
-        const gregorianYear = json.data[0].gregorian.year;
-
-        // Map dates into weeks
-        const days = json.data.map(d => ({
-            hijri: d.hijri.day,
-            gregorian: d.gregorian.day,
-            weekday: d.gregorian.weekday.en,
-            date: d.gregorian.date,
-            fullHijri: `${d.hijri.day} ${d.hijri.month.en} ${d.hijri.year}`,
-        }));
-
-        let firstValidDate = json.data.find(d => d && d.gregorian && d.gregorian.date);
-        let firstWeekday = 0;
-
-        if (firstValidDate) {
-            const date = new Date(firstValidDate.gregorian.date);
-            firstWeekday = isNaN(date.getDay()) ? 0 : date.getDay();
-        }
-
-        const paddedDays = Array(firstWeekday).fill(null).concat(days);
-
-
-        const weeks = [];
-        for (let i = 0; i < paddedDays.length; i += 7) {
-            weeks.push(paddedDays.slice(i, i + 7));
-        }
-
-
-        // special days
-
-        const response2 = await islamicFinderFetch(`https://www.islamicfinder.org/specialislamicdays`);
-        const data = await response2.text();
-    
-        const $ = cheerio.load(data);
-        const specialDays = [];
-
-        // Loop through each row of special days
-        $("#special-days-table tr").each((index, element) => {
-            const month = $(element).find(".date-box .title span").text().trim();
-            const day = $(element).find(".date-box .date span").text().trim();
-            const event = $(element).find(".day-details h2 a").text().trim();
-            const weekday = $(element).find(".day-details h4").text().split(",")[0].trim();
-            const hijriDate = $(element).find(".day-details h4").text().split(",")[1].trim();
-            const hijriYear = $(element).find(".day-details h4").text().split(",")[2].trim();
-
-            if (month && day && event) {
-                specialDays.push({
-                    date: `${month} ${day}`,
-                    event,
-                    weekday,
-                    hijriDate,
-                    hijriYear,
-                });
-            }
-        });
-
-        res.render('calendar', {
-            hijriMonthName,
-            hijriMonth,
-            hijriYear,
-            gregorianMonth,
-            gregorianYear,
-            weeks,
-            calendarData: "", specialDays
-        });
-    }catch(err){
-        res.render("error", {err});
-    }
-});
-
-
-
-
-app.get("/special-days", async(req, res) => {
-    const response = await islamicFinderFetch(`https://www.islamicfinder.org/specialislamicdays`);
-    const data = await response.text();
-    
-    const $ = cheerio.load(data);
-    const specialDays = [];
-
-    // Loop through each row of special days
-    $("#special-days-table tr").each((index, element) => {
-        const month = $(element).find(".date-box .title span").text().trim();
-        const day = $(element).find(".date-box .date span").text().trim();
-        const event = $(element).find(".day-details h2 a").text().trim();
-        const weekday = $(element).find(".day-details h4").text().split(",")[0].trim();
-        const hijriDate = $(element).find(".day-details h4").text().split(",")[1].trim();
-        const hijriYear = $(element).find(".day-details h4").text().split(",")[2].trim();
-            
-        if (month && day && event) {
-            specialDays.push({
-                date: `${month} ${day}`,
-                event,
-                weekday,
-                hijriDate,
-                hijriYear,
-            });
-        }
-        res.render('calendar', {calendarData: "", specialDays});
-    });
-});
-
-
-// Challenges are an explicit "add / edit / delete" surface, so they need an
-// account. Guests see a read-only view of whatever they tracked in the cookie
-// alongside a sign-in prompt, rather than controls that would 302 on submit.
-app.get("/challenges", async function(req, res){
-    const keyChallenge = await userData.listChallenges(req);
-    const canManage = req.isAuthenticated();
-    res.render('challenges', { keyChallenge, canManage });
-});
-
-app.get("/add-challenge", requireLogin, function(req, res){
-    res.render("challenge-form", { mode: "add", challenge: null });
-});
-
-app.get("/edit-challenge/:id", requireLogin, async function(req, res){
-    try {
-        const all = await userData.listChallenges(req);
-        const challenge = all.find((c) => String(c._id) === String(req.params.id));
-        if (!challenge) return res.redirect("/challenges");
-        res.render("challenge-form", { mode: "edit", challenge });
-    } catch (err) {
-        console.error(err);
-        res.redirect("/challenges");
-    }
-});
-  
 
 // Group the editions catalogue by language for the Settings picker. Shared by
 // the EJS page and the JSON API - keeping it as a helper rather than inlining it
@@ -1135,250 +553,7 @@ const HOME_OPTIONS = {
 
 const LOCATION_OPTIONS = ['Coimbatore', 'Hosur', 'Salem', 'Ramanathapuram', 'Bengaluru'];
 
-app.get("/settings", async (req, res) => {
-    const recitersJson = await cachedJsonOrNull("https://quranapi.pages.dev/api/reciters.json");
-    const editionsJson = await cachedJsonOrNull("https://cdn.jsdelivr.net/gh/fawazahmed0/quran-api@1/editions.json");
-
-    const settings = await userData.getSettings(req);
-
-    let reciter = settings.favoriteReciter || 1;
-    let defaultHome = settings.defaultHome || "salah";
-    let location = settings.location || "Coimbatore";
-    let favoriteEdition = [];
-    let favoriteFont = settings.favoriteFont || "QPC-Hafs";
-    let theme = settings.theme || "light";
-    let primaryTranslation = settings.primaryTranslation || "";
-    const telegramChatId = await userData.getTelegramChatId(req);
-
-    if (settings.favoriteEdition) {
-        favoriteEdition = getFavoriteEditions(settings);
-    }
-    primaryTranslation = getPrimaryEdition(settings) || "";
-
-    // Official Tarteel QUL Font Mapping
-    const tarteelFonts = TARTEEL_FONTS; // eslint-disable-line no-unused-vars
-    const _unusedTarteelFonts = { 
-        'QPC-Hafs': { label: 'QPC Hafs (Standard)', tag: 'HAFS' },
-        // 'DigitalKhatt-V2': { label: 'Digital Khatt V2', tag: 'HAFS' },
-        // 'Me-Quran': { label: 'Me Quran', tag: 'HAFS' },
-        'QPC-Nastaleeq': { label: 'QPC Hafs Nastaleeq', tag: 'HAFS' },
-        // 'Uthman-Taha': { label: 'Madani (Uthman Taha)', tag: 'HAFS' },
-        // 'Indopak-PDMS': { label: 'Indopak (PDMS Saleem)', tag: 'INDOPAK' },
-        'Indopak-Nastaleeq': { label: 'Indopak Nastaleeq', tag: 'INDOPAK' },
-        // 'DigitalKhatt-Indopak': { label: 'Digital Khatt Indopak', tag: 'INDOPAK' },
-        // 'Tajweed-V4': { label: 'KFGQPC V4 Tajweed', tag: 'HAFS' }
-    };
-
-    const editionsByLanguage = groupEditionsByLanguage(editionsJson || {});
-
-    res.render('settings', {
-        favoriteReciter: String(reciter), 
-        favoriteEdition: favoriteEdition,
-        primaryTranslation: primaryTranslation, 
-        defaultHome: defaultHome, 
-        location: location, 
-        favoriteFont: favoriteFont,
-        theme: theme,
-        telegramChatId: telegramChatId,
-        botConfigured: botIsConfigured(),
-        tgSetupCode: (req.session && req.session.tgVerifyCode) || "",
-        tgPrefs: notify.telegramPrefs(res.locals.currentUser),
-        isLoggedIn: Boolean(res.locals.currentUser),
-        tgStatus: Object.prototype.hasOwnProperty.call(ERROR_MESSAGES, req.query.tg || "") ||
-                  req.query.tg === "sent" ? req.query.tg : "",
-        tgFoundChatId: normalizeChatId(req.query.chat || ""),
-        tgMessages: ERROR_MESSAGES,
-        tarteelFonts: tarteelFonts,
-        reciters: recitersJson,
-        editions: editionsByLanguage
-    });
-});
-
-// Account: identity only - username, profile link, and the email address.
-// Settings stays about app preferences (theme, reciter, notifications), so the
-// username field moved here rather than sitting among unrelated options.
-app.get("/account", requireLogin, function(req, res){
-    const user = req.user;
-    // Fall back to the email local-part so the page is usable for an account
-    // that predates the username backfill.
-    const username = user.username || "";
-    res.render("account", {
-        username,
-        displayName: username || user.name || (user.email || "?").split("@")[0],
-        email: user.email,
-        // emailVerifiedAt only exists on accounts created since OTP signup; the
-        // older ones are genuinely verified in practice but have no stamp.
-        verified: Boolean(user.emailVerifiedAt),
-        usernameError: req.query.un || "",
-        usernameOk: req.query.un_ok === "1"
-    });
-});
-
-// Change the public handle. On its own formaction rather than part of a larger
-// settings save, because it has to be validated and de-duplicated on its own -
-// quietly failing on a duplicate would leave someone stuck re-saving settings.
-app.post("/settings/username", requireLogin, async function(req, res){
-    // Unlike signup, a username chosen here is NOT run through sanitize(). That
-    // would silently turn "my name" into "myname" and leave the user wondering
-    // why their profile is not what they typed. Case and surrounding whitespace
-    // are the only things forgiven; anything else is rejected and explained.
-    const requested = String(req.body.username || "").trim().toLowerCase();
-
-    // Allow-list, not a prefix test: "//evil.example.com" is protocol-relative
-    // and a naive `startsWith("/")` would treat it as a local path.
-    // The SPA posts JSON and expects JSON back; the EJS form posts a redirectTo
-    // and expects a redirect. Same validation, two response shapes.
-    const wantsJson = String(req.get("content-type") || "").includes("application/json");
-    const target = String(req.body.redirectTo || "") === "/settings" ? "/settings" : "/account";
-    const done = (usernameError, ok) => {
-        if (wantsJson) {
-            if (usernameError) return res.status(400).json({ error: usernameError });
-            return res.json({ ok: true, username: requested });
-        }
-        return res.redirect(`${target}?un=${encodeURIComponent(usernameError)}${ok ? "&un_ok=1" : ""}`);
-    };
-
-    if (!requested) return done("Enter a username.");
-    // Reserved words are checked before the shape test: isValid() also rejects
-    // them, so testing shape first would report "letters, numbers, dots or
-    // underscores" for "posts" and never reach the explanation below.
-    if (usernameUtil.isReserved(requested)) {
-        return done("That username is reserved.");
-    }
-    if (!usernameUtil.isValid(requested)) {
-        return done("Usernames must be 3-30 characters: letters, numbers, dots or underscores.");
-    }
-
-    try {
-        // Exclude self, otherwise re-saving your own unchanged username would
-        // collide with itself and report "taken".
-        if (await User.exists({ username: requested, _id: { $ne: req.user._id } })) {
-            return done("That username is already taken.");
-        }
-        if (req.user.username === requested) {
-            return done("", true);
-        }
-
-        const previous = req.user.username;
-        req.user.username = requested;
-        await req.user.save();
-
-        // Posts store a denormalised authorName, but they link by author id, so
-        // existing posts and shared /u/<name> links follow the change. Only the
-        // denormalised copy needs rewriting, for the anonymous fallback.
-        if (previous) {
-            await mongoose.connection.collection("posts").updateMany(
-                { authorName: previous },
-                { $set: { authorName: requested } }
-            );
-        }
-
-        return done("", true);
-    } catch (err) {
-        if (err && err.code === 11000) return done("That username is already taken.");
-        console.error("settings/username:", err.message);
-        return done("Could not update your username.");
-    }
-});
-
-
-
-
-
 // POST methods
-
-app.post("/salah", requireLogin, async function(req, res){
-    const date=new Date(req.body.date);
-    const options = { weekday: "long", month: "short", day: "2-digit", year: "numeric" };
-    const formattedDate = date.toLocaleDateString("en-US", options);
-    const name=req.body.salah_name;
-    const value=req.body.salah_value;
-    await userData.recordSalah(req, {
-        date: formattedDate,
-        name: name,
-        value: value
-    });
-
-    // Event-driven: this request is the trigger, so no scheduler is involved.
-    if (req.isAuthenticated && notify.wantsEvent(req.user, "salahTracker")) {
-        await notify.safeDeliver(req.user, notify.buildSalahLogMessage(req.user, formattedDate));
-    }
-    res.redirect("/salah");
-});
-
-
-app.post("/add-challenge", requireLogin, async function(req, res){
-    const challenge = (pickField(req.body.challenge) || '').trim();
-    if (!challenge) return res.redirect("/challenges");
-    try {
-        await userData.addChallenge(req, challenge);
-    } catch (err) {
-        console.error(err);
-    }
-    res.redirect("/challenges");
-});
-
-app.post("/edit-challenge", requireLogin, async function(req, res){
-    const id = pickField(req.body.id);
-    const challenge = (pickField(req.body.challenge) || '').trim();
-    if (!id || !challenge) return res.redirect("/challenges");
-    try {
-        await userData.renameChallenge(req, id, challenge);
-    } catch (err) {
-        console.error(err);
-    }
-    res.redirect("/challenges");
-});
-
-app.post("/delete-challenge", requireLogin, async function(req, res){
-    const id = pickField(req.body.id);
-    if (!id) return res.redirect("/challenges");
-    try {
-        await userData.deleteChallenge(req, id);
-    } catch (err) {
-        console.error(err);
-    }
-    res.redirect("/challenges");
-});
-
-
-app.post('/update-streaks', requireLogin, async (req, res) => {
-    // `completed[]` arrives as an array, but a lone value parses as a string
-    const completed = [].concat(req.body.completed || []).map(String);
-
-    const options = { weekday: "long", month: "short", day: "2-digit", year: "numeric" };
-    const lastUpdated = new Date(req.body.date);
-    if (isNaN(lastUpdated.getTime())) {
-        console.error("update-streaks: missing or invalid date", req.body.date);
-        return res.redirect('/challenges');
-    }
-    const formattedDate = lastUpdated.toLocaleDateString("en-US", options);
-
-    let updatedChallenges = [];
-
-    try {
-        const allChallenges = await userData.applyStreakUpdate(req, {
-            completedIds: completed,
-            lastUpdated: formattedDate
-        });
-
-        updatedChallenges = allChallenges.map((c) => ({
-            id: String(c._id),
-            name: c.challenge,
-            currentStreak: c.currentStreak,
-            maxStreak: c.maxStreak,
-        }));
-
-        // Awaited deliberately: on Vercel the function can be frozen once the
-        // response is sent, which would silently drop a fire-and-forget send.
-        // The fetch is timeout-bounded so a slow API cannot stall the redirect.
-        await notifyStreakUpdate(req, { formattedDate, completed, updatedChallenges });
-    } catch (err) {
-        console.error(err);
-    }
-
-    res.redirect('/challenges');
-});
 
 async function notifyStreakUpdate(req, { formattedDate, completed, updatedChallenges }) {
     if (!botIsConfigured()) return;
@@ -1395,132 +570,7 @@ async function notifyStreakUpdate(req, { formattedDate, completed, updatedChalle
     await notify.safeDeliver(req.user, text);
 }
 
-
-app.post("/default-home", function(req,res){
-    const defaultHome = req.body.defaultHome;
-
-    userData.updateSettings(req, { defaultHome })
-        .then(() => {
-            res.redirect("/settings");
-        })
-        .catch((err) => {
-            console.error(err);
-            res.status(500).send("Error updating default home.");
-    });
-});
-
-app.post("/reciter", function(req, res){
-    const reciter = req.body.reciter;
-    const redirectTo = req.body.redirectTo;
-
-    // The Audio tab posts JSON and expects JSON back, rather than a redirect it
-    // would never follow. Same validation either way: an unknown reciter id
-    // would otherwise persist and silently break the player later.
-    const wantsJson = String(req.get("accept") || "").includes("application/json")
-        || String(req.get("content-type") || "").includes("application/json");
-
-    if (!/^\d+$/.test(String(reciter || ""))) {
-        if (wantsJson) return res.status(400).json({ ok: false, error: "invalid-reciter" });
-        return res.redirect(redirectTo || "/quran");
-    }
-
-    userData.updateSettings(req, { favoriteReciter: reciter })
-        .then(() => {
-            if (wantsJson) return res.json({ ok: true });
-            res.redirect(redirectTo);
-        })
-        .catch((err) => {
-            console.error(err);
-            if (wantsJson) return res.status(500).json({ ok: false, error: "failed" });
-            res.status(500).send("Error updating reciter.");
-        });
-});
-
-app.post("/set-edition", function(req, res){
-    const selectedEdition = req.body.edition;
-
-    userData.updateSettings(req, { favoriteEdition: selectedEdition })
-        .then(() => {
-            res.redirect("/settings");
-        })
-        .catch((err) => {
-            console.error(err);
-            res.status(500).send("Error updating Edition.");
-        });
-  });
-
 // --- Auth ---
-
-app.get("/login", function(req, res){
-    if (req.isAuthenticated()) return res.redirect("/challenges");
-    res.render("login", { authError: "", authEmail: "", authMode: "login" });
-});
-
-app.get("/register", function(req, res){
-    if (req.isAuthenticated()) return res.redirect("/challenges");
-    res.render("login", { authError: "", authEmail: "", authMode: "register" });
-});
-
-app.post("/register", async function(req, res){
-    const email = String(req.body.email || "").trim().toLowerCase();
-    const password = String(req.body.password || "");
-    const confirm = String(req.body.cpassword || "");
-
-    const fail = (authError) => res.status(400).render("login", { authError, authEmail: email, authMode: "register" });
-
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return fail("Enter a valid email address.");
-    if (password.length < 6) return fail("Password must be at least 6 characters.");
-    if (password !== confirm) return fail("Passwords do not match.");
-
-    try {
-        if (await User.exists({ email })) return fail("That email is already registered.");
-    } catch (err) {
-        console.error("register: existence check failed -", err.message);
-        return fail("Could not create the account. Please try again.");
-    }
-
-    // No User is created here. Making the row first would let anyone reserve an
-    // email they do not own simply by typing it - the owner could then never
-    // sign up. Instead the intent lives in the session until the emailed code
-    // proves control of the address.
-    const code = emailService.makeOtp();
-    const { hash, salt } = passwordUtil.createPasswordRecord(password);
-    req.session.pendingSignup = {
-        email,
-        // Stored hashed, not in plaintext: the session lives in the database, and
-        // a leaked session should not hand over a working password.
-        hash,
-        salt,
-        otpHash: emailService.hashOtp(code),
-        // 10 minutes is long enough to find an email and short enough to keep
-        // the window small.
-        expiresAt: Date.now() + 10 * 60 * 1000,
-        attempts: 0,
-        sentAt: Date.now()
-    };
-
-    const sent = await emailService.sendOtpEmail({ to: email, code });
-
-    if (!sent.ok) {
-        // Do not leave a half-started signup behind: without a delivered code
-        // there is nothing the user can do but retry.
-        delete req.session.pendingSignup;
-        // Two distinct causes, and telling them apart is the difference between
-        // "check Vercel env vars" and "regenerate your App Password". The detail
-        // stays in the server log; the user gets the actionable half.
-        console.error("register: OTP not delivered -", sent.reason);
-        return fail(sent.reason === "not-configured"
-            ? "We could not send a verification email - the site has no email service set up yet. Please try again shortly."
-            : "We could not send a verification email. Please check the address and try again.");
-    }
-
-    res.render("verify-email", {
-        authError: null,
-        pendingEmail: email,
-        canResend: true,
-        resendIn: 0
-    });
-});
 
 // Cooldown between resends. Without it the resend button is a way to mail-bomb
 // an address, and Resend's own limit would be hit by a single impatient user.
@@ -1537,117 +587,6 @@ function pendingSignup(req) {
     return { ok: true, pending: p };
 }
 
-app.post("/resend-otp", async function(req, res){
-    const { ok, pending, reason } = pendingSignup(req);
-    if (!ok) {
-        return res.status(400).render("login", {
-            authError: "That verification session has expired. Please register again.",
-            authEmail: String(req.body.email || ""),
-            authMode: "register"
-        });
-    }
-
-    const elapsed = Date.now() - (pending.sentAt || 0);
-    if (elapsed < OTP_RESEND_COOLDOWN_MS) {
-        const wait = Math.ceil((OTP_RESEND_COOLDOWN_MS - elapsed) / 1000);
-        return res.status(429).render("verify-email", {
-            authError: `Please wait ${wait} seconds before requesting another code.`,
-            pendingEmail: pending.email,
-            canResend: false,
-            resendIn: wait
-        });
-    }
-
-    const code = emailService.makeOtp();
-    pending.otpHash = emailService.hashOtp(code);
-    pending.sentAt = Date.now();
-    pending.attempts = 0;
-    req.session.pendingSignup = pending;
-
-    const sent = await emailService.sendOtpEmail({ to: pending.email, code });
-    if (!sent.ok) console.error("resend-otp: delivery failed -", sent.reason);
-    res.status(sent.ok ? 200 : 502).render("verify-email", {
-        authError: sent.ok ? null : "We could not send another code. Please try again.",
-        pendingEmail: pending.email,
-        canResend: true
-    });
-});
-
-app.post("/verify-email", async function(req, res){
-    const code = String(req.body.code || "").replace(/\D/g, "");
-    const { ok, pending, reason } = pendingSignup(req);
-
-    const retry = (authError, extra = {}) => res.status(400).render("verify-email", {
-        authError,
-        pendingEmail: pending ? pending.email : String(req.body.email || ""),
-        canResend: Boolean(pending),
-        ...extra
-    });
-
-    if (!ok) {
-        return res.status(400).render("login", {
-            authError: reason === "expired"
-                ? "That code has expired. Please register again."
-                : "Start by registering again.",
-            authEmail: String(req.body.email || ""),
-            authMode: "register"
-        });
-    }
-
-    if (code.length !== 6) return retry("Enter the 6-digit code from the email.");
-    if (!emailService.otpMatches(pending.otpHash, code)) {
-        // Count attempts so a 6-digit code cannot be brute-forced. 10^6 is small
-        // enough that an unthrottled attacker would get through it.
-        pending.attempts = (pending.attempts || 0) + 1;
-        if (pending.attempts >= OTP_MAX_ATTEMPTS) {
-            delete req.session.pendingSignup;
-            return res.status(400).render("login", {
-                authError: "Too many incorrect attempts. Please register again.",
-                authEmail: pending.email,
-                authMode: "register"
-            });
-        }
-        const left = OTP_MAX_ATTEMPTS - pending.attempts;
-        return retry(`That code is not correct. ${left} attempt${left === 1 ? "" : "s"} left.`);
-    }
-
-    try {
-        const user = await User.create({
-            email: pending.email,
-            hash: pending.hash,
-            salt: pending.salt,
-            username: await allocateUsername(pending.email),
-            emailVerifiedAt: new Date()
-        });
-
-        delete req.session.pendingSignup;
-        await mergeGuestIntoUser(req, user);
-        req.logIn(user, (err) => {
-            if (err) return res.status(500).send("Could not sign you in.");
-            userData.clearGuestCookie(req, res);
-            res.redirect("/settings?welcome=1");
-        });
-    } catch (err) {
-        // The email can only become taken between the check in /register and
-        // here, but that race is exactly what this catches.
-        const isDuplicate = (err && err.code === 11000) || (err && err.name === "UserExistsError");
-        if (isDuplicate) {
-            delete req.session.pendingSignup;
-            return res.status(400).render("login", {
-                authError: "That email is already registered.",
-                authEmail: pending.email,
-                authMode: "register"
-            });
-        }
-        console.error("verify-email:", err);
-        res.status(500).render("login", {
-            authError: "Could not create the account. Please try again.",
-            authEmail: pending.email,
-            authMode: "register"
-        });
-    }
-});
-
 // Resolve a free username for an email, querying the users collection directly
 // because `taken` is called in a loop until it finds a gap.
 async function allocateUsername(email, excludeUserId = null) {
@@ -1659,87 +598,6 @@ async function allocateUsername(email, excludeUserId = null) {
     if (!name) throw new Error("could not allocate a username");
     return name;
 }
-
-app.post("/login", function(req, res, next){
-    const email = String(req.body.email || "").trim().toLowerCase();
-    passport.authenticate("local", function(err, user, info){
-        if (err) return next(err);
-        if (!user) {
-            return res.status(401).render("login", {
-                authError: (info && info.message) || "Invalid email or password.",
-                authEmail: email,
-                authMode: "login"
-            });
-        }
-        req.logIn(user, async (loginErr) => {
-            if (loginErr) return res.status(500).send("Could not sign you in.");
-            try {
-                // Fold anything tracked while logged out into the account.
-                await mergeGuestIntoUser(req, user);
-                userData.clearGuestCookie(req, res);
-                const target = req.session.returnTo || "/challenges";
-                delete req.session.returnTo;
-                return res.redirect(target);
-            } catch (mergeErr) {
-                console.error("guest merge failed:", mergeErr);
-                return res.redirect("/challenges");
-            }
-        });
-    })(req, res, next);
-});
-
-app.post("/logout", function(req, res, next){
-    req.logout(function(err){
-        if (err) return next(err);
-        req.session.destroy(function(destroyErr){
-            if (destroyErr) return next(destroyErr);
-            res.clearCookie("connect.sid");
-            res.redirect("/quran");
-        });
-    });
-});
-
-// Sends one module's notification on demand - this is what each per-module
-// "Send now" button posts to. `module` decides which message is produced.
-app.post("/test-telegram", requireLogin, async function(req, res){
-    const redirectTo = pickField(req.body.redirectTo) || '/settings';
-    try {
-        if (!botIsConfigured()) return res.redirect(`${redirectTo}?tg=bot-missing`);
-
-        const chatId = await userData.getTelegramChatId(req);
-        if (!chatId) return res.redirect(`${redirectTo}?tg=missing`);
-
-        const module = pickField(req.body.module);
-        const known = notify.EVENT_KEYS.concat(["all"]);
-        if (module && !known.includes(module)) {
-            return res.redirect(`${redirectTo}?tg=unknown-module`);
-        }
-
-        const label = (key) => ({
-            challenges: "Challenges",
-            salahTracker: "Salah Tracker",
-            newPost: "New post",
-            salahTimings: "Salah timings",
-            ayahOfTheDay: "Ayah of the day"
-        }[key] || key);
-
-        const dateLabel = scheduler.dateLabelIn(
-            (req.user.telegram && req.user.telegram.timezone) || "UTC", new Date()
-        );
-
-        const text = module
-            ? await notify.buildModulePreview(req.user, module, { dateLabel })
-            : `<b>Salah Tracker</b> — test message\n\nTelegram notifications are connected.`;
-
-        if (!text) return res.redirect(`${redirectTo}?tg=unknown-module`);
-
-        const result = await sendTelegramMessage({ chatId, text });
-        res.redirect(`${redirectTo}?tg=${result.sent ? "sent" : result.code}&mod=${encodeURIComponent(module || "all")}`);
-    } catch (err) {
-        console.error(err);
-        res.redirect(`${redirectTo}?tg=error`);
-    }
-});
 
 // Reads back the user's most recent message to the bot so they never have to
 // hunt down their own chat id.
@@ -1776,55 +634,6 @@ async function saveTelegramPrefs(req, body) {
 
     await user.save();
 }
-
-// Issue a setup code. It lives in the session (not the account) so it expires
-// with the login and never becomes a long-lived shared secret.
-app.post("/telegram-setup-code", requireLogin, async function(req, res){
-    const redirectTo = pickField(req.body.redirectTo) || '/settings';
-    try {
-        if (!botIsConfigured()) return res.redirect(`${redirectTo}?tg=bot-missing`);
-        // Keep the toggle the user just flipped.
-        await saveTelegramPrefs(req, req.body);
-        req.session.tgVerifyCode = makeVerifyCode();
-        req.session.tgVerifyCodeAt = Date.now();
-        res.redirect(`${redirectTo}?tg=code`);
-    } catch (err) {
-        console.error("telegram-setup-code:", err.message);
-        res.redirect(`${redirectTo}?tg=error`);
-    }
-});
-
-// The user has sent that code to the bot, so bind their chat to their account.
-// Matching on the code is what keeps multiple users apart.
-app.post("/telegram-chat-id", requireLogin, async function(req, res){
-    const redirectTo = pickField(req.body.redirectTo) || '/settings';
-    try {
-        if (!botIsConfigured()) return res.redirect(`${redirectTo}?tg=bot-missing`);
-
-        await saveTelegramPrefs(req, req.body);
-
-        const code = req.session.tgVerifyCode;
-        const issuedAt = req.session.tgVerifyCodeAt || 0;
-        if (!code || Date.now() - issuedAt > 15 * 60 * 1000) {
-            return res.redirect(`${redirectTo}?tg=no-code`);
-        }
-
-        const result = await claimChatByCode(undefined, code);
-        if (!result.chatId) {
-            return res.redirect(`${redirectTo}?tg=${result.code || 'no-messages'}`);
-        }
-
-        await userData.setTelegramChatId(req, result.chatId);
-        // One-shot: clear it so a stale code can't rebind someone later.
-        delete req.session.tgVerifyCode;
-        delete req.session.tgVerifyCodeAt;
-
-        res.redirect(`${redirectTo}?chat=${encodeURIComponent(result.chatId)}`);
-    } catch (err) {
-        console.error(err);
-        res.redirect(`${redirectTo}?tg=error`);
-    }
-});
 
 // Called on app load to deliver anything a signed-in user is owed (ayah of the
 // day, daily digest). This is what makes scheduled times work without a
@@ -1878,22 +687,6 @@ app.post("/api/qstash/sweep", async function(req, res){
     }
 });
 
-app.post("/location", function(req, res) {
-    const location = req.body.location;
-    const redirectTo = req.body.redirectTo;
-
-    userData.updateSettings(req, { location })
-        .then(() => {
-            res.redirect(redirectTo);
-        })
-        .catch((err) => {
-            console.error(err);
-            res.status(500).send("Error updating location.");
-    });
-});
-
-
-
 // app.post("/settings", function(req, res){
 //   const {defaultHome, reciter, edition, location, redirectTo} = req.body;
 
@@ -1905,74 +698,6 @@ app.post("/location", function(req, res) {
 //             console.error(err);
 //             res.status(500).send("Error updating settings.");
 //     });
-
-//  });
-app.post("/settings", function(req, res){
-    const body = req.body;
-    const defaultHome = pickField(body.defaultHome);
-    const reciter = pickField(body.reciter);
-    const edition = pickField(body.edition);
-    const font = pickField(body.font);
-    const location = pickField(body.location);
-    const theme = pickField(body.theme);
-    const primaryTranslation = pickField(body.primaryTranslation);
-    const redirectTo = pickField(body.redirectTo);
-    const telegramChatId = pickField(body.telegramChatId);
-
-    // Parse the JSON string sent from the frontend hidden input
-    let parsedEditions = [];
-    try {
-        if (edition) parsedEditions = JSON.parse(edition);
-    } catch (e) {
-        // Fallback in case of parsing error
-        if (typeof edition === 'string') parsedEditions = [edition];
-    }
-    parsedEditions = parsedEditions.filter((v) => v && String(v).trim() !== '');
-
-    // The bot is app-wide now; a user only opts in their own chat. A malformed
-    // id is dropped without blocking the rest of the save.
-    const cleanChatId = normalizeChatId(telegramChatId);
-    const telegramRejected = Boolean(telegramChatId) && !cleanChatId;
-    if (telegramRejected) {
-        console.error("settings: telegram chat id malformed, saving the rest only");
-    }
-
-    let resolvedPrimary = primaryTranslation || '';
-    if (resolvedPrimary && !parsedEditions.includes(resolvedPrimary)) {
-        const primaryId = parseEdition(resolvedPrimary).id;
-        resolvedPrimary = parsedEditions.find((e) => parseEdition(e).id === primaryId) || '';
-    }
-    if (!resolvedPrimary && parsedEditions.length) {
-        resolvedPrimary = parsedEditions[0];
-    }
-
-    userData.updateSettings(req, {
-        defaultHome: defaultHome,
-        favoriteReciter: reciter,
-        favoriteEdition: parsedEditions,
-        primaryTranslation: resolvedPrimary,
-        favoriteFont: font,
-        location: location,
-        theme: theme || 'light'
-    })
-    .then(async () => {
-        // Notification preferences belong to the account, so a guest toggling
-        // them here is meaningless - the helper no-ops for signed-out users.
-        await saveTelegramPrefs(req, req.body);
-        const target = redirectTo || '/settings';
-        res.redirect(telegramRejected ? `${target}?tg=incomplete` : target);
-    })
-    .catch((err) => {
-        console.error(err);
-        res.status(500).send("Error updating settings.");
-    });
-});
-
-
-
-
-
-
 
 module.exports = app;
 module.exports.handler = serverless(app);
@@ -2922,4 +1647,42 @@ app.post("/api/auth/logout", function(req, res){
         }
         res.json({ ok: true });
     });
+});
+
+// ---- Everything else redirects to the frontend -----------------------------
+//
+// The React SPA is the only user-facing surface; this backend serves /api/*.
+// A bare path reaching here used to be server-rendered, so old links are still
+// out there - /posts, /surah/18, /u/umirfan29 in anything shared or bookmarked.
+//
+// Redirect rather than 404 so those keep working. Uses FRONTEND_URL when set,
+// and otherwise derives it, so local development redirects to Vite instead of
+// bouncing the developer to production.
+//
+// POSTs are NOT redirected: a 302 turns them into GETs and silently discards
+// the body, which is how the old form handlers quietly lost data. Those now
+// return 405 with a pointer to the JSON endpoint.
+const FRONTEND_URL = (
+    process.env.FRONTEND_URL ||
+    (process.env.NODE_ENV === "production"
+        ? "https://salah-tracker-umi-apps.vercel.app"
+        : "http://localhost:5173")
+).replace(/\/+$/, "");
+
+app.use(function(req, res){
+    // Unknown API path: JSON 404, never a redirect. The client is expecting
+    // JSON and reports a parse failure on an HTML body.
+    if (req.path === "/api" || req.path.startsWith("/api/")) {
+        return res.status(404).json({ error: "not-found", path: req.path });
+    }
+
+    if (req.method !== "GET" && req.method !== "HEAD") {
+        return res.status(405).json({
+            error: "method-not-allowed",
+            hint: "This backend serves the JSON API under /api. Use the React frontend.",
+            path: req.path
+        });
+    }
+
+    res.redirect(302, FRONTEND_URL + req.originalUrl);
 });
