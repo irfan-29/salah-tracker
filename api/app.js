@@ -1111,6 +1111,30 @@ function groupEditionsByLanguage(editionsJson) {
     return grouped;
 }
 
+// Option catalogues for the settings page. Hoisted out of the route so the EJS
+// page and the JSON API cannot drift - the first React version hardcoded these
+// in the client, which is how the two would have disagreed about which fonts
+// exist.
+const TARTEEL_FONTS = {
+    'QPC-Hafs': { label: 'QPC Hafs (Standard)', tag: 'HAFS' },
+    'QPC-Nastaleeq': { label: 'QPC Hafs Nastaleeq', tag: 'HAFS' },
+    'Indopak-Nastaleeq': { label: 'Indopak Nastaleeq', tag: 'INDOPAK' }
+};
+
+const HOME_OPTIONS = {
+    salah: 'Salah',
+    quran: 'Quran',
+    audio: 'Audio',
+    'salah-tracker': 'Salah Tracker',
+    'salah-timings': 'Salah Timings',
+    challenges: 'Challenges',
+    analytics: 'Analytics',
+    posts: 'Posts',
+    settings: 'Settings'
+};
+
+const LOCATION_OPTIONS = ['Coimbatore', 'Hosur', 'Salem', 'Ramanathapuram', 'Bengaluru'];
+
 app.get("/settings", async (req, res) => {
     const recitersJson = await cachedJsonOrNull("https://quranapi.pages.dev/api/reciters.json");
     const editionsJson = await cachedJsonOrNull("https://cdn.jsdelivr.net/gh/fawazahmed0/quran-api@1/editions.json");
@@ -1132,7 +1156,8 @@ app.get("/settings", async (req, res) => {
     primaryTranslation = getPrimaryEdition(settings) || "";
 
     // Official Tarteel QUL Font Mapping
-    const tarteelFonts = { 
+    const tarteelFonts = TARTEEL_FONTS; // eslint-disable-line no-unused-vars
+    const _unusedTarteelFonts = { 
         'QPC-Hafs': { label: 'QPC Hafs (Standard)', tag: 'HAFS' },
         // 'DigitalKhatt-V2': { label: 'Digital Khatt V2', tag: 'HAFS' },
         // 'Me-Quran': { label: 'Me Quran', tag: 'HAFS' },
@@ -2401,6 +2426,9 @@ app.get("/api/settings", async function(req, res){
             // EJS page iterates directly. Normalised to a list here so the
             // client is not handed two different shapes for the same data.
             reciters: Object.entries(recitersJson || {}).map(([id, name]) => ({ id: String(id), name })),
+            fonts: TARTEEL_FONTS,
+            homeOptions: HOME_OPTIONS,
+            locationOptions: LOCATION_OPTIONS,
             // Grouped by the shared helper, so the React and EJS settings
             // screens offer exactly the same editions.
             editions: groupEditionsByLanguage(editionsJson),
@@ -2415,6 +2443,150 @@ app.get("/api/settings", async function(req, res){
         });
     } catch (err) {
         console.error("api/settings:", err.message);
+        res.status(500).json({ error: "failed" });
+    }
+});
+
+// ============================================================================
+// JSON settings API.
+//
+// The EJS settings page POSTs one large form. The React page does the same
+// thing in pieces as the user changes each section, so these endpoints persist
+// the same fields through the same userData.updateSettings call - one route per
+// concern rather than one route per UI, which keeps the write path identical.
+//
+// Telegram gets JSON equivalents of the three redirect-only routes, because the
+// client has to be able to tell "code issued" from "chat not found" without
+// parsing a Location header.
+// ============================================================================
+
+// Everything the settings page edits, in one payload. Partial updates are
+// fine: absent keys are simply not touched.
+app.post("/api/settings", async function(req, res){
+    const body = req.body || {};
+    const patch = {};
+
+    if (body.theme !== undefined) patch.theme = String(body.theme);
+    if (body.defaultHome !== undefined) patch.defaultHome = String(body.defaultHome);
+    if (body.font !== undefined) patch.favoriteFont = String(body.font);
+    if (body.location !== undefined) patch.location = String(body.location);
+    if (body.primaryTranslation !== undefined) patch.primaryTranslation = String(body.primaryTranslation);
+
+    // Reciter is validated against the live catalogue rather than trusted, for
+    // the same reason /reciter validates: an unknown id would break playback
+    // later with nothing to point at.
+    if (body.reciter !== undefined && body.reciter !== "") {
+        const reciter = String(body.reciter);
+        if (!/^\d+$/.test(reciter)) return res.status(400).json({ error: "invalid-reciter" });
+        const catalogue = await cachedJsonOrNull("https://quranapi.pages.dev/api/reciters.json").catch(() => null);
+        if (catalogue && !catalogue[reciter]) return res.status(400).json({ error: "unknown-reciter" });
+        patch.favoriteReciter = reciter;
+    }
+
+    // Editions arrive as the same combined "id:language:author" strings the EJS
+    // form sends, so getFavoriteEditions keeps working unchanged.
+    if (body.edition !== undefined) {
+        const value = body.edition;
+        patch.favoriteEdition = Array.isArray(value)
+            ? value
+            : (String(value).split(",").map((s) => s.trim()).filter(Boolean));
+    }
+
+    try {
+        await userData.updateSettings(req, patch);
+        res.json({ ok: true, patch });
+    } catch (err) {
+        console.error("api/settings POST:", err.message);
+        res.status(500).json({ error: "failed" });
+    }
+});
+
+// ---- Telegram: JSON equivalents of the redirect-only routes ----
+
+app.post("/api/telegram/setup-code", requireLogin, async function(req, res){
+    if (!botIsConfigured()) return res.status(503).json({ error: "bot-not-configured" });
+    try {
+        // Persist the toggle the user just flipped, so issuing a code does not
+        // silently discard it - the same reason the EJS route does this.
+        await saveTelegramPrefs(req, req.body);
+        const code = makeVerifyCode();
+        req.session.tgVerifyCode = code;
+        req.session.tgVerifyCodeAt = Date.now();
+        // The code is returned so the UI can show it if the user cannot see the
+        // email, e.g. because Resend is in sandbox mode.
+        res.json({ ok: true, code });
+    } catch (err) {
+        console.error("api/telegram/setup-code:", err.message);
+        res.status(500).json({ error: "failed" });
+    }
+});
+
+app.post("/api/telegram/chat-id", requireLogin, async function(req, res){
+    if (!botIsConfigured()) return res.status(503).json({ error: "bot-not-configured" });
+    try {
+        await saveTelegramPrefs(req, req.body);
+
+        const code = req.session.tgVerifyCode;
+        const issuedAt = req.session.tgVerifyCodeAt || 0;
+        if (!code || Date.now() - issuedAt > 15 * 60 * 1000) {
+            return res.status(400).json({ error: "no-code" });
+        }
+
+        const result = await claimChatByCode(undefined, code);
+        if (!result.chatId) {
+            return res.status(400).json({ error: result.code || "no-messages" });
+        }
+
+        await userData.setTelegramChatId(req, result.chatId);
+        // One-shot, so a stale code cannot rebind someone later.
+        delete req.session.tgVerifyCode;
+        delete req.session.tgVerifyCodeAt;
+
+        res.json({ ok: true, chatId: result.chatId });
+    } catch (err) {
+        console.error("api/telegram/chat-id:", err.message);
+        res.status(500).json({ error: "failed" });
+    }
+});
+
+app.post("/api/telegram/test", requireLogin, async function(req, res){
+    if (!botIsConfigured()) return res.status(503).json({ error: "bot-not-configured" });
+
+    try {
+        const chatId = await userData.getTelegramChatId(req);
+        if (!chatId) return res.status(400).json({ error: "missing-chat" });
+
+        const module = req.body.module;
+        const known = notify.EVENT_KEYS.concat(["all"]);
+        if (module && !known.includes(module)) return res.status(400).json({ error: "unknown-module" });
+
+        const dateLabel = scheduler.dateLabelIn(
+            (req.user.telegram && req.user.telegram.timezone) || "UTC", new Date()
+        );
+
+        const text = module
+            ? await notify.buildModulePreview(req.user, module, { dateLabel })
+            : `<b>Salah Tracker</b> — test message\n\nTelegram notifications are connected.`;
+        if (!text) return res.status(400).json({ error: "unknown-module" });
+
+        const result = await sendTelegramMessage({ chatId, text });
+        if (!result.sent) return res.status(502).json({ error: result.code || "send-failed" });
+        res.json({ ok: true, module: module || "all" });
+    } catch (err) {
+        console.error("api/telegram/test:", err.message);
+        res.status(500).json({ error: "failed" });
+    }
+});
+
+// Persists the notification preferences on their own, so the React settings page
+// can save one toggle without posting the whole form. Same helper the EJS
+// /settings route uses, so the two write identical state.
+app.post("/api/telegram/prefs", requireLogin, async function(req, res){
+    try {
+        await saveTelegramPrefs(req, req.body);
+        res.json({ ok: true });
+    } catch (err) {
+        console.error("api/telegram/prefs:", err.message);
         res.status(500).json({ error: "failed" });
     }
 });

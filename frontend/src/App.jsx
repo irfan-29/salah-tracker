@@ -8,6 +8,7 @@ import useShareHandler from './hooks/useShareHandler';
 import QuranPage from './pages/QuranPage';
 import ChallengesPage from './pages/ChallengesPage';
 import SalahPage from './pages/SalahPage';
+import SettingsPage from './pages/SettingsPage';
 import { PostsPage, PostPage, ProfilePage } from './pages/PostsPage';
 import SurahPage from './pages/SurahPage';
 import NotMigrated from './pages/NotMigrated';
@@ -55,6 +56,7 @@ function Shell() {
           <Route path="/challenges" element={<ChallengesPage />} />
           <Route path="/salah" element={<SalahPage />} />
           <Route path="/posts" element={<PostsPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
           <Route path="/post/:id" element={<PostPage />} />
           <Route path="/u/:username" element={<ProfilePage />} />
           {/* Everything else is still server-rendered EJS. Those pages keep
