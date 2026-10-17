@@ -2590,3 +2590,123 @@ app.post("/api/telegram/prefs", requireLogin, async function(req, res){
         res.status(500).json({ error: "failed" });
     }
 });
+
+// ============================================================================
+// JSON API: salah timings and the Islamic calendar.
+//
+// Both were single-purpose EJS routes whose entire body was "fetch upstream,
+// parse, render". The work is extracted into functions so the HTML route and
+// the JSON route share it, rather than one of them becoming a second copy that
+// quietly rots.
+// ============================================================================
+
+// Scrape the prayer widget into a plain object. Shared by /salah-timings and
+// /api/salah-timings.
+async function fetchPrayerDetails(location) {
+    const response = await islamicFinderFetch(
+        `https://www.islamicfinder.org/prayer-widget/${locationMap.get(location)}/shafi/3/0/18.0/18.0`
+    );
+    const pageHtml = await response.text();
+    const $ = cheerio.load(pageHtml);
+
+    const prayerTimes = [];
+    $(".d-flex.flex-direction-row").each((index, element) => {
+        prayerTimes.push({
+            timeType: $(element).find("p").first().text().trim(),
+            time: $(element).find("p").last().text().trim()
+        });
+    });
+
+    return {
+        location: $(".table-controller a").first().text().trim(),
+        hijriDate: $(".table-controller div").first().text().trim(),
+        date: new Date().toLocaleDateString("en-US", {
+            weekday: "long", month: "short", day: "2-digit", year: "numeric"
+        }),
+        prayerTimes
+    };
+}
+
+app.get("/api/salah-timings", async function(req, res){
+    try {
+        const settings = await userData.getSettings(req);
+        const saved = settings.location || "Coimbatore";
+        // An override lets the client show a newly chosen location immediately,
+        // rather than waiting for the settings write to be visible on re-read.
+        const requested = String(req.query.location || "");
+        // Only accept a location the app knows how to map, since locationMap is
+        // what turns a name into the widget's city id.
+        const location = requested && locationMap.has(requested) ? requested : saved;
+        res.json({ location, details: await fetchPrayerDetails(location) });
+    } catch (err) {
+        console.error("api/salah-timings:", err.message);
+        res.status(500).json({ error: "failed" });
+    }
+});
+
+// Scrape the special-days table. Shared by /calendar and /api/calendar.
+async function fetchSpecialDays() {
+    const response = await islamicFinderFetch(`https://www.islamicfinder.org/specialislamicdays`);
+    const $ = cheerio.load(await response.text());
+    const specialDays = [];
+
+    $("#special-days-table tr").each((index, element) => {
+        const month = $(element).find(".date-box .title span").text().trim();
+        const day = $(element).find(".date-box .date span").text().trim();
+        const event = $(element).find(".day-details h2 a").text().trim();
+        const heading = $(element).find(".day-details h4").text();
+        if (month && day && event) {
+            specialDays.push({
+                date: `${month} ${day}`,
+                event,
+                weekday: heading.split(",")[0].trim(),
+                hijriDate: heading.split(",")[1] ? heading.split(",")[1].trim() : "",
+                hijriYear: heading.split(",")[2] ? heading.split(",")[2].trim() : ""
+            });
+        }
+    });
+    return specialDays;
+}
+
+app.get("/api/calendar", async function(req, res){
+    try {
+        // ?month= and ?year= default to the current Hijri month, and the month
+        // name / year labels are taken from the payload rather than computed, so
+        // they always agree with the grid.
+        let hijriMonth = parseInt(req.query.month, 10);
+        let hijriYear = parseInt(req.query.year, 10);
+        if (!hijriMonth) hijriMonth = (await cachedJson('https://api.aladhan.com/v1/currentIslamicMonth')).data;
+        if (!hijriYear) hijriYear = (await cachedJson('https://api.aladhan.com/v1/currentIslamicYear')).data;
+
+        const json = await cachedJson(`https://api.aladhan.com/v1/hToGCalendar/${hijriMonth}/${hijriYear}`);
+
+        const days = json.data.map((d) => ({
+            hijri: d.hijri.day,
+            gregorian: d.gregorian.day,
+            weekday: d.gregorian.weekday.en,
+            date: d.gregorian.date,
+            fullHijri: `${d.hijri.day} ${d.hijri.month.en} ${d.hijri.year}`
+        }));
+
+        // Pad the front so the first day lands under the right weekday column.
+        const first = json.data.find((d) => d && d.gregorian && d.gregorian.date);
+        const firstWeekday = first ? (isNaN(new Date(first.gregorian.date).getDay()) ? 0 : new Date(first.gregorian.date).getDay()) : 0;
+
+        const padded = Array(firstWeekday).fill(null).concat(days);
+        const weeks = [];
+        for (let i = 0; i < padded.length; i += 7) weeks.push(padded.slice(i, i + 7));
+
+        res.json({
+            hijriMonth: json.data[0].hijri.month.en,
+            hijriMonthNumber: hijriMonth,
+            hijriYear: Number(hijriYear),
+            gregorianMonth: json.data[0].gregorian.month.en,
+            gregorianYear: json.data[0].gregorian.year,
+            weeks,
+            specialDays: await fetchSpecialDays()
+        });
+    } catch (err) {
+        console.error("api/calendar:", err.message);
+        res.status(500).json({ error: "failed" });
+    }
+});
