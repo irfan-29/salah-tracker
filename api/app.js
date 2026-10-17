@@ -2905,3 +2905,20 @@ app.post("/api/auth/login", function(req, res, next){
         });
     })(req, res, next);
 });
+
+// Sign out. The React app cannot POST to /logout: the frontend's vercel.json
+// only forwards /api/* to this backend, so a plain form action would be
+// swallowed by the SPA catch-all and return index.html - i.e. Sign out would
+// silently do nothing. Every write the client makes must live under /api.
+app.post("/api/auth/logout", function(req, res){
+    req.logout((err) => {
+        if (err) return res.status(500).json({ error: "failed" });
+        // Destroy the session rather than just clearing req.session: a session
+        // that survives logout can still be resumed with its cookie.
+        if (req.session && typeof req.session.destroy === "function") {
+            req.session.destroy(() => res.json({ ok: true }));
+            return;
+        }
+        res.json({ ok: true });
+    });
+});

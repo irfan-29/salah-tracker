@@ -32,6 +32,18 @@ export default function Navbar({ session }) {
 
   const handle = session.username || '';
 
+  const signOut = useCallback(async () => {
+    try {
+      await api.post('/auth/logout', {});
+    } catch (err) {
+      // A failed sign-out must not leave the user believing they are signed out,
+      // so fall through to a reload anyway and let the server decide.
+    }
+    // Full reload, not a route change: the shell reads /api/session, and the
+    // session cookie is only cleared by a navigation the browser accepts.
+    window.location.href = '/';
+  }, []);
+
   useEffect(() => {
     const sidebar = sidebarRef.current;
     if (!sidebar) return undefined;
@@ -112,13 +124,15 @@ export default function Navbar({ session }) {
                   <span className="nav-label nav-user-name">{handle}</span>
                 </div>
               </li>
+              {/* Posts to /api/auth/logout, not /logout. The frontend only
+                  forwards /api/* to the backend, so a plain form action would
+                  be answered by the SPA catch-all with index.html and Sign out
+                  would appear to do nothing. */}
               <li className="nav-item">
-                <form action="/logout" method="POST" className="nav-logout-form">
-                  <button type="submit" className="nav-link nav-logout">
-                    <span className="nav-icon material-symbols-rounded">logout</span>
-                    <span className="nav-label">Sign out</span>
-                  </button>
-                </form>
+                <button type="button" className="nav-link nav-logout" onClick={signOut}>
+                  <span className="nav-icon material-symbols-rounded">logout</span>
+                  <span className="nav-label">Sign out</span>
+                </button>
                 <span className="nav-tooltip">Sign out</span>
               </li>
             </>

@@ -3,7 +3,6 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "framework": "vite",
-  "//": "Every page is now a React route, so the backend only needs to serve /api. Order matters: Vercel applies rewrites top-down and the FIRST match wins, so /api must precede the SPA catch-all or the API would be answered with index.html.",
   "rewrites": [
     {
       "source": "/api/:path*",
