@@ -60,6 +60,14 @@
 
 .app-loader--inline { padding: 2.5rem 0; }
 
+/* Page-level loading. Centers in the content column rather than sitting under
+   the header: .main-content is min-height:100vh with 2rem top padding and 6rem
+   bottom, so the loader centres in what the page will actually occupy. */
+.app-loader--page {
+  min-height: calc(100vh - 8rem);
+  padding: 2rem 0;
+}
+
 .app-loader__ring {
   position: relative;
   display: grid;
@@ -69,6 +77,7 @@
 }
 
 .app-loader--inline .app-loader__ring { width: 40px; height: 40px; }
+.app-loader--page .app-loader__ring { width: 56px; height: 56px; }
 .app-loader--overlay .app-loader__ring { width: 48px; height: 48px; }
 
 .app-loader__ring svg {

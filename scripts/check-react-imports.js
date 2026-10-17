@@ -98,3 +98,162 @@ if (problems.length) {
 }
 
 console.log("React hook imports OK.");
+
+
+// ---- Hook order ------------------------------------------------------------
+//
+// A hook placed after an early `if (...) return` renders conditionally. React
+// compares the hook list between renders, so the first render calls fewer hooks
+// than the second and it throws:
+//
+//   Rendered more hooks than during the previous render
+//
+// That blanks the ENTIRE app, not just the component, and it happened here: an
+// effect added below `if (!data) return <Loader/>` in SurahPage took the whole
+// site down while the build stayed green and every other check passed.
+//
+// An earlier attempt at this walked the source counting braces by hand and
+// missed the bug twice - JSX, arrow functions and multi-line returns all move
+// the counters. This parses instead, so the structure is the real structure.
+//
+// @babel/parser ships with Vite's dependency tree; it is resolved from
+// frontend/node_modules rather than added as a direct dependency, since this is
+// a build-time guard and not shipped code.
+const parser = require(require.resolve("@babel/parser", {
+  paths: [path.join(__dirname, "..", "frontend")],
+}));
+
+const HOOK_PREFIX = /^use[A-Z]/;
+
+function isHookName(name) {
+  return HOOK_PREFIX.test(name) && name !== "use";
+}
+
+// Walks one function body, reporting hooks called after the first top-level
+// return. Nested functions get their own walk, so a hook inside a callback is
+// judged by that callback's rules, not the outer one's.
+function checkFunctionBody(node, file, problems) {
+  if (!node || !node.body || !Array.isArray(node.body.body)) return;
+
+  // Collect, for THIS function only: every hook call, and every return.
+  //
+  // The rule is positional and needs no control-flow analysis: a hook is unsafe
+  // when some return appears before it in source order, because there is then a
+  // path that skips it while continuing to render. `if (!data) return <Loader/>`
+  // followed by a hook is caught, and so is a bare `return`.
+  //
+  // Nested functions are skipped entirely - a return inside a callback says
+  // nothing about whether the outer component's later hooks will run, and
+  // hooks inside a callback are the callback's own business.
+  let firstReturn = Infinity;
+
+  const collect = (n, isRoot) => {
+    if (!n || typeof n !== "object") return;
+    if (Array.isArray(n)) { n.forEach((c) => collect(c, false)); return; }
+    if (!n.type) return;
+
+    // Stop at every nested function, including ones reached as array elements.
+    // useState(() => { ... return x }) is the common case: that return belongs
+    // to the initialiser, not to the component, and treating it as the
+    // component's early return flagged every hook after it. The check has to
+    // live here rather than in the key loop, or call arguments skip it.
+    if (!isRoot && isFunctionNode(n)) return;
+
+    if (n.type === "ReturnStatement") {
+      firstReturn = Math.min(firstReturn, n.start);
+      // A return's argument may contain an IIFE-ish hook call, but those are
+      // evaluated as expressions, not conditionally. Keep walking anyway.
+    }
+
+    if (n.type === "CallExpression" && isHookName(n.callee.name || "")) {
+      hooks.push({ start: n.start, line: n.loc.start.line, name: n.callee.name });
+    }
+
+    for (const key of Object.keys(n)) {
+      if (key === "loc" || key === "start" || key === "end") continue;
+      const child = n[key];
+      if (child === null || typeof child !== "object") continue;
+      collect(child, false);
+    }
+  };
+
+  const hooks = [];
+  collect(node.body, true);
+
+  for (const h of hooks) {
+    if (h.start > firstReturn) {
+      problems.push({ file, line: h.line, hook: h.name });
+    }
+  }
+
+  // Judge each nested function by its own rules.
+  const walk = (n, isRoot) => {
+    if (!n || typeof n !== "object") return;
+    if (Array.isArray(n)) { n.forEach((c) => walk(c, false)); return; }
+    if (!n.type) return;
+    if (!isRoot && isFunctionNode(n)) { checkFunctionBody(n, file, problems); return; }
+    for (const key of Object.keys(n)) {
+      if (key === "loc" || key === "start" || key === "end") continue;
+      if (isRoot && key === "body") continue;
+      walk(n[key], false);
+    }
+  };
+  walk(node.body, true);
+}
+
+function isFunctionNode(n) {
+  if (!n || !n.type) return false;
+  return n.type === "ArrowFunctionExpression" || n.type === "FunctionExpression" ||
+         n.type === "FunctionDeclaration" || n.type === "ObjectMethod" ||
+         n.type === "ClassMethod";
+}
+
+const orderProblems = [];
+
+for (const file of walk(SRC)) {
+  const source = fs.readFileSync(file, "utf8");
+  const rel = path.relative(path.join(__dirname, ".."), file);
+
+  let ast;
+  try {
+    ast = parser.parse(source, {
+      sourceType: "module",
+      plugins: ["jsx"],
+      errorRecovery: true,
+    });
+  } catch (err) {
+    console.error(`Could not parse ${rel}: ${err.message}`);
+    process.exit(1);
+  }
+
+  const topLevel = ast.program.body;
+  for (const node of topLevel) {
+    if (node.type === "FunctionDeclaration") {
+      checkFunctionBody(node, rel, orderProblems);
+    } else if (node.type === "ExportNamedDeclaration" || node.type === "ExportDefaultDeclaration") {
+      const d = node.declaration;
+      if (d && (d.type === "FunctionDeclaration" || d.type === "ArrowFunctionExpression" ||
+                d.type === "FunctionExpression")) {
+        checkFunctionBody(d, rel, orderProblems);
+      }
+    }
+  }
+
+  // Components are usually `export default function X() {}`, but a page can also
+  // be `const X = () => {}`. Sweep every top-level arrow assigned to a name.
+  for (const node of topLevel) {
+    const d = node.type === "ExportDefaultDeclaration" ? node.declaration
+            : node.type === "VariableDeclaration" ? node.declarations[0] && node.declarations[0].init
+            : null;
+    if (d && (d.type === "ArrowFunctionExpression" || d.type === "FunctionExpression")) {
+      checkFunctionBody(d, rel, orderProblems);
+    }
+  }
+}
+
+if (orderProblems.length) {
+  console.error("Hook(s) called after an early return - these blank the whole app:\n");
+  for (const p of orderProblems) console.error(`  ${p.file}:${p.line}  ${p.hook}`);
+  console.error("\nMove the hook above every early return in its function.");
+  process.exit(1);
+}

@@ -37,15 +37,17 @@ const AUTH_PATHS = ['/login', '/register', '/verify-email'];
 function Shell() {
   const { pathname } = useLocation();
 
-  if (AUTH_PATHS.includes(pathname)) {
-    return (
-      <Routes>
-        <Route path="/login" element={<div className="auth-body"><LoginPage /></div>} />
-        <Route path="/register" element={<div className="auth-body"><RegisterPage /></div>} />
-        <Route path="/verify-email" element={<div className="auth-body"><VerifyPage /></div>} />
-      </Routes>
-    );
-  }
+  // EVERY hook runs on every render, including auth routes. The branch below is
+  // only a choice of JSX.
+  //
+  // This used to `return` the auth routes before useShareHandler, useState and
+  // useEffect. React compares a component's hook list between renders, so moving
+  // between an auth route and any other route changed the hook count and threw
+  // "Rendered more hooks than during the previous render" - which unmounts the
+  // ENTIRE app and leaves a blank page. AuthPage.done() calls navigate() before
+  // its reload, so signing in could trip it.
+  //
+  // scripts/check-react-imports.js now fails the build on this pattern.
 
   // Share buttons in post cards and profiles. Mounted once at the shell so it
   // covers every route; without it the buttons render but do nothing.
@@ -65,6 +67,16 @@ function Shell() {
   }, []);
 
   const resolved = session || { isLoggedIn: null, username: null };
+
+  if (AUTH_PATHS.includes(pathname)) {
+    return (
+      <Routes>
+        <Route path="/login" element={<div className="auth-body"><LoginPage /></div>} />
+        <Route path="/register" element={<div className="auth-body"><RegisterPage /></div>} />
+        <Route path="/verify-email" element={<div className="auth-body"><VerifyPage /></div>} />
+      </Routes>
+    );
+  }
 
   return (
     <SessionProvider value={resolved}>

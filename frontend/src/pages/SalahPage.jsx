@@ -48,8 +48,12 @@ export default function SalahPage() {
       // The server derives the date label itself from `date`, so the client's
       // clock cannot be used to write into a different day.
       await api.record({ date, name, value });
-      await load(date);
-      setFindDate(date);
+      // Move the history to the day just written and reload it. When the day is
+      // already the one on screen, setFindDate is a no-op and the effect will
+      // not fire, so the refresh is requested explicitly - and only in that
+      // case, so this never doubles up with the effect.
+      if (findDate === date) await load(date);
+      else setFindDate(date);
     } catch (err) {
       setError('Could not save that entry.');
     } finally {
@@ -58,7 +62,7 @@ export default function SalahPage() {
   }
 
   if (isLoggedIn === null) {
-    return <Loader variant="inline" label="Loading Salah Tracker" />;
+    return <Loader variant="page" label="Loading Salah Tracker" />;
   }
 
   return (
@@ -121,12 +125,13 @@ export default function SalahPage() {
       <div className="container1">
         <div className="card-header"><h3>View Salah History</h3></div>
 
-        <div className="form-row">
-          <div className="form-floating">
-            <input className="form-control" type="date" required id="findDate" value={findDate} onChange={(e) => setFindDate(e.target.value)} />
-            <label htmlFor="findDate">Select Date</label>
-          </div>
-          <button type="button" className="btn btn-primary" onClick={() => load(findDate)}>Find</button>
+        {/* No Find button. Choosing a date reloads the history immediately
+            (see the effect above), so a second control only gave the user a way
+            to ask for something that had already happened. */}
+        <div className="form-floating">
+          <input className="form-control" type="date" id="findDate" value={findDate}
+                 onChange={(e) => setFindDate(e.target.value)} />
+          <label htmlFor="findDate">Select Date</label>
         </div>
 
         <hr />

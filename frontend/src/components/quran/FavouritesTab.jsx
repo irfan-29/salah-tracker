@@ -38,14 +38,17 @@ export default function FavouritesTab({ entries, isLoggedIn, onToggle }) {
                   {entry.surahNameArabic ? ` · ${entry.surahNameArabic}` : ''}
                 </a>
                 <span className="favourite-num">Ayah {entry.ayahNo}</span>
+                {/* A filled heart in the same red the reader uses
+                    (.favourite-remove is already #e11d48). This rendered
+                    `heart_broken`, which reads as broken rather than full. */}
                 <button
                   type="button"
                   className="favourite-remove is-active"
                   onClick={() => onToggle(entry.surahNo, entry.ayahNo)}
                   title="Remove from favourites"
-                  aria-label="Remove from favourites"
+                  aria-label={`Remove ${entry.surahName} ayah ${entry.ayahNo} from favourites`}
                 >
-                  <span className="material-symbols-rounded">heart_broken</span>
+                  <span className="material-symbols-rounded">favorite</span>
                 </button>
               </header>
 

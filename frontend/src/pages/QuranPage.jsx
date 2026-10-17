@@ -48,7 +48,7 @@ export default function QuranPage() {
   }
 
   if (!data) {
-    return <Loader variant="inline" label="Loading Quran" />;
+    return <Loader variant="page" label="Loading Quran" />;
   }
 
   async function handleReciterChange(next) {

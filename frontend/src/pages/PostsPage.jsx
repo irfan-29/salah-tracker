@@ -186,7 +186,7 @@ export function PostPage() {
     return () => { cancelled = true; };
   }, [id]);
 
-  if (state.loading) return <Loader variant="inline" label="Loading post" />;
+  if (state.loading) return <Loader variant="page" label="Loading post" />;
   if (!state.post) return <NotFound />;
 
   const post = state.post;
@@ -225,7 +225,7 @@ export function ProfilePage() {
     return () => { cancelled = true; };
   }, [username]);
 
-  if (state.loading) return <Loader variant="inline" label="Loading profile" />;
+  if (state.loading) return <Loader variant="page" label="Loading profile" />;
   if (!state.data) return <NotFound />;
 
   const { owner, posts, permalinkBase, isOwner } = state.data;

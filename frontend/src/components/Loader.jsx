@@ -14,6 +14,11 @@ import React from 'react';
 
 const SIZES = {
   fullPage: { ring: 72, logo: 34, label: true },
+  // A whole page is still loading: fills the content column and centres, so the
+  // spinner is not a small mark pinned to the top of the screen.
+  page: { ring: 56, logo: 26, label: true },
+  // A section within a loaded page: compact, no vertical reservation, so it
+  // does not make the surrounding layout jump.
   inline: { ring: 40, logo: 20, label: false },
   overlay: { ring: 48, logo: 24, label: false },
 };

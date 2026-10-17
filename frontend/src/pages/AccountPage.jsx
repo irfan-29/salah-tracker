@@ -38,7 +38,7 @@ export default function AccountPage() {
     }
   }
 
-  if (state.loading) return <Loader variant="inline" label="Loading account" />;
+  if (state.loading) return <Loader variant="page" label="Loading account" />;
   if (!state.data) {
     return <><div className="page-header"><h1>Account</h1></div>
       <div className="container1"><p className="post-empty">Sign in to view your account.</p></div></>;

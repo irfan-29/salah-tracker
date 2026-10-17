@@ -145,7 +145,7 @@ export default function SettingsPage() {
     return <><div className="page-header"><h1>Settings</h1></div>
       <div className="container1"><p className="post-empty">{loadError}</p></div></>;
   }
-  if (!data) return <Loader variant="inline" label="Loading settings" />;
+  if (!data) return <Loader variant="page" label="Loading settings" />;
 
   const s = data.settings;
   const savingError = (section) => (
