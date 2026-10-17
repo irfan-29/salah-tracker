@@ -2437,9 +2437,11 @@ app.get("/api/settings", async function(req, res){
             fonts: TARTEEL_FONTS,
             homeOptions: HOME_OPTIONS,
             locationOptions: LOCATION_OPTIONS,
-            // Grouped by the shared helper, so the React and EJS settings
-            // screens offer exactly the same editions.
-            editions: groupEditionsByLanguage(editionsJson),
+            // Language names only. The full catalogue is 98 languages and ~32KB,
+            // which was 96% of this response and made the settings page the
+            // slowest in the app. Editions are fetched per language on demand -
+            // see GET /api/editions.
+            editionLanguages: Object.keys(groupEditionsByLanguage(editionsJson)).sort(),
             telegram: {
                 enabled: Boolean(notify.telegramPrefs(req.user).enabled),
                 chatId: await userData.getTelegramChatId(req),
@@ -2715,6 +2717,43 @@ app.get("/api/calendar", async function(req, res){
         });
     } catch (err) {
         console.error("api/calendar:", err.message);
+        res.status(500).json({ error: "failed" });
+    }
+});
+
+// Editions catalogue, fetched on demand rather than shipped with every settings
+// response. ?lang= returns one language, ?q= searches across all of them - which
+// is what the settings page does when the user types into the edition search.
+//
+// The upstream read is already cached, so this is cheap; what it avoids is
+// serialising 32KB on every settings load.
+app.get("/api/editions", async function(req, res){
+    try {
+        const editionsJson = await cachedJsonOrNull("https://cdn.jsdelivr.net/gh/fawazahmed0/quran-api@1/editions.json");
+        if (!editionsJson) return res.status(503).json({ error: "editions-unavailable" });
+
+        const grouped = groupEditionsByLanguage(editionsJson);
+        const q = String(req.query.q || "").trim().toLowerCase();
+        const lang = String(req.query.lang || "");
+
+        if (lang) {
+            return res.json({ editions: grouped[lang] || [], languages: Object.keys(grouped).sort() });
+        }
+
+        if (q) {
+            const hits = [];
+            for (const [language, list] of Object.entries(grouped)) {
+                for (const e of list) {
+                    if (`${e.author} ${language}`.toLowerCase().includes(q)) hits.push({ ...e, language });
+                }
+            }
+            // Capped so a one-character search cannot return hundreds of rows.
+            return res.json({ editions: hits.slice(0, 50), truncated: hits.length > 50 });
+        }
+
+        res.json({ editions: [], languages: Object.keys(grouped).sort() });
+    } catch (err) {
+        console.error("api/editions:", err.message);
         res.status(500).json({ error: "failed" });
     }
 });

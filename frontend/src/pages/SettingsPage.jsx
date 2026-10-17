@@ -41,8 +41,11 @@ function SelectRow({ label, hint, value, options, onChange, renderLabel }) {
         <span>{renderLabel ? renderLabel(value) : (value || 'Choose…')}</span>
         <span className="material-symbols-rounded" style={{ opacity: 0.5 }}>expand_more</span>
       </div>
+      {/* Opened with an inline display, matching views/settings.ejs. The base
+          .custom-dropdown-menu rule is display:none and there is no .show rule,
+          so adding a class here would leave it permanently closed. */}
       {open && (
-        <div className="custom-dropdown-menu show">
+        <div className="custom-dropdown-menu" style={{ display: 'block' }}>
           <div className="options-list">
             {options.map((opt) => (
               <div key={opt.value} className="option-item-custom"
@@ -97,17 +100,46 @@ export default function SettingsPage() {
     }
   }, [data]);
 
-  const filteredEditions = useMemo(() => {
-    const q = editionSearch.trim().toLowerCase();
-    if (!q || !data) return null;
-    const out = {};
-    for (const [lang, list] of Object.entries(data.editions || {})) {
-      const hits = list.filter((e) =>
-        `${e.author} ${lang}`.toLowerCase().includes(q));
-      if (hits.length) out[lang] = hits;
+  // Editions are no longer in the settings payload - they are fetched when the
+  // dropdown opens, and searched on the server. The whole catalogue is 98
+  // languages and ~32KB, which was most of the settings response.
+  const [editionOpen, setEditionOpen] = useState(false);
+  const [editionRows, setEditionRows] = useState([]);
+
+  const loadEditions = useCallback(async (params) => {
+    try {
+      const query = params ? `?${params}` : '';
+      const result = await api.get(`/editions${query}`);
+      setEditionRows(result.editions || []);
+    } catch (err) {
+      setEditionRows([]);
     }
-    return out;
-  }, [editionSearch, data]);
+  }, []);
+
+  // Open: show one language, not 98 collapsed groups. The first language
+  // alphabetically is "Achinese" with a single edition, so the default is the
+  // language the user already has selected, falling back to English.
+  const defaultEditionLanguage = useMemo(() => {
+    const fromSelection = editions
+      .map((e) => String(e).split(':')[1])
+      .find(Boolean);
+    if (fromSelection) return fromSelection;
+    if (primary) { const p = String(primary).split(':')[1]; if (p) return p; }
+    return 'English';
+  }, [editions, primary]);
+
+  useEffect(() => {
+    if (!editionOpen) return;
+    loadEditions(`lang=${encodeURIComponent(defaultEditionLanguage)}`);
+  }, [editionOpen, defaultEditionLanguage, loadEditions]);
+
+  // Search: debounced so typing does not fire a request per keystroke.
+  useEffect(() => {
+    const q = editionSearch.trim();
+    if (!editionOpen || !q) return undefined;
+    const timer = setTimeout(() => loadEditions(`q=${encodeURIComponent(q)}`), 250);
+    return () => clearTimeout(timer);
+  }, [editionSearch, editionOpen, loadEditions]);
 
   if (loadError) {
     return <><div className="page-header"><h1>Settings</h1></div>
@@ -132,6 +164,12 @@ export default function SettingsPage() {
     } finally {
       setBusy('');
     }
+  }
+
+  function toggleEdition(value, on) {
+    const next = on ? editions.filter((x) => x !== value) : [...editions, value];
+    setEditions(next);
+    theme.save({ edition: next });
   }
 
   function toggleEvent(key) {
@@ -247,53 +285,53 @@ export default function SettingsPage() {
         }}
         renderLabel={(v) => (data.reciters || []).find((r) => r.id === v)?.name || 'Choose a reciter'} />
 
-      {/* Editions */}
+      {/* Editions - fetched on demand. See loadEditions above. */}
       <div className="form-section-title">Translation Editions</div>
       <div className="custom-select-wrapper">
         <div className="custom-selector form-control d-flex flex-wrap align-items-center gap-2"
              style={{ minHeight: 58, cursor: 'pointer' }}
-             onClick={(e) => {
-               if (e.target.closest('.pill')) return;
-               const el = document.getElementById('dropdownContainer');
-               if (el) el.style.display = el.style.display === 'block' ? 'none' : 'block';
-             }}>
+             onClick={() => setEditionOpen((o) => !o)}>
           {editions.length === 0
             ? <span className="text-muted">Select preferred Quran editions</span>
             : editions.map((e) => {
-                const [id, lang, author] = String(e).split(':');
-                return (
-                  <span key={e} className="badge badge-primary pill">
-                    {author || lang || id}
-                  </span>
-                );
+                const [, lang, author] = String(e).split(':');
+                return <span key={e} className="badge badge-primary pill">{author || lang}</span>;
               })}
         </div>
-        <div id="dropdownContainer" className="custom-dropdown-menu" style={{ maxHeight: 350, overflowY: 'auto' }}>
-          <input type="text" className="dropdown-search-custom" placeholder="Search language or author..."
-                 value={editionSearch} onChange={(e) => setEditionSearch(e.target.value)} />
-          <div id="editionOptions">
-            {Object.entries(filteredEditions || data.editions || {}).map(([lang, list]) => (
-              <div className="language-group" key={lang}>
-                <div className="p-2 bg-light small text-muted language-label">{lang}</div>
-                {list.map((e) => {
-                  const id = e.name;
-                  const value = `${id}:${lang}:${e.author}`;
-                  const on = editions.includes(value);
-                  return (
-                    <div key={value} className={`option-item-custom option-item ${on ? 'selected' : ''}`}
-                         onClick={() => {
-                           const next = on ? editions.filter((x) => x !== value) : [...editions, value];
-                           setEditions(next);
-                           theme.save({ edition: next });
-                         }}>
-                      {e.author}
-                    </div>
-                  );
-                })}
-              </div>
-            ))}
+        {editionOpen && (
+          <div className="custom-dropdown-menu" style={{ display: 'block', maxHeight: 350, overflowY: 'auto' }}>
+            <input type="text" className="dropdown-search-custom" placeholder="Search language or author..."
+                   value={editionSearch} onChange={(e) => setEditionSearch(e.target.value)} />
+            <div id="editionOptions">
+              {editionSearch.trim() ? (
+                <div className="language-group">
+                  <div className="p-2 bg-light small text-muted language-label">
+                    {editionRows.length} match{editionRows.length === 1 ? '' : 'es'}
+                  </div>
+                  {editionRows.map((e) => (
+                    <EditionRow key={`${e.language}-${e.name}`} e={e} language={e.language}
+                                selected={editions} onToggle={toggleEdition} />
+                  ))}
+                </div>
+              ) : (
+                <div className="language-group">
+                  <div className="p-2 bg-light small text-muted language-label">
+                    {defaultEditionLanguage}
+                  </div>
+                  {editionRows.map((e) => (
+                    <EditionRow key={e.name} e={e} language={defaultEditionLanguage}
+                                selected={editions} onToggle={toggleEdition} />
+                  ))}
+                  <div className="p-2 small text-muted" style={{ borderTop: '1px solid var(--color-border-light)' }}>
+                    {editionRows.length === 0
+                      ? 'No editions listed for this language - search above for another.'
+                      : `${editionRows.length} in this language. Search above to reach the other ${Math.max(0, (data.editionLanguages?.length || 1) - 1)}.`}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Primary translation */}
@@ -438,6 +476,19 @@ export default function SettingsPage() {
         </>
       )}
     </>
+  );
+}
+
+function EditionRow({ e, language, selected, onToggle }) {
+  // Same combined "id:language:author" shape the rest of the app stores, so
+  // getFavoriteEditions and the reader keep working unchanged.
+  const value = `${e.name}:${language}:${e.author}`;
+  const on = selected.includes(value);
+  return (
+    <div className={`option-item-custom option-item${on ? ' selected' : ''}`}
+         onClick={() => onToggle(value, on)}>
+      {e.author}
+    </div>
   );
 }
 

@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "node ../scripts/sync-frontend-css.js && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -16,5 +16,8 @@
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.1",
     "vite": "^5.4.8"
+  },
+  "engines": {
+    "node": "24.x"
   }
 }
