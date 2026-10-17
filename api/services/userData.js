@@ -210,6 +210,65 @@ async function applyStreakUpdate(req, { completedIds, lastUpdated }) {
 
 // --- Salah log --------------------------------------------------------------
 
+// Salah entries have been stored under two different date formats: the React
+// client writes ISO (2026-10-17), while the original EJS page wrote the
+// long-form label (Sunday, Oct 11, 2026). Both are still in users' logs.
+//
+// Anything that SELECTED entries by comparing against the long-form label
+// therefore matched only the legacy rows and silently dropped every row the
+// React app had written - the page looked empty while saving worked fine.
+// Match on the ISO key, and keep accepting the legacy label so historical
+// entries stay visible.
+const SALAH_DATE_OPTS = {
+  weekday: "long", month: "short", day: "2-digit", year: "numeric",
+};
+
+function isoDateKey(date) {
+  // Local calendar day, not UTC: the server's own zone is what "today" means
+  // here, and toISOString() would roll back across the date line.
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+function longDateLabel(date) {
+  return date.toLocaleDateString("en-US", SALAH_DATE_OPTS);
+}
+
+// Resolves the ?date= query (or today) into both forms, so callers never have
+// to think about which format a stored entry uses.
+function resolveSalahDay(queryDate) {
+  let date;
+  if (queryDate && /^\d{4}-\d{2}-\d{2}$/.test(queryDate)) {
+    date = new Date(`${queryDate}T12:00:00`);
+    if (isNaN(date.getTime())) date = null;
+  }
+  const target = date || new Date();
+  return {
+    iso: isoDateKey(target),
+    label: queryDate && !date ? null : longDateLabel(target),
+    parsed: Boolean(date),
+  };
+}
+
+function entriesForDay(entries, { iso, label }) {
+  return (entries || []).filter(
+    (e) => e.date === iso || (label && e.date === label)
+  );
+}
+
+// Normalises an incoming date to ISO. Rejects anything else rather than storing
+// a third format, which is how the two got out of hand in the first place.
+function normaliseSalahDate(input) {
+  const raw = String(input || "").trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+  // Accept the legacy long form on write, so an old client keeps working.
+  const parsed = new Date(raw);
+  if (!isNaN(parsed.getTime())) return isoDateKey(parsed);
+  return null;
+}
+
 async function listSalah(req) {
   if (req.isAuthenticated && req.isAuthenticated()) {
     return req.user.salahLog || [];
@@ -298,6 +357,9 @@ module.exports = {
   applyStreakUpdate,
   listSalah,
   recordSalah,
+  resolveSalahDay,
+  entriesForDay,
+  normaliseSalahDate,
   getTelegramChatId,
   setTelegramChatId,
   listFavourites,

@@ -893,16 +893,16 @@ app.get("/surah/:surahNo", async (req, res, next) => {
 app.get("/salah", async function(req, res){
     let date = new Date(req.query.date);
     if(isNaN(date.getTime())) date = new Date();
-    const options = { weekday: "long", month: "short", day: "2-digit", year: "numeric" };
-    const formattedDate = date.toLocaleDateString("en-US", options);
-
     // Marking a prayer is a personal record, so it needs an account. Guests get
     // a read-only view plus a sign-in prompt rather than a form that would 302.
     const canManage = req.isAuthenticated();
     const entries = await userData.listSalah(req);
+    // Same helper as the JSON route, so the EJS page and the React page cannot
+    // disagree about which entries belong to which day.
+    const day = userData.resolveSalahDay(null);
     res.render('salah', {
-        keyDate: formattedDate,
-        keySalah: entries.filter((s) => s.date === formattedDate),
+        keyDate: day.label,
+        keySalah: userData.entriesForDay(entries, day),
         canManage
     });
 });
@@ -2284,21 +2284,14 @@ app.get("/api/salah", async function(req, res){
         // Optional ?date=YYYY-MM-DD, defaulting to today in the SERVER's zone.
         // The client's clock is not trusted: a device set to the wrong date
         // should not be able to write into another day.
-        let label = null;
-        if (req.query.date && /^\d{4}-\d{2}-\d{2}$/.test(req.query.date)) {
-            const parsed = new Date(`${req.query.date}T12:00:00Z`);
-            if (!isNaN(parsed.getTime())) {
-                label = parsed.toLocaleDateString("en-US", {
-                    weekday: "long", month: "short", day: "2-digit", year: "numeric", timeZone: "UTC"
-                });
-            }
-        }
-        if (!label) {
-            label = new Date().toLocaleDateString("en-US", {
-                weekday: "long", month: "short", day: "2-digit", year: "numeric"
-            });
-        }
-        res.json({ date: label, entries: entries.filter((s) => s.date === label), canManage: Boolean(req.isAuthenticated && req.isAuthenticated()) });
+        const day = userData.resolveSalahDay(req.query.date);
+        const label = day.label || userData.resolveSalahDay().label;
+        res.json({
+            date: label,
+            isoDate: day.parsed ? day.iso : userData.resolveSalahDay().iso,
+            entries: userData.entriesForDay(entries, day),
+            canManage: Boolean(req.isAuthenticated && req.isAuthenticated())
+        });
     } catch (err) {
         console.error("api/salah:", err.message);
         res.status(500).json({ error: "failed" });
@@ -2307,10 +2300,18 @@ app.get("/api/salah", async function(req, res){
 
 app.post("/api/salah", requireLogin, async function(req, res){
     try {
+        // Normalise before storing. Unvalidated input is how "2026-10-17" and
+        // "Sunday, Oct 11, 2026" ended up in one collection, which made
+        // selection-by-date drop half of every user's history.
+        const date = userData.normaliseSalahDate(req.body.date);
+        if (!date) return res.status(400).json({ error: "bad-date" });
+        if (!req.body.name || !req.body.value) {
+            return res.status(400).json({ error: "bad-request" });
+        }
         const updated = await userData.recordSalah(req, {
-            date: req.body.date,
-            name: req.body.name,
-            value: req.body.value
+            date,
+            name: String(req.body.name),
+            value: String(req.body.value)
         });
         res.json({ entries: updated });
     } catch (err) {
