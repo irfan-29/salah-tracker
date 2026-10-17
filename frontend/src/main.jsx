@@ -2,6 +2,7 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
+import ErrorBoundary from './components/ErrorBoundary';
 
 // The app stylesheet, not a copy. See scripts/sync-frontend-css.js.
 import './styles/base.css';
@@ -20,12 +21,18 @@ function dismissBootLoader() {
 }
 
 createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
-    <BrowserRouter>
-      <App />
-    </BrowserRouter>
-  </React.StrictMode>
-);
+    <React.StrictMode>
+      {/* Outermost, so it also covers a crash inside BrowserRouter or App
+          itself. Without it a render error unmounts everything and the user
+          gets a white page with no way back - the failure mode that hit this
+          app twice during the React migration. */}
+      <ErrorBoundary>
+        <BrowserRouter>
+          <App />
+        </BrowserRouter>
+      </ErrorBoundary>
+    </React.StrictMode>
+  );
 
 // requestAnimationFrame twice: once to let React commit, once to be sure the
 // browser has painted the result.
