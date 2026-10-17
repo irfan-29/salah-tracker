@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "node ../scripts/sync-frontend-css.js && node ../scripts/check-react-imports.js && vite build",
+    "build": "node ../scripts/sync-frontend-css.js && node ../scripts/check-react-imports.js && node ../scripts/check-classnames.js && vite build",
     "preview": "vite preview"
   },
   "dependencies": {

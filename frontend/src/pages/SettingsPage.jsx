@@ -294,8 +294,21 @@ export default function SettingsPage() {
           {editions.length === 0
             ? <span className="text-muted">Select preferred Quran editions</span>
             : editions.map((e) => {
-                const [, lang, author] = String(e).split(':');
-                return <span key={e} className="badge badge-primary pill">{author || lang}</span>;
+                const [, , author] = String(e).split(':');
+                // views/settings.ejs builds these with .edition-pill plus a
+                // nested .remove-pill x, not a Bootstrap badge. The version here
+                // used `badge badge-primary pill` - "pill" is not a class
+                // anywhere in this project, so it rendered as an unstyled badge.
+                return (
+                  <span key={e} className="edition-pill">
+                    {author || e}
+                    <span className="remove-pill" role="button" tabIndex={0}
+                          title={`Remove ${author || e}`}
+                          onClick={(ev) => { ev.stopPropagation(); toggleEdition(e, true); }}
+                          onKeyDown={(ev) => { if (ev.key === 'Enter' || ev.key === ' ') toggleEdition(e, true); }}
+                    >&times;</span>
+                  </span>
+                );
               })}
         </div>
         {editionOpen && (
@@ -409,55 +422,58 @@ export default function SettingsPage() {
           )}
 
           {data.telegram.chatId && (
-            <div className="wa-status wa-status-good">
+            <div className="wa-status wa-status-ok">
               <span className="material-symbols-rounded">check_circle</span>
               Connected to chat {data.telegram.chatId}.
             </div>
           )}
 
           {setupCode && (
-            <div className="tg-code-box">
+            <div className="wa-status wa-status-ok">
               <span className="material-symbols-rounded">key</span>
-              <span>Send this code to the bot:</span>
-              <strong>{setupCode}</strong>
+              Send this code to the bot, then press Connect:{' '}
+              <strong className="tg-code">{setupCode}</strong>
             </div>
           )}
 
           {tg.enabled && (
             <>
+              <div className="tg-modules">
+                <div className="tg-title tg-title-sm">What to send</div>
               <TelegramModule
-                label="Challenges" checked={tg.events.challenges}
+                label="Challenges" hint="Sent when you update your streaks" checked={tg.events.challenges}
                 onToggle={() => toggleEvent('challenges')}
                 onTest={() => sendTest('challenges')}
                 busy={busy === 'test-challenges'} />
 
               <TelegramModule
-                label="Salah Tracker" checked={tg.events.salahTracker}
+                label="Salah Tracker" hint="Sent when you log a prayer" checked={tg.events.salahTracker}
                 onToggle={() => toggleEvent('salahTracker')}
                 onTest={() => sendTest('salahTracker')}
                 busy={busy === 'test-salahTracker'} />
 
               <TelegramModule
-                label="New post" checked={tg.events.newPost}
+                label="New post" hint="When a post or video is added" checked={tg.events.newPost}
                 onToggle={() => toggleEvent('newPost')}
                 onTest={() => sendTest('newPost')}
                 busy={busy === 'test-newPost'} />
 
               <TelegramModule
-                label="Salah timings" checked={tg.events.salahTimings}
+                label="Salah timings" hint="Sent once a day" checked={tg.events.salahTimings}
                 onToggle={() => toggleEvent('salahTimings')}
-                time={tg.times.salahTimings}
+                time={tg.times.salahTimings} timeId="tgSalahTime"
                 onTime={(v) => setTime('salahTimings', v)}
                 onTest={() => sendTest('salahTimings')}
                 busy={busy === 'test-salahTimings'} />
 
               <TelegramModule
-                label="Ayah of the day" checked={tg.events.ayahOfTheDay}
+                label="Ayah of the day" hint="Sent once a day" checked={tg.events.ayahOfTheDay}
                 onToggle={() => toggleEvent('ayahOfTheDay')}
-                time={tg.times.ayahOfTheDay}
+                time={tg.times.ayahOfTheDay} timeId="tgAyahTime"
                 onTime={(v) => setTime('ayahOfTheDay', v)}
                 onTest={() => sendTest('ayahOfTheDay')}
                 busy={busy === 'test-ayahOfTheDay'} />
+              </div>
             </>
           )}
 
@@ -492,20 +508,30 @@ function EditionRow({ e, language, selected, onToggle }) {
   );
 }
 
-function TelegramModule({ label, checked, onToggle, onTest, time, onTime, busy }) {
+// Markup mirrors views/settings.ejs exactly - same class names, same nesting.
+// An earlier version used `tg-module-row` and a bare checkbox, neither of which
+// exists in the stylesheet, so the whole block rendered unstyled: no row
+// layout, no custom checkbox, no description text.
+function TelegramModule({ label, hint, checked, onToggle, onTest, time, onTime, busy, timeId }) {
   return (
     <div className="tg-module">
-      <label className="tg-module-row">
+      <label className="tg-row tg-row-module">
         <input type="checkbox" checked={checked} onChange={onToggle} />
-        <span>{label}</span>
+        <span className="tg-check material-symbols-rounded" aria-hidden="true"></span>
+        <span><strong>{label}</strong><em>{hint}</em></span>
       </label>
-      {time !== undefined && (
-        <input className="form-control tg-time" type="time" value={time} onChange={(e) => onTime(e.target.value)} />
-      )}
-      <button type="button" className="tg-send-btn" onClick={onTest} disabled={busy}>
+      <button type="button" className="tg-send-btn" onClick={onTest} disabled={busy}
+              title={`Send a ${label} notification now`}>
         <span className="material-symbols-rounded">send</span>
         {busy ? '…' : 'Send now'}
       </button>
+      {time !== undefined && (
+        <div className="form-floating tg-time">
+          <input className="form-control" type="time" id={timeId} value={time}
+                 onChange={(e) => onTime(e.target.value)} />
+          <label htmlFor={timeId}>Send at</label>
+        </div>
+      )}
     </div>
   );
 }

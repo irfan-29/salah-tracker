@@ -124,36 +124,12 @@
   color: var(--color-text-secondary);
 }
 
-/* ---------- Settings: theme radios + setup code ---------- */
+/* ---------- Settings ---------- */
 
-/* views/settings.ejs uses .theme-options / .theme-option, defined in the app
-   stylesheet. Only the code box is new - it has no EJS equivalent. */
-.tg-code-box {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin: 0.75rem 0;
-  padding: 0.75rem 1rem;
-  background: var(--color-primary-glow);
-  border: 1px solid var(--color-primary);
-  border-radius: 10px;
-}
+/* Deliberately nothing here. An earlier version added .tg-code-box and
+   .wa-status-good as React-only replacements for .tg-code and .wa-status-ok,
+   which the app stylesheet already defines - in a different green. Same design
+   implemented twice is exactly the drift this file exists to prevent, so the
+   components now use the shared classes. */
 
-.tg-code-box strong {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 1.125rem;
-  letter-spacing: 0.2em;
-  color: var(--color-primary);
-}
 
-.wa-status-good {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin: 0.75rem 0;
-  padding: 0.75rem 1rem;
-  color: #16a34a;
-  background: rgba(22, 163, 74, 0.1);
-  border: 1px solid rgba(22, 163, 74, 0.3);
-  border-radius: 10px;
-}
