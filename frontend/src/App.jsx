@@ -11,9 +11,11 @@ import SalahPage from './pages/SalahPage';
 import SettingsPage from './pages/SettingsPage';
 import SalahTimingsPage from './pages/SalahTimingsPage';
 import CalendarPage from './pages/CalendarPage';
+import { LoginPage, RegisterPage, VerifyPage } from './pages/AuthPage';
+import AccountPage from './pages/AccountPage';
 import { PostsPage, PostPage, ProfilePage } from './pages/PostsPage';
 import SurahPage from './pages/SurahPage';
-import NotMigrated from './pages/NotMigrated';
+import NotFound from './pages/NotFound';
 
 // AudioProvider sits ABOVE <Routes> deliberately. It owns the single <audio>
 // element for the lifetime of the app, so navigating between pages cannot tear
@@ -59,14 +61,19 @@ function Shell() {
           <Route path="/salah" element={<SalahPage />} />
           <Route path="/posts" element={<PostsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/account" element={<AccountPage />} />
           <Route path="/salah-timings" element={<SalahTimingsPage />} />
           <Route path="/calendar" element={<CalendarPage />} />
+          {/* Auth screens render without the sidebar: they are standalone cards,
+              not part of the app shell, exactly as the EJS pages were. */}
+          <Route path="/login" element={<div className="auth-body"><LoginPage /></div>} />
+          <Route path="/register" element={<div className="auth-body"><RegisterPage /></div>} />
+          <Route path="/verify-email" element={<div className="auth-body"><VerifyPage /></div>} />
           <Route path="/post/:id" element={<PostPage />} />
           <Route path="/u/:username" element={<ProfilePage />} />
-          {/* Everything else is still server-rendered EJS. Those pages keep
-              working through the Vercel rewrite to the backend; navigating here
-              is a full page load by design until they are ported. */}
-          <Route path="*" element={<NotMigrated />} />
+          {/* Every page is ported, so the fallback is now a genuine 404 rather
+              than a "not migrated yet" notice. */}
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </div>
       <Player />

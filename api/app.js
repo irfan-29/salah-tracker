@@ -1226,9 +1226,17 @@ app.post("/settings/username", requireLogin, async function(req, res){
 
     // Allow-list, not a prefix test: "//evil.example.com" is protocol-relative
     // and a naive `startsWith("/")` would treat it as a local path.
+    // The SPA posts JSON and expects JSON back; the EJS form posts a redirectTo
+    // and expects a redirect. Same validation, two response shapes.
+    const wantsJson = String(req.get("content-type") || "").includes("application/json");
     const target = String(req.body.redirectTo || "") === "/settings" ? "/settings" : "/account";
-    const done = (usernameError, ok) =>
-        res.redirect(`${target}?un=${encodeURIComponent(usernameError)}${ok ? "&un_ok=1" : ""}`);
+    const done = (usernameError, ok) => {
+        if (wantsJson) {
+            if (usernameError) return res.status(400).json({ error: usernameError });
+            return res.json({ ok: true, username: requested });
+        }
+        return res.redirect(`${target}?un=${encodeURIComponent(usernameError)}${ok ? "&un_ok=1" : ""}`);
+    };
 
     if (!requested) return done("Enter a username.");
     // Reserved words are checked before the shape test: isValid() also rejects
@@ -2709,4 +2717,152 @@ app.get("/api/calendar", async function(req, res){
         console.error("api/calendar:", err.message);
         res.status(500).json({ error: "failed" });
     }
+});
+
+// ============================================================================
+// JSON auth for the React login / register / verify screens.
+//
+// The EJS routes render pages on every outcome. These return status codes and a
+// message instead, but the underlying operations are the same functions: the
+// same validation, the same OTP session fields, the same passport strategy. The
+// email and password are never handled differently between the two.
+// ============================================================================
+
+const AUTH_MESSAGES = {
+    'invalid-email': 'Enter a valid email address.',
+    'weak-password': 'Password must be at least 6 characters.',
+    'mismatch': 'Passwords do not match.',
+    'duplicate': 'That email is already registered.',
+    'invalid-credentials': 'Invalid email or password.',
+    'invalid-code': 'That code is not correct.',
+    'expired': 'That code has expired. Please register again.',
+    'no-pending': 'Start by registering again.',
+    'too-many-attempts': 'Too many incorrect attempts. Please register again.',
+    'email-not-sent': 'We could not send a verification email. Please try again.'
+};
+
+app.post("/api/auth/register", async function(req, res){
+    const email = String(req.body.email || "").trim().toLowerCase();
+    const password = String(req.body.password || "");
+    const confirm = String(req.body.cpassword || "");
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: "invalid-email" });
+    if (password.length < 6) return res.status(400).json({ error: "weak-password" });
+    if (password !== confirm) return res.status(400).json({ error: "mismatch" });
+
+    try {
+        if (await User.exists({ email })) return res.status(409).json({ error: "duplicate" });
+    } catch (err) {
+        return res.status(500).json({ error: "failed" });
+    }
+
+    const code = emailService.makeOtp();
+    const { hash, salt } = passwordUtil.createPasswordRecord(password);
+    req.session.pendingSignup = {
+        email, hash, salt,
+        otpHash: emailService.hashOtp(code),
+        expiresAt: Date.now() + 10 * 60 * 1000,
+        attempts: 0,
+        sentAt: Date.now()
+    };
+
+    const sent = await emailService.sendOtpEmail({ to: email, code });
+    if (!sent.ok) {
+        // No half-started signup left behind: without a delivered code there is
+        // nothing the user can do but retry.
+        delete req.session.pendingSignup;
+        return res.status(502).json({ error: "email-not-sent" });
+    }
+
+    res.json({ ok: true, email, message: AUTH_MESSAGES });
+});
+
+app.post("/api/auth/resend", async function(req, res){
+    const { ok, pending } = pendingSignup(req);
+    if (!ok) return res.status(400).json({ error: "expired" });
+
+    const elapsed = Date.now() - (pending.sentAt || 0);
+    if (elapsed < OTP_RESEND_COOLDOWN_MS) {
+        return res.status(429).json({
+            error: 'cooldown',
+            wait: Math.ceil((OTP_RESEND_COOLDOWN_MS - elapsed) / 1000)
+        });
+    }
+
+    const code = emailService.makeOtp();
+    pending.otpHash = emailService.hashOtp(code);
+    pending.sentAt = Date.now();
+    pending.attempts = 0;
+    req.session.pendingSignup = pending;
+
+    const sent = await emailService.sendOtpEmail({ to: pending.email, code });
+    if (!sent.ok) return res.status(502).json({ error: "email-not-sent" });
+    res.json({ ok: true, message: AUTH_MESSAGES });
+});
+
+app.post("/api/auth/verify", async function(req, res){
+    const code = String(req.body.code || "").replace(/\D/g, "");
+    const { ok, pending, reason } = pendingSignup(req);
+
+    if (!ok) return res.status(400).json({ error: reason === "expired" ? "expired" : "no-pending" });
+    if (code.length !== 6) return res.status(400).json({ error: 'invalid-code' });
+
+    if (!emailService.otpMatches(pending.otpHash, code)) {
+        // Counted, so a 6-digit code cannot be brute-forced. 10^6 is small
+        // enough that an unthrottled attacker would get through it.
+        pending.attempts = (pending.attempts || 0) + 1;
+        if (pending.attempts >= OTP_MAX_ATTEMPTS) {
+            delete req.session.pendingSignup;
+            return res.status(429).json({ error: "too-many-attempts" });
+        }
+        return res.status(400).json({
+            error: "invalid-code",
+            attemptsLeft: OTP_MAX_ATTEMPTS - pending.attempts,
+            message: AUTH_MESSAGES
+        });
+    }
+
+    try {
+        const user = await User.create({
+            email: pending.email,
+            hash: pending.hash,
+            salt: pending.salt,
+            username: await allocateUsername(pending.email),
+            emailVerifiedAt: new Date()
+        });
+
+        delete req.session.pendingSignup;
+        await mergeGuestIntoUser(req, user);
+        req.logIn(user, (err) => {
+            if (err) return res.status(500).json({ error: "failed" });
+            userData.clearGuestCookie(req, res);
+            res.json({ ok: true, username: user.username });
+        });
+    } catch (err) {
+        const isDuplicate = (err && err.code === 11000) || (err && err.name === "UserExistsError");
+        if (isDuplicate) {
+            delete req.session.pendingSignup;
+            return res.status(409).json({ error: "duplicate" });
+        }
+        console.error("api/auth/verify:", err);
+        res.status(500).json({ error: "failed" });
+    }
+});
+
+app.post("/api/auth/login", function(req, res, next){
+    const email = String(req.body.email || "").trim().toLowerCase();
+
+    passport.authenticate("local", function(err, user, info){
+        if (err) return next(err);
+        if (!user) return res.status(401).json({ error: "invalid-credentials" });
+
+        req.logIn(user, (err) => {
+            if (err) return res.status(500).json({ error: "failed" });
+            // The guest cookie is cleared only after the session is established,
+            // same order as the EJS route - clearing it first would lose the
+            // data being merged.
+            userData.clearGuestCookie(req, res);
+            res.json({ ok: true, username: user.username || null });
+        });
+    })(req, res, next);
 });

@@ -3,23 +3,15 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "framework": "vite",
-  "//": "Order matters: Vercel applies rewrites top-down and the FIRST match wins. The React routes must come before the backend catch-all, or the catch-all swallows them and every path renders EJS again.",
+  "//": "Every page is now a React route, so the backend only needs to serve /api. Order matters: Vercel applies rewrites top-down and the FIRST match wins, so /api must precede the SPA catch-all or the API would be answered with index.html.",
   "rewrites": [
     {
       "source": "/api/:path*",
       "destination": "https://salah-tracker-api.vercel.app/api/:path*"
     },
     {
-      "source": "/quran",
+      "source": "/:path*",
       "destination": "/index.html"
-    },
-    {
-      "source": "/surah/:no",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "https://salah-tracker-api.vercel.app/(.*)"
     }
   ]
 }
