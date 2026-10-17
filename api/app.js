@@ -687,6 +687,77 @@ app.listen(process.env.PORT || 3000, function(){
 
 // Everything the Quran module needs for first paint, in one request. Splitting
 // this into four would mean four round trips before anything is visible.
+// Two paths, one handler. Registering the handler twice rather than having two
+// copies of it is what stopped the two from drifting.
+//
+// BOTH lines were removed by the EJS cleanup and the audio tab broke with it:
+// the removal script brace-matched from app.get("/quran/audio", handleQuranAudio);
+// - a line with no braces at all - and swallowed the following registration too.
+// Only the unprefixed path was EJS-era; /api/quran/audio is what the React
+// client calls.
+app.get("/quran/audio", handleQuranAudio);
+app.get("/api/quran/audio", handleQuranAudio);
+
+// Favourites. Restored: the EJS cleanup deleted these handlers outright, not
+// just their registrations.
+//
+// The removal script brace-matched from a braceless delegation line -
+// `app.get("/quran/favourites", handleQuranFavourites);` - and consumed the
+// lines after it, so the /api registrations went with them and the favourites
+// tab had no endpoint to call. /api only now; the unprefixed paths were
+// EJS-era.
+const handleQuranFavourites = async(req, res) => {
+    if (!req.isAuthenticated || !req.isAuthenticated()) {
+        return res.status(401).json({ error: "login-required" });
+    }
+    try {
+        const settings = await userData.getSettings(req);
+        const editionId = getPrimaryEdition(settings);
+        const parsed = editionId ? parseEdition(editionId) : null;
+
+        const entries = await favourites.resolveFavourites(req, {
+            loadSurah: (n) => cachedJsonOrNull(`https://quranapi.pages.dev/api/${n}.json`),
+            loadEdition: (id, n) => cachedJson(`https://cdn.jsdelivr.net/gh/fawazahmed0/quran-api@1/editions/${id}/${n}.json`),
+            editionId: parsed ? parsed.id : "",
+            // `lan`, not `language`: parseEdition returns {id, lan, author}. The
+            // pre-cleanup version read parsed.language, which is always
+            // undefined, so the label fell back to "Translation" on every row.
+            editionLabel: parsed ? `${parsed.lan || "Translation"} - ${parsed.author || parsed.id}` : ""
+        });
+
+        res.json({ ok: true, entries });
+    } catch (err) {
+        console.error("quran/favourites:", err.message);
+        res.status(500).json({ error: "failed" });
+    }
+};
+
+const handleToggleFavourite = async(req, res) => {
+    const settings = await userData.getSettings(req);
+    // The surah's real length is enforced when it is known, so an out-of-range
+    // ayah is rejected rather than stored and left permanently unresolvable.
+    const surahNo = parseInt(req.body.surahNo, 10);
+    let totalAyah;
+    if (Number.isInteger(surahNo) && surahNo >= 1 && surahNo <= 114) {
+        const meta = await cachedJsonOrNull("https://quranapi.pages.dev/api/surah.json").catch(() => null);
+        totalAyah = meta && meta[surahNo - 1] ? meta[surahNo - 1].totalAyah : undefined;
+    }
+
+    const pair = favourites.normalise(surahNo, req.body.ayahNo, totalAyah);
+    if (!pair) return res.status(400).json({ error: "invalid-reference" });
+
+    try {
+        const result = await userData.toggleFavourite(req, pair);
+        res.json({ ok: true, favorited: result.favorited, surahNo: pair.surahNo, ayahNo: pair.ayahNo });
+    } catch (err) {
+        console.error("quran/favourites/toggle:", err.message);
+        res.status(500).json({ error: "failed" });
+    }
+};
+
+app.get("/api/quran/favourites", requireLogin, handleQuranFavourites);
+app.post("/api/quran/favourites/toggle", requireLogin, handleToggleFavourite);
+
 app.get("/api/quran/index", async function(req, res){
     const surahs = await cachedJsonOrNull(`https://quranapi.pages.dev/api/surah.json`);
     if (!surahs) return res.status(503).json({ error: "surah-index-unavailable" });

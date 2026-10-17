@@ -69,6 +69,9 @@ export default function QuranPage() {
         surahNo: track.surahNo,
         surahName: track.surahName,
         reciterName: track.reciter,
+        // Carried so the player's skip buttons keep the same reciter instead of
+        // falling back to the server's saved preference.
+        reciterId: track.reciterId,
         startAt: 0,
       });
     } catch (err) {

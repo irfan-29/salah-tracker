@@ -133,11 +133,44 @@ export function AudioProvider({ children }) {
     };
   }, [audio, savePosition]);
 
+  // Previous / next surah.
+  //
+  // views/footer.ejs had skip_previous and skip_next beside the play button;
+  // the React port dropped them, leaving a transport with no way to move
+  // between surahs once playback had started.
+  //
+  // The track carries its surahNo and reciterId, so stepping resolves the
+  // neighbouring surah through the same endpoint the Audio tab uses. The
+  // reciter is passed explicitly rather than left to the server's saved
+  // preference, so changing it in Settings mid-playback cannot silently change
+  // the recitation mid-surah.
+  const skip = useCallback(async (delta) => {
+    if (!track || !Number.isInteger(Number(track.surahNo))) return;
+    const target = Number(track.surahNo) + delta;
+    if (target < 1 || target > 114) return;   // Al-Fatiha and An-Nas are the ends
+    try {
+      const next = await quran.audio(target, track.reciterId || "1");
+      await play({
+        url: next.url,
+        surahNo: next.surahNo,
+        surahName: next.surahName,
+        reciterName: next.reciter,
+        reciterId: next.reciterId,
+        startAt: 0,
+      });
+    } catch (err) {
+      // A missing recitation for one surah must not break the player; the
+      // current track simply keeps playing.
+    }
+  }, [track, play]);
+
   const value = useMemo(() => ({
     track, playing, position, duration,
-    play, load, toggle, seek, close, savePosition,
+    play, load, toggle, seek, close, savePosition, skip,
     hasTrack: Boolean(track),
-  }), [track, playing, position, duration, play, load, toggle, seek, close, savePosition]);
+    canSkipBack: Boolean(track) && Number(track.surahNo) > 1,
+    canSkipForward: Boolean(track) && Number(track.surahNo) < 114,
+  }), [track, playing, position, duration, play, load, toggle, seek, close, savePosition, skip]);
 
   return <AudioContext.Provider value={value}>{children}</AudioContext.Provider>;
 }

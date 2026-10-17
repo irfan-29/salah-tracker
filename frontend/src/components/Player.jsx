@@ -14,7 +14,8 @@ function formatTime(seconds) {
 // here it is mounted above the router, which is why playback survives
 // navigation.
 export default function Player() {
-  const { track, playing, position, duration, toggle, seek, close, load, hasTrack } = useAudio();
+  const { track, playing, position, duration, toggle, seek, close, load, hasTrack,
+          skip, canSkipBack, canSkipForward } = useAudio();
   const [restored, setRestored] = useState(false);
 
   useEffect(() => {
@@ -47,9 +48,20 @@ export default function Player() {
         </div>
 
         <div className="audio-bar-center">
+          {/* Same three controls as views/footer.ejs: previous, play/pause,
+              next. The port kept only the middle one. Disabled at the ends of
+              the Quran rather than silently doing nothing. */}
           <div className="audio-transport">
-            <button type="button" className="audio-btn" onClick={toggle} aria-label={playing ? 'Pause' : 'Play'}>
+            <button type="button" className="audio-btn" onClick={() => skip(-1)}
+                    disabled={!canSkipBack} aria-label="Previous surah">
+              <span className="material-symbols-rounded">skip_previous</span>
+            </button>
+            <button type="button" className="audio-btn audio-btn-play" onClick={toggle} aria-label={playing ? 'Pause' : 'Play'}>
               <span className="material-symbols-rounded">{playing ? 'pause' : 'play_arrow'}</span>
+            </button>
+            <button type="button" className="audio-btn" onClick={() => skip(1)}
+                    disabled={!canSkipForward} aria-label="Next surah">
+              <span className="material-symbols-rounded">skip_next</span>
             </button>
           </div>
           <div className="audio-progress-row">
