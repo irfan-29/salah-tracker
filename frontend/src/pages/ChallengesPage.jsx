@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { challenges as api } from '../services/api';
 import { useSession } from '../hooks/useSession.jsx';
+import Loader from '../components/Loader';
 
 // Markup mirrors views/challenges.ejs so the shared stylesheet applies.
 export default function ChallengesPage() {
@@ -37,7 +38,7 @@ export default function ChallengesPage() {
           <h1>Challenges</h1>
           <p>Build habits and track your streaks</p>
         </div>
-        <div className="container1"><p className="challenge-empty">Loading…</p></div>
+        <Loader variant="inline" label="Loading challenges" />
       </>
     );
   }

@@ -4,8 +4,11 @@ import { AudioProvider } from './components/AudioProvider';
 import Navbar from './components/Navbar';
 import Player from './components/Player';
 import { SessionProvider } from './hooks/useSession';
+import useShareHandler from './hooks/useShareHandler';
 import QuranPage from './pages/QuranPage';
 import ChallengesPage from './pages/ChallengesPage';
+import SalahPage from './pages/SalahPage';
+import { PostsPage, PostPage, ProfilePage } from './pages/PostsPage';
 import SurahPage from './pages/SurahPage';
 import NotMigrated from './pages/NotMigrated';
 
@@ -22,6 +25,10 @@ export default function App() {
 }
 
 function Shell() {
+  // Share buttons in post cards and profiles. Mounted once at the shell so it
+  // covers every route; without it the buttons render but do nothing.
+  useShareHandler();
+
   // null means "not known yet" - distinct from false. Pages that gate on it
   // wait rather than briefly showing the signed-out UI.
   const [session, setSession] = useState(null);
@@ -46,6 +53,10 @@ function Shell() {
           <Route path="/quran" element={<QuranPage />} />
           <Route path="/surah/:surahNo" element={<SurahPage />} />
           <Route path="/challenges" element={<ChallengesPage />} />
+          <Route path="/salah" element={<SalahPage />} />
+          <Route path="/posts" element={<PostsPage />} />
+          <Route path="/post/:id" element={<PostPage />} />
+          <Route path="/u/:username" element={<ProfilePage />} />
           {/* Everything else is still server-rendered EJS. Those pages keep
               working through the Vercel rewrite to the backend; navigating here
               is a full page load by design until they are ported. */}

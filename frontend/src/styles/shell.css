@@ -32,3 +32,94 @@
 
 .reciter-row .form-control { max-width: 420px; }
 .reciter-row .form-floating { margin-bottom: 0; }
+/* ---------- Loader ---------- */
+
+/* The ring is an SVG circle (see components/Loader.jsx): the brand colour
+   genuinely fills the border instead of a spinner spinning over a ring. */
+.app-loader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.875rem;
+}
+
+.app-loader--fullPage {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: var(--color-bg-gradient, var(--color-bg));
+}
+
+.app-loader--overlay {
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, var(--color-surface, #fff) 82%, transparent);
+  backdrop-filter: blur(1px);
+}
+
+.app-loader--inline { padding: 2.5rem 0; }
+
+.app-loader__ring {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+}
+
+.app-loader--inline .app-loader__ring { width: 40px; height: 40px; }
+.app-loader--overlay .app-loader__ring { width: 48px; height: 48px; }
+
+.app-loader__ring svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg); /* start the fill at 12 o'clock */
+}
+
+.app-loader__track,
+.app-loader__fill {
+  fill: none;
+  stroke-width: 6;
+  stroke-linecap: round;
+}
+
+.app-loader__track { stroke: var(--color-border); }
+
+.app-loader__fill {
+  stroke: var(--color-primary);
+  animation: app-loader-fill 1.1s linear infinite;
+}
+
+/* Two revolutions per cycle: one to fill, one to drain. A single direction
+   forever reads as a spinner, which is the thing being replaced. */
+@keyframes app-loader-fill {
+  0%   { stroke-dashoffset: 263; }
+  50%  { stroke-dashoffset: 0; }
+  100% { stroke-dashoffset: -263; }
+}
+
+.app-loader__logo {
+  color: var(--color-primary);
+  animation: app-loader-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes app-loader-pulse {
+  0%, 100% { opacity: 0.45; transform: scale(0.94); }
+  50%      { opacity: 1;    transform: scale(1); }
+}
+
+/* Respect a reduced-motion preference: keep the loader, drop the movement. */
+@media (prefers-reduced-motion: reduce) {
+  .app-loader__fill { animation: none; stroke-dashoffset: 0; }
+  .app-loader__logo { animation: none; opacity: 1; }
+}
+
+.app-loader__label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--color-text-secondary);
+}

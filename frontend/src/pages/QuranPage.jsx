@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { quran } from '../services/api';
 import { useAudio } from '../components/AudioProvider';
 import { useFavourites } from '../hooks/useFavourites';
+import Loader from '../components/Loader';
 import ReadTab from '../components/quran/ReadTab';
 import AudioTab from '../components/quran/AudioTab';
 import FavouritesTab from '../components/quran/FavouritesTab';
@@ -47,7 +48,7 @@ export default function QuranPage() {
   }
 
   if (!data) {
-    return <div className="container1"><p className="post-empty">Loading…</p></div>;
+    return <Loader variant="inline" label="Loading Quran" />;
   }
 
   async function handleReciterChange(next) {

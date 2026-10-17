@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useParams, useSearchParams, Link } from 'react-router-dom';
 import { quran } from '../services/api';
 import { useFavourites } from '../hooks/useFavourites';
+import Loader from '../components/Loader';
 
 export default function SurahPage() {
   const { surahNo } = useParams();
@@ -28,7 +29,7 @@ export default function SurahPage() {
   }, [favourites, data]);
 
   if (error) return <><div className="page-header"><h1>Surah</h1></div><div className="container1"><p className="post-empty">{error}</p></div></>;
-  if (!data) return <div className="container1"><p className="post-empty">Loading…</p></div>;
+  if (!data) return <Loader variant="inline" label={`Loading ${surahNo}`} />;
 
   const targetAyah = params.get('ayah');
 
