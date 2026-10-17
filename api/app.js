@@ -1097,9 +1097,23 @@ app.get("/edit-challenge/:id", requireLogin, async function(req, res){
 });
   
 
+// Group the editions catalogue by language for the Settings picker. Shared by
+// the EJS page and the JSON API - keeping it as a helper rather than inlining it
+// twice is what stops the two settings UIs disagreeing about what is offered.
+function groupEditionsByLanguage(editionsJson) {
+    const grouped = {};
+    for (const key in (editionsJson || {})) {
+        const edition = editionsJson[key];
+        const lang = edition.language || "Unknown";
+        if (!grouped[lang]) grouped[lang] = [];
+        grouped[lang].push({ name: edition.name, author: edition.author });
+    }
+    return grouped;
+}
+
 app.get("/settings", async (req, res) => {
-    const recitersJson = await cachedJson("https://quranapi.pages.dev/api/reciters.json");
-    const editionsJson = await cachedJson("https://cdn.jsdelivr.net/gh/fawazahmed0/quran-api@1/editions.json");
+    const recitersJson = await cachedJsonOrNull("https://quranapi.pages.dev/api/reciters.json");
+    const editionsJson = await cachedJsonOrNull("https://cdn.jsdelivr.net/gh/fawazahmed0/quran-api@1/editions.json");
 
     const settings = await userData.getSettings(req);
 
@@ -1130,17 +1144,7 @@ app.get("/settings", async (req, res) => {
         // 'Tajweed-V4': { label: 'KFGQPC V4 Tajweed', tag: 'HAFS' }
     };
 
-    // Group by language
-    const editionsByLanguage = {};
-    for (let key in editionsJson) {
-      const edition = editionsJson[key];
-      const lang = edition.language || "Unknown";
-      if (!editionsByLanguage[lang]) editionsByLanguage[lang] = [];
-      editionsByLanguage[lang].push({
-        name: edition.name,
-        author: edition.author
-      });
-    }
+    const editionsByLanguage = groupEditionsByLanguage(editionsJson || {});
 
     res.render('settings', {
         favoriteReciter: String(reciter), 
@@ -2147,4 +2151,270 @@ app.get("/api/quran/progress", async function(req, res){
             startAt: Number(progress.time) || 0
         }
     });
+});
+
+// ============================================================================
+// JSON API for challenges, salah and posts - the React equivalents of the
+// EJS routes above. Same services, same validation, different serialiser.
+// ============================================================================
+
+// ---- Challenges ----
+
+app.get("/api/challenges", async function(req, res){
+    try {
+        const keyChallenge = await userData.listChallenges(req);
+        res.json({ challenges: keyChallenge, canManage: Boolean(req.isAuthenticated() && req.isAuthenticated()) });
+    } catch (err) {
+        console.error("api/challenges:", err.message);
+        res.status(500).json({ error: "failed" });
+    }
+});
+
+app.post("/api/challenges", requireLogin, async function(req, res){
+    try {
+        const challenge = await userData.addChallenge(req, { challenge: req.body.challenge });
+        res.status(201).json({ challenge });
+    } catch (err) {
+        console.error("api/challenges POST:", err.message);
+        res.status(500).json({ error: "failed" });
+    }
+});
+
+app.post("/api/challenges/:id", requireLogin, async function(req, res){
+    const challenge = String(req.body.challenge || "").trim();
+    if (!req.params.id || !challenge) return res.status(400).json({ error: "invalid" });
+    try {
+        // renameChallenge is the service method; it takes the id, not a lookup.
+        await userData.renameChallenge(req, req.params.id, challenge);
+        const all = await userData.listChallenges(req);
+        const updated = all.find((c) => String(c._id) === String(req.params.id));
+        if (!updated) return res.status(404).json({ error: "not-found" });
+        res.json({ challenge: updated });
+    } catch (err) {
+        console.error("api/challenges update:", err.message);
+        res.status(500).json({ error: "failed" });
+    }
+});
+
+app.delete("/api/challenges/:id", requireLogin, async function(req, res){
+    try {
+        await userData.deleteChallenge(req, req.params.id);
+        const all = await userData.listChallenges(req);
+        res.json({ ok: true, challenges: all });
+    } catch (err) {
+        console.error("api/challenges delete:", err.message);
+        res.status(500).json({ error: "failed" });
+    }
+});
+
+// Mirrors POST /update-streaks exactly, including the date validation that
+// rejects a missing or unparseable date before anything is written.
+app.post("/api/challenges/streaks", requireLogin, async function(req, res){
+    const completed = [].concat(req.body.completed || []).map(String);
+
+    const lastUpdated = new Date(req.body.date);
+    if (isNaN(lastUpdated.getTime())) {
+        return res.status(400).json({ error: "invalid-date" });
+    }
+    const formattedDate = lastUpdated.toLocaleDateString("en-US", {
+        weekday: "long", month: "short", day: "2-digit", year: "numeric"
+    });
+
+    try {
+        const allChallenges = await userData.applyStreakUpdate(req, {
+            completedIds: completed,
+            lastUpdated: formattedDate
+        });
+        const updatedChallenges = allChallenges.map((c) => ({
+            id: String(c._id),
+            name: c.challenge,
+            currentStreak: c.currentStreak,
+            maxStreak: c.maxStreak
+        }));
+
+        // Awaited for the same reason as the EJS route: on Vercel the function
+        // can be frozen once the response is sent.
+        await notifyStreakUpdate(req, { formattedDate, completed, updatedChallenges });
+
+        res.json({ challenges: updatedChallenges, date: formattedDate });
+    } catch (err) {
+        console.error("api/challenges streaks:", err.message);
+        res.status(500).json({ error: "failed" });
+    }
+});
+
+// ---- Salah log ----
+
+app.get("/api/salah", async function(req, res){
+    try {
+        const entries = await userData.listSalah(req);
+        // Optional ?date=YYYY-MM-DD, defaulting to today in the SERVER's zone.
+        // The client's clock is not trusted: a device set to the wrong date
+        // should not be able to write into another day.
+        let label = null;
+        if (req.query.date && /^\d{4}-\d{2}-\d{2}$/.test(req.query.date)) {
+            const parsed = new Date(`${req.query.date}T12:00:00Z`);
+            if (!isNaN(parsed.getTime())) {
+                label = parsed.toLocaleDateString("en-US", {
+                    weekday: "long", month: "short", day: "2-digit", year: "numeric", timeZone: "UTC"
+                });
+            }
+        }
+        if (!label) {
+            label = new Date().toLocaleDateString("en-US", {
+                weekday: "long", month: "short", day: "2-digit", year: "numeric"
+            });
+        }
+        res.json({ date: label, entries: entries.filter((s) => s.date === label), canManage: Boolean(req.isAuthenticated && req.isAuthenticated()) });
+    } catch (err) {
+        console.error("api/salah:", err.message);
+        res.status(500).json({ error: "failed" });
+    }
+});
+
+app.post("/api/salah", requireLogin, async function(req, res){
+    try {
+        const updated = await userData.recordSalah(req, {
+            date: req.body.date,
+            name: req.body.name,
+            value: req.body.value
+        });
+        res.json({ entries: updated });
+    } catch (err) {
+        console.error("api/salah POST:", err.message);
+        res.status(500).json({ error: "failed" });
+    }
+});
+
+// ---- Posts ----
+
+app.get("/api/posts", async function(req, res){
+    try {
+        const post = await Posts.find({}).sort({ _id: -1 }).populate("author", "name username");
+        res.json({ posts: post, permalinkBase: originOf(req) });
+    } catch (err) {
+        console.error("api/posts:", err.message);
+        res.status(500).json({ error: "failed" });
+    }
+});
+
+app.post("/api/posts", requireLogin, async function(req, res){
+    let date = new Date(req.body.date);
+    if (isNaN(date.getTime())) date = new Date();
+    const formattedDate = date.toLocaleDateString("en-US", {
+        weekday: "long", month: "short", day: "2-digit", year: "numeric"
+    });
+
+    const content = String(req.body.content || "").trim();
+    const isVideo = Boolean(req.body.isVideo);
+    if (!content && !isVideo) return res.status(400).json({ error: "empty-post" });
+
+    try {
+        const post = await Posts.create({
+            postedDate: formattedDate,
+            author: req.user._id,
+            authorName: req.user.username || req.user.email,
+            content,
+            reference: String(req.body.reference || ""),
+            isVideo
+        });
+
+        // Announce after the write resolves, and never let a broadcast failure
+        // undo a post the user already successfully created.
+        broadcastNewPost(post).catch((err) => console.error("notify: new post -", err.message));
+
+        res.status(201).json({ post });
+    } catch (err) {
+        console.error("api/posts POST:", err.message);
+        res.status(500).json({ error: "failed" });
+    }
+});
+
+app.get("/api/posts/:id", async function(req, res){
+    if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ error: "not-found" });
+    try {
+        const post = await Posts.findById(req.params.id).populate("author", "username name");
+        if (!post) return res.status(404).json({ error: "not-found" });
+        res.json({ post, permalinkBase: originOf(req) });
+    } catch (err) {
+        console.error("api/posts/:id:", err.message);
+        res.status(500).json({ error: "failed" });
+    }
+});
+
+// ---- Profile ----
+
+app.get("/api/u/:username", async function(req, res){
+    try {
+        const author = await User.findOne({ username: String(req.params.username || "").toLowerCase() })
+            .select("username name createdAt");
+        if (!author) return res.status(404).json({ error: "not-found" });
+
+        const posts = await Posts.find({ author: author._id }).sort({ _id: -1 });
+        const isOwner = Boolean(req.isAuthenticated() && req.user && String(req.user._id) === String(author._id));
+        res.json({ owner: author, posts, permalinkBase: originOf(req), isOwner });
+    } catch (err) {
+        console.error("api/u/:username:", err.message);
+        res.status(500).json({ error: "failed" });
+    }
+});
+
+// ---- Account ----
+
+app.get("/api/account", requireLogin, function(req, res){
+    const user = req.user;
+    const username = user.username || "";
+    res.json({
+        username,
+        displayName: username || user.name || (user.email || "?").split("@")[0],
+        email: user.email,
+        // emailVerifiedAt only exists on accounts created since OTP signup.
+        verified: Boolean(user.emailVerifiedAt)
+    });
+});
+
+// ---- Settings ----
+
+// One payload rather than several: the settings page needs all of it at once,
+// and the upstream reads behind it are already cached.
+app.get("/api/settings", async function(req, res){
+    try {
+        const settings = await userData.getSettings(req);
+
+        const [recitersJson, editionsJson] = await Promise.all([
+            cachedJsonOrNull("https://quranapi.pages.dev/api/reciters.json"),
+            cachedJsonOrNull("https://cdn.jsdelivr.net/gh/fawazahmed0/quran-api@1/editions.json")
+        ]);
+
+        res.json({
+            settings: {
+                defaultHome: settings.defaultHome || "salah",
+                location: settings.location || "Coimbatore",
+                favoriteReciter: settings.favoriteReciter || 1,
+                favoriteFont: settings.favoriteFont || "QPC-Hafs",
+                favoriteEdition: getFavoriteEditions(settings),
+                primaryTranslation: getPrimaryEdition(settings) || "",
+                theme: settings.theme || "light",
+                audioProgress: settings.audioProgress || null
+            },
+            // reciters.json is an object keyed by id ("1": "Name"), which the
+            // EJS page iterates directly. Normalised to a list here so the
+            // client is not handed two different shapes for the same data.
+            reciters: Object.entries(recitersJson || {}).map(([id, name]) => ({ id: String(id), name })),
+            // Grouped by the shared helper, so the React and EJS settings
+            // screens offer exactly the same editions.
+            editions: groupEditionsByLanguage(editionsJson),
+            telegram: {
+                enabled: Boolean(notify.telegramPrefs(req.user).enabled),
+                chatId: await userData.getTelegramChatId(req),
+                botConfigured: botIsConfigured(),
+                prefs: notify.telegramPrefs(req.user)
+            },
+            username: (req.isAuthenticated && req.isAuthenticated() && req.user.username) || "",
+            isLoggedIn: Boolean(req.isAuthenticated && req.isAuthenticated())
+        });
+    } catch (err) {
+        console.error("api/settings:", err.message);
+        res.status(500).json({ error: "failed" });
+    }
 });

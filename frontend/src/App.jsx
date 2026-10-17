@@ -3,7 +3,9 @@ import { Routes, Route } from 'react-router-dom';
 import { AudioProvider } from './components/AudioProvider';
 import Navbar from './components/Navbar';
 import Player from './components/Player';
+import { SessionProvider } from './hooks/useSession';
 import QuranPage from './pages/QuranPage';
+import ChallengesPage from './pages/ChallengesPage';
 import SurahPage from './pages/SurahPage';
 import NotMigrated from './pages/NotMigrated';
 
@@ -20,7 +22,9 @@ export default function App() {
 }
 
 function Shell() {
-  const [session, setSession] = useState({ isLoggedIn: false, username: null });
+  // null means "not known yet" - distinct from false. Pages that gate on it
+  // wait rather than briefly showing the signed-out UI.
+  const [session, setSession] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -31,14 +35,17 @@ function Shell() {
     return () => { cancelled = true; };
   }, []);
 
+  const resolved = session || { isLoggedIn: null, username: null };
+
   return (
-    <>
-      <Navbar session={session} />
+    <SessionProvider value={resolved}>
+      <Navbar session={resolved} />
       <div className="main-content">
         <Routes>
           <Route path="/" element={<QuranPage />} />
           <Route path="/quran" element={<QuranPage />} />
           <Route path="/surah/:surahNo" element={<SurahPage />} />
+          <Route path="/challenges" element={<ChallengesPage />} />
           {/* Everything else is still server-rendered EJS. Those pages keep
               working through the Vercel rewrite to the backend; navigating here
               is a full page load by design until they are ported. */}
@@ -46,6 +53,6 @@ function Shell() {
         </Routes>
       </div>
       <Player />
-    </>
+    </SessionProvider>
   );
 }

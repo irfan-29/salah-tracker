@@ -53,6 +53,7 @@ async function request(path, { method = 'GET', body, signal } = {}) {
 }
 
 export const api = {
+  request,
   get: (path, opts) => request(path, opts),
   post: (path, body, opts) => request(path, { ...opts, method: 'POST', body }),
 };
@@ -70,6 +71,36 @@ export const quran = {
   progress: () => api.get('/quran/progress'),
   saveProgress: (payload) => api.post('/quran/progress', payload),
   toggleFavourite: (surahNo, ayahNo) => api.post('/quran/favourites/toggle', { surahNo, ayahNo }),
+};
+
+// ---- Challenges, salah, posts, profile, account, settings ----
+
+export const challenges = {
+  list: () => api.get('/challenges'),
+  create: (challenge) => api.post('/challenges', { challenge }),
+  rename: (id, challenge) => api.post(`/challenges/${id}`, { challenge }),
+  remove: (id) => api.request(`/challenges/${id}`, { method: 'DELETE' }),
+  saveStreaks: (payload) => api.post('/challenges/streaks', payload),
+};
+
+export const salah = {
+  list: (date) => api.get('/salah' + (date ? `?date=${encodeURIComponent(date)}` : '')),
+  record: (payload) => api.post('/salah', payload),
+};
+
+export const posts = {
+  list: () => api.get('/posts'),
+  create: (payload) => api.post('/posts', payload),
+  one: (id) => api.get(`/posts/${id}`),
+  profile: (username) => api.get(`/u/${encodeURIComponent(username)}`),
+};
+
+export const account = {
+  me: () => api.get('/account'),
+};
+
+export const settings = {
+  get: () => api.get('/settings'),
 };
 
 export { ApiError };
