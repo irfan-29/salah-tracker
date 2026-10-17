@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, useLocation } from 'react-router-dom';
 import { AudioProvider } from './components/AudioProvider';
 import Navbar from './components/Navbar';
 import Player from './components/Player';
@@ -29,7 +29,24 @@ export default function App() {
   );
 }
 
+// Auth routes are standalone cards, not part of the app shell - exactly as the
+// EJS pages were. Routing them through <Routes> inside the shell meant the
+// sidebar and the .main-content offset rendered around the sign-in card.
+const AUTH_PATHS = ['/login', '/register', '/verify-email'];
+
 function Shell() {
+  const { pathname } = useLocation();
+
+  if (AUTH_PATHS.includes(pathname)) {
+    return (
+      <Routes>
+        <Route path="/login" element={<div className="auth-body"><LoginPage /></div>} />
+        <Route path="/register" element={<div className="auth-body"><RegisterPage /></div>} />
+        <Route path="/verify-email" element={<div className="auth-body"><VerifyPage /></div>} />
+      </Routes>
+    );
+  }
+
   // Share buttons in post cards and profiles. Mounted once at the shell so it
   // covers every route; without it the buttons render but do nothing.
   useShareHandler();
@@ -64,11 +81,6 @@ function Shell() {
           <Route path="/account" element={<AccountPage />} />
           <Route path="/salah-timings" element={<SalahTimingsPage />} />
           <Route path="/calendar" element={<CalendarPage />} />
-          {/* Auth screens render without the sidebar: they are standalone cards,
-              not part of the app shell, exactly as the EJS pages were. */}
-          <Route path="/login" element={<div className="auth-body"><LoginPage /></div>} />
-          <Route path="/register" element={<div className="auth-body"><RegisterPage /></div>} />
-          <Route path="/verify-email" element={<div className="auth-body"><VerifyPage /></div>} />
           <Route path="/post/:id" element={<PostPage />} />
           <Route path="/u/:username" element={<ProfilePage />} />
           {/* Every page is ported, so the fallback is now a genuine 404 rather
