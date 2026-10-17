@@ -152,6 +152,11 @@ const settingsSchema = new mongoose.Schema({
 const Settings = mongoose.model("Settings", settingsSchema);
 
 const AyahOfTheDay = require("./models/AyahOfTheDay.js");
+// The daily ayah's text resolution lives in a service because the Telegram
+// scheduler needs it too. It used to live here and read the same shared cached
+// field the page read, so both showed whichever translation resolved first that
+// day - usually the English default, because a guest usually arrives first.
+const { resolveAyahText, DEFAULT_TRANSLATION, parseEdition } = require("./services/ayahOfDay.js");
 
 // Duplicate form fields (same name twice) arrive as an array. Coerce them to a
 // single sane value so a duplicate can never build a broken path like
@@ -172,19 +177,6 @@ function todayDateKey() {
     return `${y}-${m}-${d}`;
 }
 
-function parseEdition(combinedStr) {
-    const parts = String(combinedStr || '').split(':');
-    return {
-        id: parts[0] || '',
-        lan: parts[1] || '',
-        author: parts[2] || parts[0] || ''
-    };
-}
-
-// Shown to anyone who hasn't chosen a translation yet, so the surah page and
-// the daily ayah are never blank for a guest or a brand-new account.
-// Abdullah Yusuf Ali is a widely used, freely available English translation.
-const DEFAULT_TRANSLATION = "eng-abdullahyusufal:English:Abdullah Yusuf Ali";
 
 function getFavoriteEditions(settings) {
     const raw = settings?.favoriteEdition;
@@ -209,34 +201,6 @@ function getPrimaryEdition(settings) {
 
 // Fetch the ayah's text once and cache it on the document. Callers that only
 // need the reference skip this via `includeText: false`.
-async function resolveAyahText(entry, edition) {
-    if (!entry || entry.arabicText !== undefined && entry.translationText !== undefined && entry.arabicText !== null) {
-        return entry;
-    }
-    const chosen = edition || DEFAULT_TRANSLATION;
-    const { id, lan, author } = parseEdition(chosen);
-
-    try {
-        const [arabicSurah, translationJson] = await Promise.all([
-            cachedJson(`https://quranapi.pages.dev/api/${entry.surahNo}.json`),
-            cachedJson(`https://cdn.jsdelivr.net/gh/fawazahmed0/quran-api@1/editions/${id}/${entry.surahNo}.json`)
-        ]);
-        const ayahIndex = entry.ayahNo - 1;
-
-        entry.arabicText = arabicSurah.arabic1?.[ayahIndex] || "";
-        entry.translationText = translationJson.chapter?.[ayahIndex]?.text || "";
-        entry.translationLabel = `${lan} - ${author}`;
-        entry.surahName = arabicSurah.surahName || entry.surahName;
-        entry.surahNameArabic = arabicSurah.surahNameArabic || entry.surahNameArabic;
-        entry.resolvedAt = new Date();
-        await entry.save();
-    } catch (err) {
-        // Never let an upstream fetch failure break the page.
-        console.error("ayah of the day: text fetch failed -", err.message);
-    }
-    return entry;
-}
-
 async function getOrCreateAyahOfTheDay(surahs) {
     const date = todayDateKey();
     let entry = await AyahOfTheDay.findOne({ date });
@@ -324,26 +288,16 @@ const SKIP_MIDDLEWARE_URLS = ["/hide-audio"];
 
     app.use(async (req, res, next) => {
       res.locals.footerAudio = null;
-      // The daily ayah is global: one document per date, identical for every
-      // visitor, so it can be resolved once and shared.
-      res.locals.ayahOfTheDay = null;
 
       const settings = await userData.getSettings(req);
       res.locals.theme = settings.theme || 'light';
 
-      try {
-        // Surah pages don't render the shared daily-ayah widget, and resolving it
-        // there costs two upstream reads per page view for no benefit.
-        if (!req.path.startsWith("/surah")) {
-          const entry = await AyahOfTheDay.findOne({ date: todayDateKey() });
-          if (entry) {
-            await resolveAyahText(entry, settings.primaryTranslation);
-            res.locals.ayahOfTheDay = entry.toObject();
-          }
-        }
-      } catch (err) {
-        console.error("ayah of the day: lookup failed -", err.message);
-      }
+      // The daily ayah used to be resolved HERE, on every request, and stashed
+      // in res.locals for the EJS templates. With those gone it was pure cost -
+      // a database read plus potentially an upstream fetch on every API call -
+      // and it also made the wrong translation authoritative, because whichever
+      // request ran first cached its edition onto the shared date document.
+      // GET /api/quran/index now resolves it per requester instead.
 
       // The audio bar is rendered on every page of the Quran module, not only
       // when something is already playing. Surah pages used to carry their own
@@ -746,9 +700,14 @@ app.get("/api/quran/index", async function(req, res){
 
     let ayah = null;
     try {
-        const entry = res.locals.ayahOfTheDay || await getOrCreateAyahOfTheDay(surahs);
+        const entry = await getOrCreateAyahOfTheDay(surahs);
         if (entry) {
-            if (!entry.translationText) await resolveAyahText(entry, edition);
+            // Unconditional. The guard this replaces checked the top-level
+            // translationText, which is only the cached copy of whichever
+            // edition some other visitor happened to resolve first - so it
+            // passed for the wrong viewer and served them that translation.
+            // resolveAyahText returns immediately when this edition is cached.
+            await resolveAyahText(entry, edition);
             const meta = surahs[entry.surahNo - 1] || {};
             ayah = {
                 surahNo: entry.surahNo,

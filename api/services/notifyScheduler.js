@@ -25,6 +25,10 @@
 const User = require("../models/User.js");
 const AyahOfTheDay = require("../models/AyahOfTheDay.js");
 const notify = require("./notifications.js");
+// Resolves the daily ayah in the RECIPIENT's own primary translation. The
+// scheduler used to read the shared cached translation off the date document,
+// so every subscriber received whichever edition resolved first that day.
+const { ayahTextForEdition } = require("./ayahOfDay.js");
 
 function dateLabelIn(tz, now) {
     const p = notify.localParts(now, tz);
@@ -68,7 +72,12 @@ async function runDueForUser(user, now = new Date()) {
     const fired = [];
 
     if (isDue(user, "ayahOfTheDay", now)) {
-        const ayah = await currentAyah(now);
+        // Resolved per recipient: each user gets the ayah in their own primary
+        // translation, falling back to the English default when they have not
+        // chosen one. Read from the per-edition cache, so this does not write
+        // once per user on every sweep.
+        const primaryEdition = user.settings && user.settings.primaryTranslation;
+        const ayah = await ayahTextForEdition(await currentAyah(now), primaryEdition);
         if (ayah) {
             const label = ayah.surahName
                 ? `${ayah.surahName} ${ayah.ayahNo}`
