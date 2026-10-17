@@ -52,6 +52,37 @@ async function main() {
         process.exit(1);
     }
 
+    // Validate QSTASH_APP_URL before spending an API call on it.
+    //
+    // The failure this guards against is real and already happened once: two
+    // assignments collided onto one .env line, so dotenv kept the raw text
+    // (it only strips quotes when the value both opens AND closes with one).
+    // QStash answered with an opaque "endpoint has invalid scheme" 400 that
+    // pointed at the scheme, when the actual problem was a stray GMAIL_USER=
+    // glued to the end of a URL. Checking here names the real cause.
+    const raw = process.env.QSTASH_APP_URL;
+    if (raw !== undefined && raw !== "") {
+        // Quote/whitespace first. new URL() is far too permissive here: it
+        // happily parses https://host"GLUE=a@b.com as a valid https URL with a
+        // quote in the query, so validating parseability alone would have
+        // passed exactly the value that broke this.
+        if (/["'\s]/.test(raw)) {
+            console.error("QSTASH_APP_URL contains a quote or whitespace.");
+            console.error(`  reads as: ${JSON.stringify(raw)}`);
+            console.error("  two assignments were merged onto one .env line, e.g.");
+            console.error('    QSTASH_APP_URL="https://host"GMAIL_USER=a@b.com');
+            console.error("  put each on its own line.");
+            process.exit(1);
+        }
+        let parsed = null;
+        try { parsed = new URL(raw); } catch { /* reported below */ }
+        if (!parsed || !/^https?:$/.test(parsed.protocol)) {
+            console.error("QSTASH_APP_URL is not a valid http(s) URL.");
+            console.error(`  reads as: ${JSON.stringify(raw)}`);
+            process.exit(1);
+        }
+    }
+
     if (command === "delete") {
         // Schedules are matched on destination URL, so delete needs the same
         // config as create - but not the signing keys, which are only used for
