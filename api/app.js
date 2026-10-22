@@ -286,53 +286,21 @@ const SKIP_MIDDLEWARE_URLS = ["/hide-audio"];
 //     next();
 //   });
 
-    app.use(async (req, res, next) => {
-      res.locals.footerAudio = null;
-
-      const settings = await userData.getSettings(req);
-      res.locals.theme = settings.theme || 'light';
-
-      // The daily ayah used to be resolved HERE, on every request, and stashed
-      // in res.locals for the EJS templates. With those gone it was pure cost -
-      // a database read plus potentially an upstream fetch on every API call -
-      // and it also made the wrong translation authoritative, because whichever
-      // request ran first cached its edition onto the shared date document.
-      // GET /api/quran/index now resolves it per requester instead.
-
-      // The audio bar is rendered on every page of the Quran module, not only
-      // when something is already playing. Surah pages used to carry their own
-      // inline <audio>, which meant the site had two audio elements sharing no
-      // state: play in the reader, navigate, and the footer arrived paused on a
-      // different element. One player, everywhere.
-      res.locals.audioShell = req.path === "/quran"
-        || req.path.startsWith("/quran/")
-        || req.path.startsWith("/surah");
-
-      if (settings.audioProgress && settings.audioProgress.surahNo) {
-         const audioSurah = await cachedJsonOrNull(
-            `https://quranapi.pages.dev/api/${settings.audioProgress.surahNo}.json`
-        );
-         const reciterAudio = audioSurah && audioSurah.audio
-             ? audioSurah.audio[settings.favoriteReciter] || audioSurah.audio[1]
-             : null;
-
-         if (audioSurah && reciterAudio) {
-           res.locals.footerAudio = {
-             url: reciterAudio.originalUrl,
-             surahNo: settings.audioProgress.surahNo,
-             surahName: settings.audioProgress.surahName,
-             reciterName: reciterAudio.reciter,
-             time: settings.audioProgress.time
-           };
-         } else {
-           res.locals.footerAudio = null;
-         }
-      } else {
-        res.locals.footerAudio = null;
-      }
-
-      next();
-    });
+    // The middleware that used to sit here ran on EVERY request and only ever
+    // wrote to res.locals - footerAudio, audioShell, theme. Nothing read any of
+    // them. res.locals existed to feed the EJS templates; with those deleted it
+    // has no consumer anywhere in the codebase (every res.locals.X written in
+    // this file has zero reads).
+    //
+    // It was not free. It called getSettings() on every request, and whenever a
+    // playback position was saved it fetched a surah document from
+    // quranapi.pages.dev to build a footerAudio object no route ever returned.
+    // The comment left in the middle of it had already noted the identical
+    // problem for the daily ayah and removed that; this was the same bug one
+    // block down, left behind.
+    //
+    // The React client restores the player from GET /api/quran/progress, which
+    // resolves the surah and reciter itself. See Player.jsx.
 
   
   
@@ -1202,8 +1170,12 @@ app.get("/api/settings", async function(req, res){
                 favoriteFont: settings.favoriteFont || "QPC-Hafs",
                 favoriteEdition: getFavoriteEditions(settings),
                 primaryTranslation: getPrimaryEdition(settings) || "",
-                theme: settings.theme || "light",
-                audioProgress: settings.audioProgress || null
+                theme: settings.theme || "light"
+                // audioProgress removed: no frontend file reads it. The player
+                // restores from GET /api/quran/progress, which is the only
+                // consumer, and it resolves the audio URL itself. Shipping it
+                // here duplicated data into a payload the Settings page never
+                // used.
             },
             // reciters.json is an object keyed by id ("1": "Name"), which the
             // EJS page iterates directly. Normalised to a list here so the
