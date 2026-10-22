@@ -28,10 +28,17 @@ export function AudioProvider({ children }) {
   // the user stopped. Throttled while playing, and forced on pause/unload -
   // the previous implementation only saved every 5s during playback, so closing
   // the tab mid-recitation lost up to five seconds.
+  //
+  // Guarded by dismissing, which close() sets. Without that guard the sequence
+  // was: close() -> audio.pause() -> the pause handler below -> savePosition()
+  // -> the bar wrote itself straight back to the database, so the next page load
+  // restored a player the user had just dismissed.
   const lastSaved = useRef(0);
+  const dismissing = useRef(false);
 
   const savePosition = useCallback(async (force = false) => {
     if (!audio || !track || !audio.src) return;
+    if (dismissing.current) return;
     if (!force && Math.abs(audio.currentTime - lastSaved.current) < 5) return;
     lastSaved.current = audio.currentTime;
     try {
@@ -47,6 +54,10 @@ export function AudioProvider({ children }) {
 
   const play = useCallback(async (next) => {
     if (!audio || !next || !next.url) return;
+    // A fresh track is not a dismissal. Reset here rather than in a timeout
+    // after close(), because play() can be called immediately after close() and
+    // the guard has to be down before this track's first timeupdate.
+    dismissing.current = false;
     const changed = !track || track.url !== next.url;
 
     setTrack({ ...next, surahNo: Number(next.surahNo) });
@@ -73,6 +84,9 @@ export function AudioProvider({ children }) {
   // refuse anyway and which is intrusive when it does not.
   const load = useCallback((next) => {
     if (!audio || !next || !next.url) return;
+    // Same reset as play(): the restore path below calls load() on every page
+    // load, and it must not inherit a guard left standing by an earlier close.
+    dismissing.current = false;
     setTrack({ ...next, surahNo: Number(next.surahNo) });
     audio.src = next.url;
     audio.load();
@@ -91,12 +105,28 @@ export function AudioProvider({ children }) {
 
   const close = useCallback(() => {
     if (!audio) return;
+
+    // Set BEFORE pause(). The pause event is dispatched asynchronously, so a
+    // flag raised after audio.pause() can lose the race and the handler will
+    // save the position of a player that is being thrown away.
+    dismissing.current = true;
+
     audio.pause();
     audio.removeAttribute('src');
     audio.load();
     setTrack(null);
     setPosition(0);
     setDuration(0);
+
+    // Memory alone is not enough. The previous version of this function cleared
+    // local state and stopped there, so the server still held the last saved
+    // position and the next page load put the bar straight back. Cleared here
+    // and never re-saved, because `dismissing` keeps the pause handler quiet.
+    //
+    // Deliberately not awaited: the bar closing should not wait on a round
+    // trip, and a failed clear leaves the position merely resume-able rather
+    // than broken. Fire-and-forget with the failure logged by the client.
+    quran.clearProgress().catch(() => {});
   }, [audio]);
 
   useEffect(() => {

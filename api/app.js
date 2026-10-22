@@ -921,6 +921,25 @@ app.post("/api/quran/progress", async function(req, res){
 
 // Restore the saved position on first load, so a page refresh resumes the
 // recitation rather than starting over.
+// Closing the player must survive a page load. Without this the bar could only
+// be dismissed for the current session: close() cleared React state, but the
+// `pause()` it performs fired the handler that saves the position, so the track
+// was written straight back and restored on the next visit.
+//
+// DELETE, because it removes a resource. An empty POST would have been easier
+// to write and wrong: the endpoint it sits beside already uses POST to SAVE
+// progress, so a POST with no body reads as a malformed save rather than a
+// deliberate clear.
+app.delete("/api/quran/progress", async function(req, res){
+    try {
+        await userData.clearAudioProgress(req);
+        res.json({ ok: true });
+    } catch (err) {
+        console.error("api/quran/progress (clear):", err.message);
+        res.status(500).json({ error: "failed" });
+    }
+});
+
 app.get("/api/quran/progress", async function(req, res){
     const settings = await userData.getSettings(req);
     const progress = settings.audioProgress;

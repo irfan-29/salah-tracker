@@ -6,6 +6,12 @@
 // account when they log in.
 
 const { readGuest, writeGuest, clearGuest } = require("../utils/guestStore.js");
+// Imported rather than passed in: clearAudioProgress is the first function in
+// this file that needs to reach the collection directly. Every other write goes
+// through the already-loaded req.user and .save(), but an $unset cannot - which
+// is the point of using it. models/User.js depends only on mongoose and
+// passport-local-mongoose, so there is no cycle back into here.
+const User = require("../models/User.js");
 
 // --- Settings ---------------------------------------------------------------
 
@@ -114,6 +120,44 @@ async function recordSurahReadAndProgress(req, { surahNo, surahName, time }) {
     const value = String(surahNo);
     guest.lastReadSurahs = [value, ...guest.lastReadSurahs.filter((n) => n !== value)].slice(0, 5);
     guest.settings = { ...(guest.settings || {}), audioProgress: { surahNo, surahName, time } };
+    writeGuest(req, res_of(req), guest);
+}
+
+// The counterpart to the write above, and the half that was missing.
+//
+// Closing the player used to clear only in-memory React state. The `pause()`
+// that close() performs then fired the same handler that saves the position, so
+// dismissing the bar wrote the track straight back and the next page load
+// restored it. Without a way to clear it server-side the bar could never stay
+// dismissed.
+//
+// It deliberately does NOT touch lastReadSurahs. That list records that a surah
+// was opened, which stays true after the player is closed - only the playback
+// cursor is being forgotten.
+async function clearAudioProgress(req) {
+    if (req.isAuthenticated && req.isAuthenticated()) {
+        // Explicit $unset rather than assigning undefined and calling save().
+        // audioProgress is a nested schema path, not Mixed, so change tracking
+        // is *supposed* to emit a $unset for it - but whether assigning
+        // `undefined` marks that path dirty is version-dependent behaviour, and
+        // the failure mode is silent: save() resolves ok and the field remains.
+        // An explicit operator cannot get that wrong.
+        await User.updateOne(
+            { _id: req.user._id },
+            { $unset: { "settings.audioProgress": "" } }
+        );
+        // Keep the in-memory doc consistent so a later read in the same request
+        // does not resurrect the cleared value.
+        if (req.user.settings) delete req.user.settings.audioProgress;
+        return;
+    }
+    const guest = readGuest(req);
+    if (!guest.settings || !guest.settings.audioProgress) return;
+    // Spread omits the key entirely rather than writing `audioProgress:
+    // undefined` into the cookie, which would serialise as a null and be
+    // truthy enough for the restore path to try to use it.
+    const { audioProgress, ...rest } = guest.settings;
+    guest.settings = rest;
     writeGuest(req, res_of(req), guest);
 }
 
@@ -350,6 +394,7 @@ module.exports = {
   getLastReadSurahs,
   recordSurahRead,
   recordSurahReadAndProgress,
+  clearAudioProgress,
   listChallenges,
   addChallenge,
   renameChallenge,

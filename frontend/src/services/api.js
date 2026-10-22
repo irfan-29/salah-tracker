@@ -70,6 +70,9 @@ export const quran = {
   favourites: () => api.get('/quran/favourites'),
   progress: () => api.get('/quran/progress'),
   saveProgress: (payload) => api.post('/quran/progress', payload),
+  // Told to the server when the player is dismissed, so the next page load does
+  // not restore a bar the user just closed. See AudioProvider.close().
+  clearProgress: () => api.request('/quran/progress', { method: 'DELETE' }),
   toggleFavourite: (surahNo, ayahNo) => api.post('/quran/favourites/toggle', { surahNo, ayahNo }),
 };
 

@@ -69,7 +69,33 @@ function sanitize(raw) {
         ? s.favoriteEdition.slice(0, 12).map((e) => String(e).slice(0, 120))
         : undefined,
       primaryTranslation: s.primaryTranslation ? String(s.primaryTranslation).slice(0, 120) : undefined,
-      theme: s.theme === "dark" ? "dark" : s.theme === "light" ? "light" : undefined
+      theme: s.theme === "dark" ? "dark" : s.theme === "light" ? "light" : undefined,
+      // Absent from this whitelist until now, which silently discarded the field
+      // on every cookie write: writeGuest -> withinBudget -> sanitize rebuilds
+      // settings key by key, so a key not named here is dropped no matter what
+      // recordSurahReadAndProgress put in it. Guests could therefore never
+      // resume a recitation, while signed-in users always could - and the
+      // failure was invisible, because the write still returned { ok: true }.
+      //
+      // Validated rather than copied: the cookie is attacker-writable, so bounds
+      // are enforced here the same way as everything else above. surahNo is
+      // clamped to the 114 surahs rather than merely checked, so a stale or
+      // hand-edited cookie cannot point the player at a surah that does not
+      // exist.
+      // Array excluded explicitly: typeof [] is "object", so without the isArray
+      // check a cookie carrying audioProgress:[1,2,3] would sanitise to {} and
+      // be accepted as a (degenerate) progress object. Harmless downstream -
+      // {} has no surahNo, so the restore path bails - but correct to reject.
+      audioProgress: s.audioProgress && typeof s.audioProgress === "object"
+        && !Array.isArray(s.audioProgress) ? {
+        surahNo: Number.isInteger(Number(s.audioProgress.surahNo))
+          ? Math.min(114, Math.max(1, Number(s.audioProgress.surahNo)))
+          : undefined,
+        surahName: s.audioProgress.surahName ? String(s.audioProgress.surahName).slice(0, 60) : undefined,
+        time: Number.isFinite(Number(s.audioProgress.time)) && Number(s.audioProgress.time) >= 0
+          ? Number(s.audioProgress.time)
+          : undefined
+      } : undefined
     };
   }
 
