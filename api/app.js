@@ -530,32 +530,95 @@ async function allocateUsername(email, excludeUserId = null) {
 async function saveTelegramPrefs(req, body) {
     if (!req.isAuthenticated()) return;
 
-    const telegramChatId = pickField(body.telegramChatId);
-    const tgEnabled = String(body.tgEnabled || "") === "on";
-    const tgTimezone = String(body.tgTimezone || "").trim();
-    const tgAyahTime = notify.normaliseHhMm(pickField(body.tgAyahTime), "05:30");
-    const tgSalahTime = notify.normaliseHhMm(pickField(body.tgSalahTime), "05:00");
-
     const user = req.user;
     user.telegram = user.telegram || {};
-    user.telegram.enabled = tgEnabled;
+
+    // Partial updates, not a whole-form overwrite.
+    //
+    // The EJS settings page was one <form>, so every submit carried every field
+    // and an unconditional assignment was safe. The React page saves per section
+    // instead: toggling a single event posts { events, times } with no
+    // tgEnabled, and this function did `user.telegram.enabled = String(body
+    // .tgEnabled || "") === "on"` - which reads a missing key as "off". Ticking
+    // one checkbox therefore switched the entire module off behind the user's
+    // back, and the response was still { ok: true }. Navigating away and back
+    // then showed the switch disabled, which is exactly what was reported.
+    //
+    // A field that is absent from the body is left alone. That is what a PATCH
+    // means, and it makes the three current call shapes (master toggle, event
+    // tick, time change) all safe without the client having to resend state it
+    // is not changing.
+    if (body.tgEnabled !== undefined) {
+        user.telegram.enabled = String(body.tgEnabled) === "on";
+    }
+
+    const tgTimezone = String(body.tgTimezone || "").trim();
     if (tgTimezone) user.telegram.timezone = tgTimezone;
-    user.telegram.events = {
-        ...(user.telegram.events || {}),
-        challenges: String(body.tgEventChallenges) === "on",
-        salahTracker: String(body.tgEventSalahTracker) === "on",
-        newPost: String(body.tgEventNewPost) === "on",
-        salahTimings: String(body.tgEventSalahTimings) === "on",
-        ayahOfTheDay: String(body.tgEventAyah) === "on"
-    };
-    user.telegram.times = { ayahOfTheDay: tgAyahTime, salahTimings: tgSalahTime };
+
+    // Events may arrive in either of two shapes, and the mismatch between them
+    // is the actual bug this panel had.
+    //
+    // The EJS settings page was one <form> posting flat fields named after the
+    // inputs - tgEventChallenges, tgEventSalahTracker, tgAyahTime. The React
+    // page posts a nested object instead: { events: {...}, times: {...} }.
+    // saveTelegramPrefs read only the flat names, so every nested payload was
+    // silently dropped on arrival and the function then rebuilt `events` from
+    // five undefined keys, writing all-false over whatever the user had.
+    //
+    // So ticking an event did two wrong things at once: it switched the whole
+    // module off (enabled read a missing tgEnabled as "off") and it never stored
+    // the event that was ticked. Both responses were { ok: true }, which is why
+    // it looked like a save that simply did not stick on reload.
+    //
+    // Flat is still accepted because /telegram/setup-code and /telegram/chat-id
+    // send it that way. Absent everywhere means "leave unchanged" - see the note
+    // on tgEnabled above.
+    const nestedEvents = body.events && typeof body.events === "object" ? body.events : null;
+    const hasEvents = nestedEvents !== null
+        || EVENT_FIELD_MAP.some(([, field]) => body[field] !== undefined);
+    if (hasEvents) {
+        const next = { ...(user.telegram.events || {}) };
+        for (const [key, field] of EVENT_FIELD_MAP) {
+            const source = nestedEvents ? nestedEvents[key] : body[field];
+            if (source !== undefined) next[key] = source === true || String(source) === "on";
+        }
+        user.telegram.events = next;
+    }
+
+    // Same two-shape handling for times, and the same absence rule. normaliseHhMm
+    // falls back to its default, so a missing time would otherwise have silently
+    // reset to 05:30/05:00 rather than being preserved. The client happens to
+    // always send times today, so this one was latent - "currently" is not a
+    // guarantee worth writing a bug into.
+    const nestedTimes = body.times && typeof body.times === "object" ? body.times : null;
+    const hasTimes = nestedTimes !== null
+        || body.tgAyahTime !== undefined || body.tgSalahTime !== undefined;
+    if (hasTimes) {
+        const ayah = nestedTimes ? nestedTimes.ayahOfTheDay : body.tgAyahTime;
+        const salah = nestedTimes ? nestedTimes.salahTimings : body.tgSalahTime;
+        user.telegram.times = {
+            ayahOfTheDay: notify.normaliseHhMm(pickField(ayah), "05:30"),
+            salahTimings: notify.normaliseHhMm(pickField(salah), "05:00")
+        };
+    }
 
     // Only accept a chat id that actually looks like one.
-    const cleanChat = normalizeChatId(telegramChatId);
+    const cleanChat = normalizeChatId(pickField(body.telegramChatId));
     if (cleanChat) user.telegramChatId = cleanChat;
 
     await user.save();
 }
+
+// Key in user.telegram.events -> field name in the request body. Single source
+// so the read shape, the write shape and this mapping cannot drift apart; the
+// list was previously spelled out inline here and in telegramPrefs.
+const EVENT_FIELD_MAP = [
+    ["challenges", "tgEventChallenges"],
+    ["salahTracker", "tgEventSalahTracker"],
+    ["newPost", "tgEventNewPost"],
+    ["salahTimings", "tgEventSalahTimings"],
+    ["ayahOfTheDay", "tgEventAyah"]
+];
 
 // Called on app load to deliver anything a signed-in user is owed (ayah of the
 // day, daily digest). This is what makes scheduled times work without a
@@ -1055,6 +1118,25 @@ app.post("/api/salah", requireLogin, async function(req, res){
             name: String(req.body.name),
             value: String(req.body.value)
         });
+
+        // Event-driven: this request is the trigger, so no scheduler is
+        // involved. Restored verbatim from the EJS /salah route - the API port
+        // dropped it, so the Salah Tracker module was savable from the settings
+        // panel, appeared enabled, and was never delivered by anything. Nothing
+        // else in the codebase can fire it: it is not in SCHEDULED_KEYS (only
+        // ayahOfTheDay and salahTimings run on a clock) and buildSalahLogMessage
+        // was otherwise reachable solely from buildModulePreview, the manual
+        // "Send now" preview.
+        //
+        // `date`, not a locale-formatted label: recordSalah stores the normalised
+        // YYYY-MM-DD key and buildSalahLogMessage filters on e.date === dateLabel,
+        // so the two must match. The EJS version passed a long-form date because
+        // EJS stored one - passing that here would match nothing and silently
+        // render "Nothing logged yet today."
+        if (botIsConfigured() && req.isAuthenticated && notify.wantsEvent(req.user, "salahTracker")) {
+            await notify.safeDeliver(req.user, notify.buildSalahLogMessage(req.user, date));
+        }
+
         res.json({ entries: updated });
     } catch (err) {
         console.error("api/salah POST:", err.message);
