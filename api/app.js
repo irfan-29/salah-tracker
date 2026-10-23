@@ -473,6 +473,27 @@ const HOME_OPTIONS = {
     settings: 'Settings'
 };
 
+// defaultHome value -> the route that actually exists in the SPA.
+//
+// HOME_OPTIONS is the label list rendered in the settings dropdown, and several
+// of its values predate the React migration and no longer have a page of their
+// own: "audio" is now a tab inside /quran, "salah-tracker" is /salah (that is
+// its nav label), and "analytics" never had a route at all. Redirecting to the
+// raw value would land those on the 404 page, so map them explicitly.
+// Anything unmapped falls back to /quran, which is where "/" went before this
+// endpoint existed - so an unexpected stored value cannot make the app worse
+// than it was.
+const HOME_PATHS = {
+    salah: "/salah",
+    quran: "/quran",
+    audio: "/quran",
+    "salah-tracker": "/salah",
+    "salah-timings": "/salah-timings",
+    challenges: "/challenges",
+    posts: "/posts",
+    settings: "/settings"
+};
+
 const LOCATION_OPTIONS = ['Coimbatore', 'Hosur', 'Salem', 'Ramanathapuram', 'Bengaluru'];
 
 // POST methods
@@ -923,6 +944,54 @@ app.get("/api/session", function(req, res){
     res.json({
         isLoggedIn: Boolean(req.isAuthenticated && req.isAuthenticated()),
         username: (req.isAuthenticated && req.isAuthenticated() && req.user.username) || null
+    });
+});
+
+// Everything the shell needs to render correctly on the first frame.
+//
+// The EJS app resolved the theme server-side and inlined it into <head>, so a
+// dark-mode reader got a dark page immediately. The SPA boot only asked for
+// /api/session, and the theme was applied by SettingsPage - which meant a fresh
+// tab painted light and stayed light until the reader opened Settings. The
+// "Default Home Page" setting was in the same state: / was hard-wired to the
+// Quran page, so choosing anything else in Settings changed nothing.
+//
+// Deliberately small: no upstream catalogues, no reciters, no editions. That is
+// /api/settings. This has to stay cheap enough to block the first paint on, so
+// it only reads settings that are already in memory (req.user for a signed-in
+// visitor, the signed guest cookie otherwise).
+//
+// no-store on purpose: the payload carries the session identity. A cached copy
+// would show one account's name and theme to the next person on a shared
+// browser. The theme is cached separately in localStorage, for paint only.
+app.get("/api/app/meta", async function(req, res){
+    const isLoggedIn = Boolean(req.isAuthenticated && req.isAuthenticated());
+
+    let settings = {};
+    try {
+        settings = await userData.getSettings(req);
+    } catch (err) {
+        // A boot endpoint must not take the shell down with it. Defaults are a
+        // better outcome than an error page; Settings will show the real values
+        // when it loads.
+        console.error("api/app/meta:", err.message);
+    }
+
+    // Resolve once. `settings.defaultHome || "salah"` and a lookup keyed on the
+    // raw value can disagree when the raw value is falsy - which is exactly the
+    // bug that made "/" ignore a stored "salah" for any guest who had saved a
+    // setting. One variable cannot drift from itself.
+    const defaultHome = settings.defaultHome || "salah";
+
+    res.set("Cache-Control", "no-store");
+    res.json({
+        session: {
+            isLoggedIn,
+            username: (isLoggedIn && req.user.username) || null
+        },
+        theme: settings.theme === "dark" ? "dark" : "light",
+        defaultHome,
+        homePath: HOME_PATHS[defaultHome] || "/quran"
     });
 });
 

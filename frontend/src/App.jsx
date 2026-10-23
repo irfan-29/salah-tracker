@@ -1,10 +1,12 @@
-import { useEffect, useState } from 'react';
-import { Routes, Route, useLocation } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AudioProvider } from './components/AudioProvider';
+import Loader from './components/Loader';
 import Navbar from './components/Navbar';
 import Player from './components/Player';
-import { SessionProvider } from './hooks/useSession';
+import { SessionProvider, useSession, THEME_STORAGE_KEY } from './hooks/useSession';
 import useShareHandler from './hooks/useShareHandler';
+import { api } from './services/api';
 import QuranPage from './pages/QuranPage';
 import ChallengesPage from './pages/ChallengesPage';
 import SalahPage from './pages/SalahPage';
@@ -53,21 +55,79 @@ function Shell() {
   // covers every route; without it the buttons render but do nothing.
   useShareHandler();
 
-  // null means "not known yet" - distinct from false. Pages that gate on it
-  // wait rather than briefly showing the signed-out UI.
-  const [session, setSession] = useState(null);
+  // Boot metadata: who is signed in, which theme to paint, and where "/" goes.
+  // null means "not known yet" - distinct from a signed-out payload. The shell
+  // waits for it rather than painting a guess, because a wrong guess here is
+  // visible: the signed-out navbar flashes, then the theme flips.
+  const [meta, setMeta] = useState(null);
+  const [booted, setBooted] = useState(false);
+
+  // Re-read the same payload in place after something it carries changes, so a
+  // settings save does not need a full page reload. Returns the fresh payload so
+  // callers can act on it, or null if it could not be read.
+  const refresh = useCallback(async () => {
+    try {
+      const data = await api.get('/app/meta');
+      setMeta(data);
+      return data;
+    } catch (err) {
+      return null;
+    }
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
-    fetch('/api/session', { credentials: 'same-origin' })
-      .then((r) => r.json())
-      .then((data) => { if (!cancelled) setSession(data); })
-      .catch(() => {});
+    api.get('/app/meta')
+      .then((data) => {
+        if (cancelled) return;
+        setMeta(data);
+        setBooted(true);
+      })
+      .catch(() => {
+        // A failed boot request must still show the app. The guest defaults are
+        // what a signed-out visitor gets anyway, and every page re-checks its
+        // own data.
+        if (!cancelled) setBooted(true);
+      });
     return () => { cancelled = true; };
   }, []);
 
-  const resolved = session || { isLoggedIn: null, username: null };
+  // Apply a theme and remember it for the next first paint. The inline script in
+  // index.html reads the same key before any bundle downloads, so a dark-mode
+  // reader does not get a white flash while React boots.
+  const setTheme = useCallback((value) => {
+    const next = value === 'dark' ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', next);
+    try {
+      localStorage.setItem(THEME_STORAGE_KEY, next);
+    } catch (err) {
+      // Storage disabled or private mode: the theme still applies to this page.
+    }
+    setMeta((current) => {
+      // Same value: keep the object identity, or the effect below would loop.
+      if (!current || current.theme === next) return current;
+      return { ...current, theme: next };
+    });
+  }, []);
 
+  const metaTheme = meta ? meta.theme : null;
+  useEffect(() => {
+    if (metaTheme) setTheme(metaTheme);
+  }, [metaTheme, setTheme]);
+
+  const resolved = useMemo(() => ({
+    isLoggedIn: meta && meta.session ? meta.session.isLoggedIn : null,
+    username: meta && meta.session ? meta.session.username : null,
+    // The route "/" redirects to. Null only if the boot request failed, which
+    // HomeRedirect handles with the pre-existing /quran fallback.
+    homePath: meta ? meta.homePath : null,
+    setTheme,
+    refresh,
+  }), [meta, setTheme, refresh]);
+
+  // Auth routes render their own standalone cards and do not need the shell's
+  // metadata (or its navbar). They do still get the theme, because setTheme
+  // above writes straight to <html>.
   if (AUTH_PATHS.includes(pathname)) {
     return (
       <Routes>
@@ -78,12 +138,21 @@ function Shell() {
     );
   }
 
+  // Hold the shell back until the first meta response (or its failure) so the
+  // navbar never paints a signed-out flash and the page never paints the wrong
+  // theme. The boot loader was removed after the first React paint, so this is
+  // the same branded loader continuing, not a second one appearing.
+  if (!booted) return <Loader variant="fullPage" label="Loading" />;
+
   return (
     <SessionProvider value={resolved}>
       <Navbar session={resolved} />
       <div className="main-content">
         <Routes>
-          <Route path="/" element={<QuranPage />} />
+          {/* "/" is the configured Default Home Page, as it was in the EJS app
+              (which redirected server-side). Hard-wiring it to the Quran page
+              made that setting do nothing at all. */}
+          <Route path="/" element={<HomeRedirect />} />
           <Route path="/quran" element={<QuranPage />} />
           <Route path="/surah/:surahNo" element={<SurahPage />} />
           <Route path="/challenges" element={<ChallengesPage />} />
@@ -103,4 +172,13 @@ function Shell() {
       <Player />
     </SessionProvider>
   );
+}
+
+function HomeRedirect() {
+  const { homePath } = useSession();
+
+  // The shell renders only once boot has settled, so a null here means the meta
+  // request failed rather than "still loading". Falling back to /quran is what
+  // "/" did before this change, and it is better than a loader that never ends.
+  return <Navigate to={homePath || '/quran'} replace />;
 }

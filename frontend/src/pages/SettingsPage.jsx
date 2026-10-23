@@ -61,7 +61,10 @@ function SelectRow({ label, hint, value, options, onChange, renderLabel }) {
 }
 
 export default function SettingsPage() {
-  const { isLoggedIn } = useSession();
+  // setTheme keeps the shell's boot metadata in step with the choice, and writes
+  // the value the pre-paint script reads; refresh re-reads the rest of the meta
+  // (default home) so a save does not need a page reload.
+  const { isLoggedIn, setTheme, refresh } = useSession();
   const [data, setData] = useState(null);
   const [loadError, setLoadError] = useState('');
   const theme = useSection();
@@ -92,13 +95,13 @@ export default function SettingsPage() {
     return () => { cancelled = true; };
   }, []);
 
-  // Apply the theme to the document immediately, since it is the one setting
-  // that visibly changes something the moment it is picked.
+  // The shell applies the theme at boot from /api/app/meta, so this is a
+  // fallback for the case where that request failed and this page is the only
+  // place that knows the stored value. It goes through setTheme rather than
+  // setting the attribute directly, so the pre-paint storage key stays in step.
   useEffect(() => {
-    if (data && data.settings.theme) {
-      document.documentElement.setAttribute('data-theme', data.settings.theme);
-    }
-  }, [data]);
+    if (data && data.settings.theme) setTheme(data.settings.theme);
+  }, [data, setTheme]);
 
   // Editions are no longer in the settings payload - they are fetched when the
   // dropdown opens, and searched on the server. The whole catalogue is 98
@@ -249,11 +252,19 @@ export default function SettingsPage() {
             <input type="radio" name="theme" value={opt.value}
                    checked={s.theme === opt.value}
                    onChange={async () => {
-                     // Applied to the document as well as saved, so the change is
-                     // visible immediately instead of on the next navigation.
-                     document.documentElement.setAttribute('data-theme', opt.value);
-                     await theme.save({ theme: opt.value });
-                     setData({ ...data, settings: { ...s, theme: opt.value } });
+                     // Paint immediately through the shared setter, so the
+                     // change is visible before the round-trip and the value is
+                     // already in storage for the next first paint.
+                     setTheme(opt.value);
+                     if (await theme.save({ theme: opt.value })) {
+                       setData({ ...data, settings: { ...s, theme: opt.value } });
+                       // Keep the shell's meta copy in step; no reload needed.
+                       refresh();
+                     } else {
+                       // The save failed. Undo the optimistic paint so what is
+                       // on screen matches what is actually stored.
+                       setTheme(s.theme);
+                     }
                    }} />
             <span className="material-symbols-rounded">{opt.icon}</span>
             <span>{opt.label}</span>
@@ -266,7 +277,11 @@ export default function SettingsPage() {
       <SelectRow label="Default Home Page" value={s.defaultHome}
         options={Object.entries(data.homeOptions).map(([value, label]) => ({ value, label }))}
         onChange={async (value) => {
-          if (await theme.save({ defaultHome: value })) setData({ ...data, settings: { ...s, defaultHome: value } });
+          if (await theme.save({ defaultHome: value })) {
+            setData({ ...data, settings: { ...s, defaultHome: value } });
+            // "/" reads homePath from the shell's meta, so it has to be told.
+            refresh();
+          }
         }} />
 
       {/* Font */}

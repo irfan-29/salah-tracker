@@ -4,6 +4,31 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Salah Tracker</title>
+    <!--
+      Theme before first paint.
+
+      The theme is a per-account setting that lives behind /api/app/meta, which
+      cannot answer until the bundle has run - by which time a dark-mode reader
+      has already been shown a white page. So the last applied theme is mirrored
+      into localStorage and replayed here, synchronously, before the stylesheet
+      or any script loads. The app re-applies the authoritative value when meta
+      arrives, and overwrites this key whenever the theme changes.
+
+      Deliberately duplicated with THEME_STORAGE_KEY in hooks/useSession.jsx: an
+      inline script cannot import from the bundle it is racing.
+    -->
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem('salah-theme');
+          if (stored === 'dark' || stored === 'light') {
+            document.documentElement.setAttribute('data-theme', stored);
+          }
+        } catch (err) {
+          /* Storage can throw in private mode. The default theme still applies. */
+        }
+      })();
+    </script>
     <!-- Bootstrap. The React app uses .form-floating, .d-flex,
          .justify-content-between, .gap-2, .text-muted, .bg-light, .p-2 and
          .table across several pages, but the React entry point never loaded it -
@@ -38,6 +63,16 @@
         background: #f8fafc;
       }
       #boot-loader[hidden] { display: none; }
+
+      /*
+        The loader has to respect the theme too. It is the first thing painted,
+        so hard-coding a light background produced a full-screen white flash for
+        dark-mode readers before the app took over - the exact thing the
+        pre-paint script above exists to prevent.
+      */
+      [data-theme="dark"] #boot-loader { background: #0b1120; }
+      [data-theme="dark"] #boot-loader .track { stroke: #1e293b; }
+      [data-theme="dark"] #boot-loader .label { color: #94a3b8; }
 
       #boot-loader .ring {
         position: relative;

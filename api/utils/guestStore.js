@@ -97,6 +97,24 @@ function sanitize(raw) {
           : undefined
       } : undefined
     };
+
+    // Drop keys that sanitised to nothing.
+    //
+    // JSON.stringify already omits undefined when the cookie is WRITTEN, so the
+    // cookie itself never carries these keys. But sanitize also rebuilds the
+    // object on every READ, and it re-adds each whitelisted key as `undefined`.
+    // getSettings does `{ ...defaults(), ...guest.settings }`, so those explicit
+    // undefineds overwrote the defaults rather than deferring to them: a guest
+    // who changed nothing but the theme came back with no location, no reciter,
+    // no font and no editions.
+    //
+    // It stayed hidden because /api/settings re-applies its own `|| default` to
+    // every single field, which is precisely what a defaults-merge is for. The
+    // first code to read a setting raw - the homePath lookup in /api/app/meta -
+    // surfaced it immediately as "/" going to the wrong page.
+    out.settings = Object.fromEntries(
+      Object.entries(out.settings).filter(([, value]) => value !== undefined)
+    );
   }
 
   if (raw.telegramChatId) out.telegramChatId = String(raw.telegramChatId).replace(/[^\d-]/g, "").slice(0, 24);
