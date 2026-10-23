@@ -257,3 +257,132 @@ if (orderProblems.length) {
   console.error("\nMove the hook above every early return in its function.");
   process.exit(1);
 }
+
+// ---- Unbound identifiers ----------------------------------------------------
+//
+// The same failure as the missing hook import, one step wider. Navbar called
+// `api.post('/auth/logout')` without importing `api`. That call sat inside a
+// try/catch, so the ReferenceError was swallowed; the reload that followed made
+// Sign out LOOK like it worked while the session was never destroyed.
+//
+// Vite and Rollup resolve imports, but a bare name is a legal global lookup, so
+// neither the build nor the browser complains until that line runs. This walks
+// the module's real scope: a name counts as bound only when an import, const,
+// function, class, parameter or catch clause in the same module introduces it.
+//
+// The allowlist is the platform itself - browser and ECMAScript globals a module
+// may reference without importing. Keep it to things the runtime defines; never
+// add an app symbol such as `api` to silence a report.
+const traverse = (() => {
+  const mod = require(require.resolve("@babel/traverse", {
+    paths: [path.join(__dirname, "..", "frontend")],
+  }));
+  return mod.default || mod;
+})();
+
+const PLATFORM_GLOBALS = new Set([
+  // ECMAScript
+  "Array", "ArrayBuffer", "BigInt", "BigInt64Array", "BigUint64Array", "Boolean",
+  "DataView", "Date", "decodeURI", "decodeURIComponent", "encodeURI",
+  "encodeURIComponent", "Error", "EvalError", "FinalizationRegistry",
+  "Float32Array", "Float64Array", "Function", "globalThis", "Infinity",
+  "Int8Array", "Int16Array", "Int32Array", "Intl", "JSON", "Map", "Math", "NaN",
+  "Number", "Object", "parseFloat", "parseInt", "Promise", "Proxy", "RangeError",
+  "ReferenceError", "Reflect", "RegExp", "Set", "SharedArrayBuffer", "String",
+  "Symbol", "SyntaxError", "TypeError", "Uint8Array", "Uint8ClampedArray",
+  "Uint16Array", "Uint32Array", "URIError", "WeakMap", "WeakRef", "WeakSet",
+  "arguments", "isFinite", "isNaN", "queueMicrotask", "structuredClone",
+  "undefined",
+  // Browser
+  "AbortController", "AbortSignal", "Audio", "AudioContext", "AudioBuffer",
+  "Blob", "CSS", "CustomEvent", "DOMParser", "DOMTokenList", "DragEvent",
+  "Element", "Event", "EventTarget", "File", "FileReader", "FocusEvent",
+  "FormData", "HTMLAudioElement", "HTMLCanvasElement", "HTMLElement",
+  "HTMLInputElement", "HTMLVideoElement", "Headers", "Image", "InputEvent",
+  "IntersectionObserver", "IntersectionObserverEntry", "KeyboardEvent",
+  "MediaQueryList", "MessageEvent", "MouseEvent", "MutationObserver", "Node",
+  "NodeList", "PointerEvent", "PerformanceObserver", "Request", "ResizeObserver",
+  "Response", "TouchEvent", "URL", "URLSearchParams", "WheelEvent",
+  "XMLSerializer", "alert", "atob", "btoa", "cancelAnimationFrame",
+  "cancelIdleCallback", "clearInterval", "clearTimeout", "confirm", "console",
+  "crypto", "devicePixelRatio", "dispatchEvent", "document", "fetch", "frames",
+  "getComputedStyle", "getSelection", "history", "innerHeight", "innerWidth",
+  "localStorage", "location", "matchMedia", "navigator", "open", "pageXOffset",
+  "pageYOffset", "performance", "prompt", "requestAnimationFrame",
+  "requestIdleCallback", "screen", "scroll", "scrollBy", "scrollTo", "self",
+  "sessionStorage", "setInterval", "setTimeout", "top", "webkitAudioContext",
+  "window",
+]);
+
+const unboundProblems = new Map();
+
+for (const file of walk(SRC)) {
+  const source = fs.readFileSync(file, "utf8");
+  const rel = path.relative(path.join(__dirname, ".."), file);
+
+  let ast;
+  try {
+    ast = parser.parse(source, {
+      sourceType: "module",
+      plugins: ["jsx"],
+      errorRecovery: true,
+    });
+  } catch (err) {
+    console.error(`Could not parse ${rel}: ${err.message}`);
+    process.exit(1);
+  }
+
+  // One report per file+name: the same unresolved symbol usually appears many
+  // times, and the first line that uses it is the one to fix.
+  const report = (node) => {
+    const key = `${rel}\u0000${node.name}`;
+    if (!unboundProblems.has(key)) {
+      unboundProblems.set(key, {
+        rel,
+        name: node.name,
+        line: node.loc ? node.loc.start.line : 0,
+      });
+    }
+  };
+
+  traverse(ast, {
+    ReferencedIdentifier(p) {
+      const name = p.node.name;
+      if (PLATFORM_GLOBALS.has(name)) return;
+      // `true` = only real module bindings, not the implicit global scope.
+      if (p.scope.hasBinding(name, true)) return;
+      report(p.node);
+    },
+
+    // JSX component names are not ordinary references, so they need their own
+    // visitor. Intrinsic tags (<div>) are strings at runtime and are skipped.
+    JSXIdentifier(p) {
+      const parent = p.parent;
+      let isTagRoot = false;
+      if ((parent.type === "JSXOpeningElement" || parent.type === "JSXClosingElement") &&
+          parent.name === p.node) {
+        isTagRoot = true;
+      } else if (parent.type === "JSXMemberExpression" && parent.object === p.node) {
+        isTagRoot = true;
+      }
+      if (!isTagRoot) return;
+
+      const name = p.node.name;
+      if (/^[a-z]/.test(name)) return;
+      if (PLATFORM_GLOBALS.has(name)) return;
+      if (p.scope.hasBinding(name, true)) return;
+      report(p.node);
+    },
+  });
+}
+
+if (unboundProblems.size) {
+  console.error("Unbound identifier(s) - these build but throw a ReferenceError at runtime:\n");
+  for (const { rel, name, line } of unboundProblems.values()) {
+    console.error(`  ${rel}:${line}  ${name}`);
+  }
+  console.error("\nFix: import the name, or define it in the module.");
+  process.exit(1);
+}
+
+console.log("No unbound identifiers.");

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { api } from '../services/api';
 
 // Emits the same markup and class names as views/navbar.ejs, so the shared
 // stylesheet applies unchanged. The first React version defined a parallel set
@@ -39,8 +40,9 @@ export default function Navbar({ session }) {
       // A failed sign-out must not leave the user believing they are signed out,
       // so fall through to a reload anyway and let the server decide.
     }
-    // Full reload, not a route change: the shell reads /api/session, and the
-    // session cookie is only cleared by a navigation the browser accepts.
+    // Full reload, not a route change: signing out has to reset everything the
+    // session owned (the audio player, in-flight page state), and the shell
+    // re-reads /api/app/meta from scratch on load.
     window.location.href = '/';
   }, []);
 
