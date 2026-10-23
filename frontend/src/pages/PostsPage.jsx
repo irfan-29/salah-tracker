@@ -1,15 +1,66 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { posts as api } from '../services/api';
+import { useSession } from '../hooks/useSession';
 import Loader from '../components/Loader';
 import NotFound from './NotFound';
 
 // Reuses views/post-card.ejs's markup, which the shared stylesheet already
 // styles. The card is factored out because the feed, a profile and a permalink
 // all render it, and three copies is how they drift.
-export function PostCard({ post, permalinkBase = '' }) {
+export function PostCard({ post, permalinkBase = '', canManage, onChanged, onDeleted }) {
+  const { username } = useSession();
+  const [editing, setEditing] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [removed, setRemoved] = useState(false);
+  const [error, setError] = useState('');
+
+  // Profile responses do not populate `author` (every post there belongs to the
+  // profile owner), so that page passes an explicit canManage. Everywhere else
+  // the post carries its populated author.
+  const owned = canManage !== undefined
+    ? canManage
+    : Boolean(username && post.author && post.author.username === username);
+
   const handle = post.author && post.author.username ? post.author.username : null;
   const permalink = permalinkBase + '/post/' + post._id;
+
+  async function handleDelete() {
+    if (deleting) return;
+    if (!window.confirm('Delete this post? This cannot be undone.')) return;
+
+    setDeleting(true);
+    setError('');
+    try {
+      await api.remove(post._id);
+      setRemoved(true);
+      if (onDeleted) onDeleted(post);
+    } catch (err) {
+      setError(err.status === 401 ? 'Sign in to delete this post.' : 'Could not delete that post.');
+      setDeleting(false);
+    }
+  }
+
+  if (removed) return null;
+
+  if (editing) {
+    return (
+      <PostForm
+        post={post}
+        onClose={() => setEditing(false)}
+        onSaved={(updated) => {
+          setEditing(false);
+          if (onChanged) onChanged(updated);
+        }}
+      />
+    );
+  }
+
+  const date = (
+    <p className="post-date">
+      <Link className="post-permalink" to={`/post/${post._id}`}>{post.postedDate}</Link>
+    </p>
+  );
 
   return (
     <div className={`post-card${post.isVideo ? ' post-card-video' : ''}`}>
@@ -23,36 +74,57 @@ export function PostCard({ post, permalinkBase = '' }) {
           <span className="post-author post-author-anonymous">{post.authorName}</span>
         ) : null}
 
-        <button type="button" className="post-share" data-share-url={permalink} title="Copy link to this post">
-          <span className="material-symbols-rounded">link</span>
-          <span className="post-share-label">Share</span>
-        </button>
+        <div className="post-card-actions">
+          {owned && (
+            <>
+              <button type="button" className="post-share" onClick={() => setEditing(true)}
+                      title="Edit this post" aria-label="Edit post">
+                <span className="material-symbols-rounded">edit</span>
+                <span className="post-share-label">Edit</span>
+              </button>
+              <button type="button" className="post-share post-share-danger" onClick={handleDelete}
+                      disabled={deleting} title="Delete this post" aria-label="Delete post">
+                <span className="material-symbols-rounded">delete</span>
+                <span className="post-share-label">{deleting ? 'Deleting…' : 'Delete'}</span>
+              </button>
+            </>
+          )}
+          <button type="button" className="post-share" data-share-url={permalink}
+                  title="Copy link to this post" aria-label="Copy link to this post">
+            <span className="material-symbols-rounded">link</span>
+            <span className="post-share-label">Share</span>
+          </button>
+        </div>
       </div>
+
+      {error && <p className="post-error" role="alert">{error}</p>}
 
       {post.isVideo ? (
         <>
           <div className="post-video-embed">
             <iframe src={`https://www.youtube.com/embed/${post.content}`} allowFullScreen title="Embedded video" />
           </div>
-          {post.reference && <p className="post-reference">{post.reference}</p>}
+          {/* The player is edge-to-edge, so the caption sits in the same inset
+              the rest of the card uses instead of on the border. */}
+          <div className="post-card-body">
+            {post.reference && <p className="post-reference">{post.reference}</p>}
+            {date}
+          </div>
         </>
       ) : (
         <>
           <p className="post-content">{post.content}</p>
           {post.reference && <p className="post-reference">Reference: {post.reference}</p>}
+          {date}
         </>
       )}
-
-      <p className="post-date">
-        <Link className="post-permalink" to={`/post/${post._id}`}>{post.postedDate}</Link>
-      </p>
     </div>
   );
 }
 
 export function PostsPage() {
   const [data, setData] = useState({ loading: true, posts: [], permalinkBase: '' });
-  const [composing, setComposing] = useState(false);
+  const [composing, setComposing] = useState(null);
 
   const load = useCallback(async () => {
     setData((d) => ({ ...d, loading: true }));
@@ -74,67 +146,103 @@ export function PostsPage() {
       </div>
 
       <div className="post-actions">
-        <button type="button" className="btn btn-primary" onClick={() => setComposing(true)}>
+        <button type="button" className="btn btn-primary" onClick={() => setComposing('text')}>
           <span className="material-symbols-rounded" style={{ fontSize: '1.1rem' }}>edit_note</span>
           Add Post
         </button>
-        <button type="button" className="btn btn-outline-primary" onClick={() => setComposing(true)}>
+        <button type="button" className="btn btn-outline-primary" onClick={() => setComposing('video')}>
           <span className="material-symbols-rounded" style={{ fontSize: '1.1rem' }}>videocam</span>
           Add Video
         </button>
       </div>
 
       {composing && (
-        <ComposeForm onClose={() => setComposing(false)} onSaved={async () => { setComposing(false); await load(); }} />
+        <PostForm
+          initialVideo={composing === 'video'}
+          onClose={() => setComposing(null)}
+          onSaved={async () => { setComposing(null); await load(); }}
+        />
       )}
 
       {data.loading ? <Loader variant="inline" label="Loading posts" /> : data.posts.length === 0 ? (
         <p className="post-empty">No posts yet.</p>
       ) : (
-        data.posts.map((post) => <PostCard key={post._id} post={post} permalinkBase={data.permalinkBase} />)
+        data.posts.map((post) => (
+          <PostCard
+            key={post._id}
+            post={post}
+            permalinkBase={data.permalinkBase}
+            onChanged={(updated) => setData((d) => ({
+              ...d,
+              posts: d.posts.map((p) => (p._id === updated._id ? updated : p)),
+            }))}
+            onDeleted={(deleted) => setData((d) => ({
+              ...d,
+              posts: d.posts.filter((p) => p._id !== deleted._id),
+            }))}
+          />
+        ))
       )}
     </>
   );
 }
 
-function ComposeForm({ onClose, onSaved }) {
-  const [isVideo, setIsVideo] = useState(false);
-  const [link, setLink] = useState('');
-  const [content, setContent] = useState('');
-  const [reference, setReference] = useState('');
+// Seed the edit field with something a person recognises. Stored values are
+// bare YouTube ids, but a legacy row may already hold a full URL.
+function videoLink(content) {
+  const value = String(content || '');
+  if (!value) return '';
+  return /^https?:\/\//i.test(value) ? value : `https://youtu.be/${value}`;
+}
+
+function PostForm({ post, initialVideo = false, onClose, onSaved }) {
+  const editing = Boolean(post);
+  const [isVideo, setIsVideo] = useState(post ? Boolean(post.isVideo) : initialVideo);
+  const [link, setLink] = useState(post && post.isVideo ? videoLink(post.content) : '');
+  const [content, setContent] = useState(post && !post.isVideo ? (post.content || '') : '');
+  const [reference, setReference] = useState(post ? (post.reference || '') : '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  // youtu.be/<id>?... -> <id>; otherwise pass through, matching the EJS route.
+  // Accept the URL forms people actually paste. The stored value is only the
+  // id, because the card builds `embed/<id>`; storing a full watch URL would
+  // make the player request embed/https://... and fail.
   function extractId(raw) {
-    const match = String(raw || '').split('youtu.be/')[1];
-    return match ? match.split('?')[0] : String(raw || '').trim();
+    const value = String(raw || '').trim();
+    const match = value.match(/youtu\.be\/([A-Za-z0-9_-]{6,})/)
+      || value.match(/[?&]v=([A-Za-z0-9_-]{6,})/)
+      || value.match(/\/embed\/([A-Za-z0-9_-]{6,})/)
+      || value.match(/\/shorts\/([A-Za-z0-9_-]{6,})/);
+    return match ? match[1] : value;
   }
+
+  const canSave = isVideo ? Boolean(link.trim()) : Boolean(content.trim());
 
   async function submit() {
     setSaving(true);
     setError('');
     try {
-      await api.create({
+      const payload = {
         content: isVideo ? extractId(link) : content,
-        reference: isVideo ? descriptionOf() : reference,
-        isVideo
-      });
-      await onSaved();
+        reference,
+        isVideo,
+      };
+      const result = editing ? await api.update(post._id, payload) : await api.create(payload);
+      await onSaved(result && result.post);
     } catch (err) {
-      setError(err.status === 401 ? 'Sign in to add a post.' : 'Could not save that post.');
+      if (err.status === 401) setError('Sign in to save this post.');
+      else if (err.status === 403) setError('You can only edit your own posts.');
+      else setError(editing ? 'Could not save those changes.' : 'Could not save that post.');
     } finally {
       setSaving(false);
     }
   }
 
-  // For a video the "reference" is the description, which is what the EJS form
-  // submitted too - one field, different label.
-  const descriptionOf = () => reference;
-
   return (
     <div className="container1">
-      <div className="card-header"><h3>{isVideo ? 'Add Video' : 'Add Post'}</h3></div>
+      <div className="card-header">
+        <h3>{editing ? (isVideo ? 'Edit Video' : 'Edit Post') : (isVideo ? 'Add Video' : 'Add Post')}</h3>
+      </div>
 
       {isVideo && (
         <div className="form-floating">
@@ -161,13 +269,17 @@ function ComposeForm({ onClose, onSaved }) {
       {error && <div className="auth-alert" role="alert"><span className="material-symbols-rounded">error</span>{error}</div>}
 
       <div className="new-task">
-        <button type="button" className="btn btn-primary" onClick={submit} disabled={saving}>
-          {saving ? 'Saving…' : 'Save'}
+        <button type="button" className="btn btn-primary" onClick={submit} disabled={saving || !canSave}>
+          {saving ? 'Saving…' : editing ? 'Save changes' : 'Save'}
         </button>
         <button type="button" className="btn btn-outline" style={{ marginLeft: '0.5rem' }} onClick={onClose}>Cancel</button>
-        <button type="button" className="btn btn-link" style={{ marginLeft: '0.5rem' }} onClick={() => setIsVideo((v) => !v)}>
-          {isVideo ? 'Post text instead' : 'Post a video instead'}
-        </button>
+        {/* Changing type after creation would repurpose `content` from a body
+            into a YouTube id, so the toggle only exists while composing. */}
+        {!editing && (
+          <button type="button" className="btn btn-link" style={{ marginLeft: '0.5rem' }} onClick={() => setIsVideo((v) => !v)}>
+            {isVideo ? 'Post text instead' : 'Post a video instead'}
+          </button>
+        )}
       </div>
     </div>
   );
@@ -175,6 +287,7 @@ function ComposeForm({ onClose, onSaved }) {
 
 export function PostPage() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [state, setState] = useState({ loading: true, post: null, permalinkBase: '' });
 
   useEffect(() => {
@@ -206,7 +319,12 @@ export function PostPage() {
         </p>
       </div>
 
-      <PostCard post={post} permalinkBase={state.permalinkBase} />
+      <PostCard
+        post={post}
+        permalinkBase={state.permalinkBase}
+        onChanged={(updated) => setState((s) => ({ ...s, post: updated }))}
+        onDeleted={() => navigate('/posts')}
+      />
       <p className="post-back"><Link to="/posts">&larr; Back to all posts</Link></p>
     </>
   );
@@ -253,7 +371,24 @@ export function ProfilePage() {
       {posts.length === 0 ? (
         <p className="post-empty">{isOwner ? 'You have not posted anything yet.' : 'This user has not posted anything yet.'}</p>
       ) : (
-        posts.map((post) => <PostCard key={post._id} post={post} permalinkBase={permalinkBase} />)
+        posts.map((post) => (
+          <PostCard
+            key={post._id}
+            post={post}
+            permalinkBase={permalinkBase}
+            // The profile payload leaves `author` as an id, so ownership comes
+            // from the profile-level flag rather than from the post itself.
+            canManage={isOwner}
+            onChanged={(updated) => setState((s) => (s.data ? {
+              ...s,
+              data: { ...s.data, posts: s.data.posts.map((p) => (p._id === updated._id ? updated : p)) },
+            } : s))}
+            onDeleted={(deleted) => setState((s) => (s.data ? {
+              ...s,
+              data: { ...s.data, posts: s.data.posts.filter((p) => p._id !== deleted._id) },
+            } : s))}
+          />
+        ))
       )}
     </>
   );

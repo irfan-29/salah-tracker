@@ -1234,7 +1234,9 @@ app.post("/api/posts", requireLogin, async function(req, res){
 
     const content = String(req.body.content || "").trim();
     const isVideo = Boolean(req.body.isVideo);
-    if (!content && !isVideo) return res.status(400).json({ error: "empty-post" });
+    // A video's content is its link; without one the embed is blank. The old
+    // check only guarded text posts, so an empty video was accepted.
+    if (!content) return res.status(400).json({ error: "empty-post" });
 
     try {
         const post = await Posts.create({
@@ -1265,6 +1267,56 @@ app.get("/api/posts/:id", async function(req, res){
         res.json({ post, permalinkBase: originOf(req) });
     } catch (err) {
         console.error("api/posts/:id:", err.message);
+        res.status(500).json({ error: "failed" });
+    }
+});
+
+// Edit a post. Ownership is decided from the stored author id, never from
+// anything in the body: the feed and profiles are public, so a client can send
+// any id it likes and the endpoint has to be the one that says no.
+//
+// The post type is fixed at creation. A video's `content` is a YouTube id and a
+// text post's is its body, so allowing isVideo to flip here would let an edit
+// quietly change which one the value means.
+app.patch("/api/posts/:id", requireLogin, async function(req, res){
+    if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ error: "not-found" });
+    try {
+        const post = await Posts.findById(req.params.id);
+        if (!post) return res.status(404).json({ error: "not-found" });
+        if (!post.author || String(post.author) !== String(req.user._id)) {
+            return res.status(403).json({ error: "forbidden" });
+        }
+
+        const content = String(req.body.content || "").trim();
+        if (!content) return res.status(400).json({ error: "empty-post" });
+
+        post.content = content;
+        post.reference = String(req.body.reference || "").trim();
+        await post.save();
+
+        const populated = await post.populate("author", "username name");
+        res.json({ post: populated });
+    } catch (err) {
+        console.error("api/posts/:id PATCH:", err.message);
+        res.status(500).json({ error: "failed" });
+    }
+});
+
+// Delete a post. Same ownership rule as PATCH. The feed is public, so the
+// permalink is too - being able to read one is not permission to remove it.
+app.delete("/api/posts/:id", requireLogin, async function(req, res){
+    if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ error: "not-found" });
+    try {
+        const post = await Posts.findById(req.params.id);
+        if (!post) return res.status(404).json({ error: "not-found" });
+        if (!post.author || String(post.author) !== String(req.user._id)) {
+            return res.status(403).json({ error: "forbidden" });
+        }
+
+        await post.deleteOne();
+        res.json({ ok: true });
+    } catch (err) {
+        console.error("api/posts/:id DELETE:", err.message);
         res.status(500).json({ error: "failed" });
     }
 });

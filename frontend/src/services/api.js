@@ -95,6 +95,10 @@ export const posts = {
   list: () => api.get('/posts'),
   create: (payload) => api.post('/posts', payload),
   one: (id) => api.get(`/posts/${id}`),
+  // PATCH, not PUT: only content/reference are accepted, and the server keeps
+  // the post type (text vs video) fixed at creation.
+  update: (id, payload) => api.request(`/posts/${id}`, { method: 'PATCH', body: payload }),
+  remove: (id) => api.request(`/posts/${id}`, { method: 'DELETE' }),
   profile: (username) => api.get(`/u/${encodeURIComponent(username)}`),
 };
 

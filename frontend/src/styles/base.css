@@ -2558,6 +2558,39 @@ hr {
   margin-bottom: 0.75rem;
 }
 
+/* Edit/Delete sit beside Share rather than in a floating menu: the card has no
+   other chrome, and a menu would need click-outside and escape handling for two
+   actions. */
+.post-card-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+/* Video cards run the player edge-to-edge, so the author line above it and the
+   caption below it carry their own inset. With padding: 0 they sat directly on
+   the card's border - the Share button was clipped by the rounded corner and
+   the description/date looked detached from the card. */
+.post-card-video .post-card-head {
+  padding: 1.25rem 1.5rem 0;
+}
+
+.post-card-video .post-error {
+  padding: 0 1.5rem;
+}
+
+.post-card-video .post-date {
+  margin-bottom: 0;
+}
+
+.post-card .post-error {
+  margin: -0.25rem 0 0.75rem;
+  font-size: 0.8125rem;
+  color: var(--color-danger);
+}
+
 /* A username reads as authorship, not as a hyperlink. Kept in the normal text
    colour rather than the brand colour, and never underlined - the browser
    default (blue + underline) turns a feed into a wall of links and reads as
@@ -2645,6 +2678,16 @@ hr {
   border-color: var(--color-primary);
 }
 
+.post-share-danger:hover {
+  color: var(--color-danger);
+  border-color: var(--color-danger);
+}
+
+.post-share:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 /* Brief confirmation after copying, so the click is visibly acknowledged.
    Falls back to grey if the app never sets data-copied. */
 .post-share[data-copied="true"] {
@@ -2655,6 +2698,13 @@ hr {
 
 .post-permalink { color: inherit; text-decoration: none; }
 .post-permalink:hover { text-decoration: underline; }
+
+/* Three labelled pills plus the author line do not fit a phone-width card.
+   The icons keep their title/aria-label, so the actions stay discoverable. */
+@media (max-width: 600px) {
+  .post-card-actions .post-share-label { display: none; }
+  .post-card-actions .post-share { padding: 0.35rem 0.45rem; }
+}
 
 .post-empty {
   padding: 2rem 1rem;
