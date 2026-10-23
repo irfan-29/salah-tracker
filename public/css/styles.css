@@ -2556,13 +2556,48 @@ hr {
 
 /* Edit/Delete sit beside Share rather than in a floating menu: the card has no
    other chrome, and a menu would need click-outside and escape handling for two
-   actions. */
+   actions. Icon-only, like a social feed: the title/aria-label carries the
+   meaning and the 34px circle keeps the tap target usable. */
 .post-card-actions {
   display: flex;
   align-items: center;
   justify-content: flex-end;
   flex-wrap: wrap;
-  gap: 0.4rem;
+  gap: 0.15rem;
+}
+
+.post-card-actions .post-share {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  justify-content: center;
+  border-color: transparent;
+  border-radius: 50%;
+}
+
+.post-card-actions .post-share .material-symbols-rounded { font-size: 1.2rem; }
+
+.post-card-actions .post-share:hover {
+  color: var(--color-text);
+  background: var(--color-border-light);
+  border-color: transparent;
+}
+
+.post-card-actions .post-share.post-share-danger:hover {
+  color: var(--color-danger);
+}
+
+.post-card-actions .post-share:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* Type choice lives inside the compose form, so there is one Add Post button
+   rather than a text/video pair that opens the same form. */
+.post-compose-types {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
 }
 
 /* Video cards run the player edge-to-edge, so the author line above it and the
@@ -2694,13 +2729,6 @@ hr {
 
 .post-permalink { color: inherit; text-decoration: none; }
 .post-permalink:hover { text-decoration: underline; }
-
-/* Three labelled pills plus the author line do not fit a phone-width card.
-   The icons keep their title/aria-label, so the actions stay discoverable. */
-@media (max-width: 600px) {
-  .post-card-actions .post-share-label { display: none; }
-  .post-card-actions .post-share { padding: 0.35rem 0.45rem; }
-}
 
 .post-empty {
   padding: 2rem 1rem;

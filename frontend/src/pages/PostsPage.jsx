@@ -78,21 +78,18 @@ export function PostCard({ post, permalinkBase = '', canManage, onChanged, onDel
           {owned && (
             <>
               <button type="button" className="post-share" onClick={() => setEditing(true)}
-                      title="Edit this post" aria-label="Edit post">
+                      title="Edit post" aria-label="Edit post">
                 <span className="material-symbols-rounded">edit</span>
-                <span className="post-share-label">Edit</span>
               </button>
               <button type="button" className="post-share post-share-danger" onClick={handleDelete}
-                      disabled={deleting} title="Delete this post" aria-label="Delete post">
-                <span className="material-symbols-rounded">delete</span>
-                <span className="post-share-label">{deleting ? 'Deleting…' : 'Delete'}</span>
+                      disabled={deleting} title="Delete post" aria-label="Delete post">
+                <span className="material-symbols-rounded">{deleting ? 'hourglass_top' : 'delete'}</span>
               </button>
             </>
           )}
           <button type="button" className="post-share" data-share-url={permalink}
                   title="Copy link to this post" aria-label="Copy link to this post">
-            <span className="material-symbols-rounded">link</span>
-            <span className="post-share-label">Share</span>
+            <span className="material-symbols-rounded">share</span>
           </button>
         </div>
       </div>
@@ -124,7 +121,7 @@ export function PostCard({ post, permalinkBase = '', canManage, onChanged, onDel
 
 export function PostsPage() {
   const [data, setData] = useState({ loading: true, posts: [], permalinkBase: '' });
-  const [composing, setComposing] = useState(null);
+  const [composing, setComposing] = useState(false);
 
   const load = useCallback(async () => {
     setData((d) => ({ ...d, loading: true }));
@@ -146,21 +143,18 @@ export function PostsPage() {
       </div>
 
       <div className="post-actions">
-        <button type="button" className="btn btn-primary" onClick={() => setComposing('text')}>
-          <span className="material-symbols-rounded" style={{ fontSize: '1.1rem' }}>edit_note</span>
+        {/* One entry point. Text or video is chosen inside the form, so the
+            page does not carry two buttons that open the same thing. */}
+        <button type="button" className="btn btn-primary" onClick={() => setComposing(true)}>
+          <span className="material-symbols-rounded" style={{ fontSize: '1.1rem' }}>add</span>
           Add Post
-        </button>
-        <button type="button" className="btn btn-outline-primary" onClick={() => setComposing('video')}>
-          <span className="material-symbols-rounded" style={{ fontSize: '1.1rem' }}>videocam</span>
-          Add Video
         </button>
       </div>
 
       {composing && (
         <PostForm
-          initialVideo={composing === 'video'}
-          onClose={() => setComposing(null)}
-          onSaved={async () => { setComposing(null); await load(); }}
+          onClose={() => setComposing(false)}
+          onSaved={async () => { setComposing(false); await load(); }}
         />
       )}
 
@@ -195,9 +189,9 @@ function videoLink(content) {
   return /^https?:\/\//i.test(value) ? value : `https://youtu.be/${value}`;
 }
 
-function PostForm({ post, initialVideo = false, onClose, onSaved }) {
+function PostForm({ post, onClose, onSaved }) {
   const editing = Boolean(post);
-  const [isVideo, setIsVideo] = useState(post ? Boolean(post.isVideo) : initialVideo);
+  const [isVideo, setIsVideo] = useState(post ? Boolean(post.isVideo) : false);
   const [link, setLink] = useState(post && post.isVideo ? videoLink(post.content) : '');
   const [content, setContent] = useState(post && !post.isVideo ? (post.content || '') : '');
   const [reference, setReference] = useState(post ? (post.reference || '') : '');
@@ -241,8 +235,23 @@ function PostForm({ post, initialVideo = false, onClose, onSaved }) {
   return (
     <div className="container1">
       <div className="card-header">
-        <h3>{editing ? (isVideo ? 'Edit Video' : 'Edit Post') : (isVideo ? 'Add Video' : 'Add Post')}</h3>
+        <h3>{editing ? (isVideo ? 'Edit Video' : 'Edit Post') : 'New Post'}</h3>
       </div>
+
+      {!editing && (
+        <div className="post-compose-types" role="group" aria-label="Post type">
+          <button type="button" className={`btn ${isVideo ? 'btn-outline' : 'btn-primary'}`}
+                  onClick={() => setIsVideo(false)} aria-pressed={!isVideo}>
+            <span className="material-symbols-rounded" style={{ fontSize: '1.1rem' }}>edit_note</span>
+            Text
+          </button>
+          <button type="button" className={`btn ${isVideo ? 'btn-primary' : 'btn-outline'}`}
+                  onClick={() => setIsVideo(true)} aria-pressed={isVideo}>
+            <span className="material-symbols-rounded" style={{ fontSize: '1.1rem' }}>videocam</span>
+            Video
+          </button>
+        </div>
+      )}
 
       {isVideo && (
         <div className="form-floating">
@@ -273,13 +282,6 @@ function PostForm({ post, initialVideo = false, onClose, onSaved }) {
           {saving ? 'Saving…' : editing ? 'Save changes' : 'Save'}
         </button>
         <button type="button" className="btn btn-outline" style={{ marginLeft: '0.5rem' }} onClick={onClose}>Cancel</button>
-        {/* Changing type after creation would repurpose `content` from a body
-            into a YouTube id, so the toggle only exists while composing. */}
-        {!editing && (
-          <button type="button" className="btn btn-link" style={{ marginLeft: '0.5rem' }} onClick={() => setIsVideo((v) => !v)}>
-            {isVideo ? 'Post text instead' : 'Post a video instead'}
-          </button>
-        )}
       </div>
     </div>
   );
