@@ -96,7 +96,7 @@ export default function Navbar({ session }) {
             <span className="material-symbols-rounded">mosque</span>
           </div>
           <div className="logo-text">
-            <h5>Salah Tracker</h5>
+            <h5>Hasanath</h5>
             <span>Track · Pray · Grow</span>
           </div>
         </Link>

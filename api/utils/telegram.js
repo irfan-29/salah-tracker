@@ -192,7 +192,7 @@ async function claimChatByCode(botToken, code) {
 }
 
 function buildStreakSummary({ date, completed, challenges }) {
-  const lines = [`<b>Salah Tracker</b> — ${escapeHtml(date)}`, ""];
+  const lines = [`<b>Hasanath</b> — ${escapeHtml(date)}`, ""];
 
   if (!challenges.length) {
     return lines.concat("No challenges yet.").join("\n");

@@ -1526,7 +1526,7 @@ app.post("/api/telegram/test", requireLogin, async function(req, res){
 
         const text = module
             ? await notify.buildModulePreview(req.user, module, { dateLabel })
-            : `<b>Salah Tracker</b> — test message\n\nTelegram notifications are connected.`;
+            : `<b>Hasanath</b> — test message\n\nTelegram notifications are connected.`;
         if (!text) return res.status(400).json({ error: "unknown-module" });
 
         const result = await sendTelegramMessage({ chatId, text });

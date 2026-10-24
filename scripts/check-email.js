@@ -72,9 +72,9 @@ const GMAIL_ERRORS = {
     const started = Date.now();
     try {
         const info = await transport.sendMail({
-            from: `"Salah Tracker" <${user}>`,
+            from: `"Hasanath" <${user}>`,
             to,
-            subject: `${email.makeOtp()} is your Salah Tracker verification code`,
+            subject: `${email.makeOtp()} is your Hasanath verification code`,
             text: "This is a test of the signup email transport.",
         });
         console.log(`SUCCESS in ${Date.now() - started}ms  (messageId ${info.messageId})`);

@@ -117,7 +117,7 @@ async function buildSalahTimingsMessage(user) {
         ].filter(Boolean).join(" ");
 
         const lines = [
-            `<b>Salah Tracker</b> — ${escapeHtml(location)}`,
+            `<b>Hasanath</b> — ${escapeHtml(location)}`,
             `Today, ${escapeHtml(hijriLabel)}`,
             ""
         ];
@@ -148,7 +148,7 @@ function buildSalahLogMessage(user, dateLabel) {
         today.some((e) => e.name === n && e.value === "Not Prayed")
     );
 
-    const lines = [`<b>Salah Tracker</b> — ${escapeHtml(dateLabel)}`, ""];
+    const lines = [`<b>Hasanath</b> — ${escapeHtml(dateLabel)}`, ""];
     if (!today.length) {
         lines.push("Nothing logged yet today.");
         return lines.join("\n");
@@ -166,7 +166,7 @@ function buildSalahLogMessage(user, dateLabel) {
 
 function buildNewPostMessage(post) {
     const kind = post.isVideo ? "New video" : "New post";
-    const lines = [`<b>Salah Tracker</b> — ${kind}`, ""];
+    const lines = [`<b>Hasanath</b> — ${kind}`, ""];
     if (post.isVideo) {
         lines.push(`Watch: https://youtu.be/${escapeHtml(post.content)}`);
     } else {
@@ -189,7 +189,7 @@ async function buildModulePreview(user, module, { dateLabel } = {}) {
                 maxStreak: c.maxStreak || 0
             }));
             if (!challenges.length) {
-                return "<b>Salah Tracker</b> — Challenges\n\nYou haven't added any challenges yet.";
+                return "<b>Hasanath</b> — Challenges\n\nYou haven't added any challenges yet.";
             }
             // Nothing ticked: this is a preview of the current standings.
             return buildStreakSummary({ date: dateLabel || "", completed: [], challenges });
@@ -224,7 +224,7 @@ async function buildModulePreview(user, module, { dateLabel } = {}) {
                 const latest = await Posts.find({}).sort({ _id: -1 }).limit(1).lean();
                 if (latest.length) return buildNewPostMessage(latest[0]);
             }
-            return "<b>Salah Tracker</b> — New post\n\nNo posts yet. This is what subscribers will be sent when you add one.";
+            return "<b>Hasanath</b> — New post\n\nNo posts yet. This is what subscribers will be sent when you add one.";
         }
         default:
             return null;

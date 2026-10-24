@@ -30,10 +30,10 @@ const GMAIL_USER = process.env.GMAIL_USER || "";
 // Google shows app passwords in groups of four with spaces and expects them
 // without, so they are stripped here rather than trusting users to paste right.
 const GMAIL_APP_PASSWORD = String(process.env.GMAIL_APP_PASSWORD || "").replace(/\s+/g, "");
-const GMAIL_FROM_NAME = process.env.GMAIL_FROM_NAME || "Salah Tracker";
+const GMAIL_FROM_NAME = process.env.GMAIL_FROM_NAME || "Hasanath";
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY || "";
-const RESEND_FROM = process.env.RESEND_FROM || "Salah Tracker <onboarding@resend.dev>";
+const RESEND_FROM = process.env.RESEND_FROM || "Hasanath <onboarding@resend.dev>";
 
 // onboarding@resend.dev only delivers to the account's own email, which is fine
 // for local testing and useless in production. Catch that misconfiguration
@@ -137,7 +137,7 @@ function gmail() {
 
 function messageFor(code) {
     return {
-        subject: `${code} is your Salah Tracker verification code`,
+        subject: `${code} is your Hasanath verification code`,
         text: [
             `Your verification code is ${code}.`,
             "",

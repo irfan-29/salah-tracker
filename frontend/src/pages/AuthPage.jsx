@@ -116,7 +116,7 @@ export default function AuthPage({ mode: initialMode = 'login' }) {
             {mode === 'verify' ? 'mark_email_read' : 'mosque'}
           </span>
           <h1 className="auth-title">
-            {mode === 'verify' ? 'Check your email' : 'Salah Tracker'}
+            {mode === 'verify' ? 'Check your email' : 'Hasanath'}
           </h1>
           <p className="auth-sub">
             {mode === 'login' ? 'Welcome back'

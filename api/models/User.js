@@ -60,7 +60,7 @@ const userSchema = new mongoose.Schema({
     challenges: [challengeSchema],
     salahLog: [salahEntrySchema],
     settings: { type: settingsSchema, default: () => ({}) },
-    // Chat the app-level Salah Tracker bot should notify. Never a bot token:
+    // Chat the app-level Hasanath bot should notify. Never a bot token:
     // one shared bot, many subscribers.
     telegramChatId: String,
     // Notification preferences. Time-based ones are evaluated in the user's own

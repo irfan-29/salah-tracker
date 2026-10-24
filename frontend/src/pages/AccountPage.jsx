@@ -50,7 +50,7 @@ export default function AccountPage() {
     <>
       <div className="page-header">
         <h1>Account</h1>
-        <p>Your identity in Salah Tracker</p>
+        <p>Your identity in Hasanath</p>
       </div>
 
       {(error || saved) && (
