@@ -40,6 +40,13 @@ const AUTH_PATHS = ['/login', '/register', '/verify-email'];
 function Shell() {
   const { pathname } = useLocation();
 
+  // The app bar is fixed on narrow screens. Without this, navigating from a
+  // scrolled page can leave the next page's title underneath it. Reset before
+  // the route paints; SurahPage still scrolls to a requested ayah afterwards.
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+
   // EVERY hook runs on every render, including auth routes. The branch below is
   // only a choice of JSX.
   //

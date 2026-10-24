@@ -238,6 +238,7 @@ export default function SettingsPage() {
         <p>Customise your experience</p>
       </div>
 
+      <div className="settings-panel">
       {/* Appearance - .theme-picker markup copied from views/settings.ejs, so the
           existing styles apply. My first pass invented .theme-options and
           rendered raw radio buttons. */}
@@ -506,6 +507,7 @@ export default function SettingsPage() {
           )}
         </>
       )}
+      </div>
     </>
   );
 }

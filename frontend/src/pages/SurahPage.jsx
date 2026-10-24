@@ -85,19 +85,16 @@ export default function SurahPage() {
       {/* Ayah navigator. views/surah.ejs had this between the surah meta and the
           ayah list; the port dropped it, so there was no way to jump to an ayah
           in a long surah. Same markup and same inline styling as the original. */}
-      <div style={{ textAlign: 'center', margin: '1.5rem 0' }}>
-        <label htmlFor="ayahRange" style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--color-text-secondary)', display: 'block', marginBottom: '0.75rem' }}>
-          Go to Ayah
-        </label>
+      <div className="ayah-jump">
+        <label htmlFor="ayahRange" className="ayah-jump-label">Go to Ayah</label>
         <input
           type="range" id="ayahRange" className="form-range"
           min="1" max={data.arabic.length} value={selectedAyah}
           onChange={(e) => setSelectedAyah(Number(e.target.value))}
-          style={{ maxWidth: 320, accentColor: 'var(--color-primary)' }}
         />
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', marginTop: '0.75rem' }}>
-          <span style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Ayah</span>
-          <span style={{ fontWeight: 700, fontSize: '1.125rem', color: 'var(--color-primary)' }}>{selectedAyah}</span>
+        <div className="ayah-jump-row">
+          <span className="ayah-jump-caption">Ayah</span>
+          <span className="ayah-jump-value">{selectedAyah}</span>
           <button type="button" className="btn btn-primary btn-sm" onClick={() => goToAyah(selectedAyah)}>Go</button>
         </div>
       </div>
