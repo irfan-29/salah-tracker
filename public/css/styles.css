@@ -3225,11 +3225,8 @@ hr {
 .landing *::after { box-sizing: border-box; }
 
 .landing a { color: inherit; }
-.landing p { margin: 0; }
-.landing h1,
-.landing h2,
-.landing h3,
-.landing h4 { margin: 0; letter-spacing: -0.03em; }
+.landing :where(p) { margin: 0; }
+.landing :where(h1, h2, h3, h4) { margin: 0; letter-spacing: -0.03em; }
 
 .landing-skip {
   position: absolute;
@@ -3499,7 +3496,7 @@ hr {
 
 /* ---- Hero ---- */
 
-.landing-hero { padding: clamp(3.5rem, 7vw, 6.5rem) 0 clamp(4rem, 8vw, 7rem); }
+.landing-hero { padding: clamp(4.5rem, 8vw, 7.5rem) 0 clamp(4rem, 8vw, 7rem); }
 
 .landing-hero-grid {
   display: grid;
@@ -4882,7 +4879,7 @@ hr {
 @media (max-width: 700px) {
   .landing-inner { width: calc(100% - 2rem); }
   .landing-nav-inner { min-height: 68px; }
-  .landing-hero { padding-top: 2.5rem; }
+  .landing-hero { padding-top: 3rem; }
   .landing-headline { font-size: clamp(2.4rem, 10vw, 3.5rem); }
   .landing-cta-row .btn { flex: 1 1 auto; }
   .landing-tabs {
@@ -4934,15 +4931,15 @@ hr {
   .landing-final-actions .btn { width: 100%; }
   .landing-footer-grid { grid-template-columns: 1fr; gap: 1.5rem; }
   .landing-float--badge { display: none; }
-  .landing-hero-art { min-height: 560px; }
+  .landing-hero-art { min-height: 580px; }
   .landing-float--salah { width: 270px; }
-  .landing-float--ayah { top: 264px; width: 250px; }
+  .landing-float--ayah { top: 276px; width: 250px; }
   .landing-section-head { text-align: left; }
   .landing-kicker { margin-bottom: 0.7rem; }
 }
 
 @media (max-width: 400px) {
-  .landing-hero-art { min-height: 560px; }
+  .landing-hero-art { min-height: 580px; }
   .landing-headline { font-size: 2.25rem; }
   .landing-salah-body { gap: 0.5rem; }
 }
