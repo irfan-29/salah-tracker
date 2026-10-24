@@ -4,7 +4,7 @@ import { AudioProvider } from './components/AudioProvider';
 import Loader from './components/Loader';
 import Navbar from './components/Navbar';
 import Player from './components/Player';
-import { SessionProvider, useSession, THEME_STORAGE_KEY } from './hooks/useSession';
+import { SessionProvider, THEME_STORAGE_KEY } from './hooks/useSession';
 import useShareHandler from './hooks/useShareHandler';
 import { api } from './services/api';
 import QuranPage from './pages/QuranPage';
@@ -14,6 +14,7 @@ import SettingsPage from './pages/SettingsPage';
 import SalahTimingsPage from './pages/SalahTimingsPage';
 import CalendarPage from './pages/CalendarPage';
 import { LoginPage, RegisterPage, VerifyPage } from './pages/AuthPage';
+import LandingPage from './pages/LandingPage';
 import AccountPage from './pages/AccountPage';
 import { PostsPage, PostPage, ProfilePage } from './pages/PostsPage';
 import SurahPage from './pages/SurahPage';
@@ -118,9 +119,10 @@ function Shell() {
   const resolved = useMemo(() => ({
     isLoggedIn: meta && meta.session ? meta.session.isLoggedIn : null,
     username: meta && meta.session ? meta.session.username : null,
-    // The route "/" redirects to. Null only if the boot request failed, which
-    // HomeRedirect handles with the pre-existing /quran fallback.
+    // Where a signed-in reader lands from "/", and where the landing page's
+    // guest CTA enters the app. Null only if the boot request failed.
     homePath: meta ? meta.homePath : null,
+    theme: meta ? meta.theme : null,
     setTheme,
     refresh,
   }), [meta, setTheme, refresh]);
@@ -144,15 +146,28 @@ function Shell() {
   // the same branded loader continuing, not a second one appearing.
   if (!booted) return <Loader variant="fullPage" label="Loading" />;
 
+  // "/" is the public landing page. Signed-in readers have already chosen this
+  // app, so they skip the marketing and continue to their configured home; a
+  // first-time visitor gets the story and the two ways in (account or guest).
+  // This is deliberately before the shell: the sidebar has nothing to do on a
+  // marketing page.
+  if (pathname === '/') {
+    if (resolved.isLoggedIn) {
+      const target = resolved.homePath && resolved.homePath !== '/' ? resolved.homePath : '/salah';
+      return <Navigate to={target} replace />;
+    }
+    return (
+      <SessionProvider value={resolved}>
+        <LandingPage />
+      </SessionProvider>
+    );
+  }
+
   return (
     <SessionProvider value={resolved}>
       <Navbar session={resolved} />
       <div className="main-content">
         <Routes>
-          {/* "/" is the configured Default Home Page, as it was in the EJS app
-              (which redirected server-side). Hard-wiring it to the Quran page
-              made that setting do nothing at all. */}
-          <Route path="/" element={<HomeRedirect />} />
           <Route path="/quran" element={<QuranPage />} />
           <Route path="/surah/:surahNo" element={<SurahPage />} />
           <Route path="/challenges" element={<ChallengesPage />} />
@@ -172,13 +187,4 @@ function Shell() {
       <Player />
     </SessionProvider>
   );
-}
-
-function HomeRedirect() {
-  const { homePath } = useSession();
-
-  // The shell renders only once boot has settled, so a null here means the meta
-  // request failed rather than "still loading". Falling back to /quran is what
-  // "/" did before this change, and it is better than a loader that never ends.
-  return <Navigate to={homePath || '/quran'} replace />;
 }

@@ -23,6 +23,7 @@ const FALLBACK = {
   isLoggedIn: null,
   username: null,
   homePath: null,
+  theme: null,
   // No-ops so a component used outside the provider (or on an auth route, which
   // renders before the provider) cannot crash by calling these.
   setTheme: () => {},

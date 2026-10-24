@@ -91,7 +91,10 @@ export default function Navbar({ session }) {
   return (
     <aside className="sidebar" ref={sidebarRef}>
       <header className="sidebar-header">
-        <Link to="/" className="header-logo">
+        {/* The brand goes to the app's home, not the marketing page: a guest who is
+              already inside should stay inside. The landing page has its own
+              brand link. */}
+        <Link to={session.homePath || '/salah'} className="header-logo">
           <div className="logo-icon">
             <span className="material-symbols-rounded">mosque</span>
           </div>
