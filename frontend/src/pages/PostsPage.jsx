@@ -9,11 +9,25 @@ import NotFound from './NotFound';
 // styles. The card is factored out because the feed, a profile and a permalink
 // all render it, and three copies is how they drift.
 export function PostCard({ post, permalinkBase = '', canManage, onChanged, onDeleted }) {
-  const { username } = useSession();
+  const { username, isLoggedIn } = useSession();
+  const navigate = useNavigate();
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [removed, setRemoved] = useState(false);
   const [error, setError] = useState('');
+  const [likeState, setLikeState] = useState({
+    liked: Boolean(post.likedByMe),
+    count: Number(post.likeCount) || 0,
+    busy: false,
+  });
+
+  useEffect(() => {
+    setLikeState({
+      liked: Boolean(post.likedByMe),
+      count: Number(post.likeCount) || 0,
+      busy: false,
+    });
+  }, [post._id, post.likedByMe, post.likeCount]);
 
   // Profile responses do not populate `author` (every post there belongs to the
   // profile owner), so that page passes an explicit canManage. Everywhere else
@@ -24,6 +38,36 @@ export function PostCard({ post, permalinkBase = '', canManage, onChanged, onDel
 
   const handle = post.author && post.author.username ? post.author.username : null;
   const permalink = permalinkBase + '/post/' + post._id;
+
+  async function handleLike() {
+    if (!isLoggedIn) {
+      navigate('/login');
+      return;
+    }
+    if (likeState.busy) return;
+
+    const previous = likeState;
+    const liked = !previous.liked;
+    const count = Math.max(0, previous.count + (liked ? 1 : -1));
+    setLikeState({ liked, count, busy: true });
+    setError('');
+    try {
+      const result = await api.toggleLike(post._id);
+      const resolved = {
+        liked: Boolean(result.liked),
+        count: Number(result.likeCount) || 0,
+        busy: false,
+      };
+      setLikeState(resolved);
+      if (onChanged) {
+        onChanged({ ...post, likedByMe: resolved.liked, likeCount: resolved.count });
+      }
+    } catch (err) {
+      setLikeState(previous);
+      setError(err.status === 401 ? 'Sign in to like this post.' : 'Could not update your like.');
+      if (err.status === 401) navigate('/login');
+    }
+  }
 
   async function handleDelete() {
     if (deleting) return;
@@ -75,6 +119,23 @@ export function PostCard({ post, permalinkBase = '', canManage, onChanged, onDel
         ) : null}
 
         <div className="post-card-actions">
+          <button
+            type="button"
+            className={`fav-btn post-like${likeState.liked ? ' is-active' : ''}`}
+            aria-pressed={likeState.liked}
+            aria-busy={likeState.busy}
+            disabled={likeState.busy}
+            aria-label={likeState.liked
+              ? `Unlike this post${likeState.count ? `, ${likeState.count} likes` : ''}`
+              : `Like this post${likeState.count ? `, ${likeState.count} likes` : ''}`}
+            title={likeState.liked ? 'Unlike' : 'Like'}
+            onClick={handleLike}
+          >
+            <span className="material-symbols-rounded">
+              {likeState.liked ? 'favorite' : 'favorite_border'}
+            </span>
+            {likeState.count > 0 && <span className="post-like-count">{likeState.count}</span>}
+          </button>
           {owned && (
             <>
               <button type="button" className="post-share" onClick={() => setEditing(true)}
@@ -120,8 +181,10 @@ export function PostCard({ post, permalinkBase = '', canManage, onChanged, onDel
 }
 
 export function PostsPage() {
+  const { isLoggedIn } = useSession();
   const [data, setData] = useState({ loading: true, posts: [], permalinkBase: '' });
   const [composing, setComposing] = useState(false);
+  const [filter, setFilter] = useState('all');
 
   const load = useCallback(async () => {
     setData((d) => ({ ...d, loading: true }));
@@ -134,6 +197,15 @@ export function PostsPage() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    if (!isLoggedIn) setFilter('all');
+  }, [isLoggedIn]);
+
+  const likedCount = data.posts.filter((post) => post.likedByMe).length;
+  const visiblePosts = filter === 'liked'
+    ? data.posts.filter((post) => post.likedByMe)
+    : data.posts;
 
   return (
     <>
@@ -149,6 +221,32 @@ export function PostsPage() {
           <span className="material-symbols-rounded" style={{ fontSize: '1.1rem' }}>add</span>
           Add Post
         </button>
+
+        {isLoggedIn && (
+          <div className="post-filter-tabs" role="tablist" aria-label="Filter posts">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={filter === 'all'}
+              className={`post-filter-tab${filter === 'all' ? ' is-active' : ''}`}
+              onClick={() => setFilter('all')}
+            >
+              <span className="material-symbols-rounded" aria-hidden="true">dynamic_feed</span>
+              All
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={filter === 'liked'}
+              className={`post-filter-tab${filter === 'liked' ? ' is-active' : ''}`}
+              onClick={() => setFilter('liked')}
+            >
+              <span className="material-symbols-rounded" aria-hidden="true">favorite</span>
+              Liked
+              <span className="post-filter-count">{likedCount}</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {composing && (
@@ -160,8 +258,10 @@ export function PostsPage() {
 
       {data.loading ? <Loader variant="inline" label="Loading posts" /> : data.posts.length === 0 ? (
         <p className="post-empty">No posts yet.</p>
+      ) : visiblePosts.length === 0 ? (
+        <p className="post-empty">You have not liked any posts yet.</p>
       ) : (
-        data.posts.map((post) => (
+        visiblePosts.map((post) => (
           <PostCard
             key={post._id}
             post={post}

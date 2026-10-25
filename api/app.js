@@ -228,9 +228,30 @@ const postsSchema = new mongoose.Schema({
     content: String,
     reference: String,
     postedDate: String,
-    isVideo: Boolean
+    isVideo: Boolean,
+    // Stored as ids rather than a counter so a person can like once and unlike
+    // later. The list itself is never sent to the browser; presentPost() turns
+    // it into a count plus a per-viewer flag.
+    likedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }]
 });
 const Posts = mongoose.model("Posts", postsSchema);
+
+// Keep like data useful without publishing the list of user ids. Every route
+// that returns a post goes through this, otherwise one endpoint would leak
+// `likedBy` while another returned `likeCount`.
+function presentPost(post, req) {
+    const raw = post && typeof post.toObject === "function" ? post.toObject() : { ...post };
+    const likedBy = Array.isArray(raw.likedBy) ? raw.likedBy : [];
+    const isLoggedIn = typeof req.isAuthenticated === "function" && req.isAuthenticated();
+    const userId = isLoggedIn && req.user ? String(req.user._id) : null;
+    raw.likeCount = likedBy.length;
+    raw.likedByMe = Boolean(userId && likedBy.some((id) => {
+        const value = id && id._id ? id._id : id;
+        return String(value) === userId;
+    }));
+    delete raw.likedBy;
+    return raw;
+}
 
 // global constants
 
@@ -908,6 +929,15 @@ app.get("/api/quran/surah/:surahNo", async function(req, res){
         }
     }));
 
+    // Opening a surah is what "last read" means. This used to only happen when
+    // the player saved progress, so reading on the page left the Quran home
+    // stuck on an older surah. Failure here must not cost the reader the page.
+    try {
+        await userData.recordSurahRead(req, surahNo);
+    } catch (err) {
+        console.error("api/quran/surah: last read -", err.message);
+    }
+
     res.json({
         surahNo,
         surahName: surah.surahName,
@@ -1238,7 +1268,7 @@ app.post("/api/salah", requireLogin, async function(req, res){
 app.get("/api/posts", async function(req, res){
     try {
         const post = await Posts.find({}).sort({ _id: -1 }).populate("author", "name username");
-        res.json({ posts: post, permalinkBase: originOf(req) });
+        res.json({ posts: post.map((entry) => presentPost(entry, req)), permalinkBase: originOf(req) });
     } catch (err) {
         console.error("api/posts:", err.message);
         res.status(500).json({ error: "failed" });
@@ -1272,7 +1302,7 @@ app.post("/api/posts", requireLogin, async function(req, res){
         // undo a post the user already successfully created.
         broadcastNewPost(post).catch((err) => console.error("notify: new post -", err.message));
 
-        res.status(201).json({ post });
+        res.status(201).json({ post: presentPost(post, req) });
     } catch (err) {
         console.error("api/posts POST:", err.message);
         res.status(500).json({ error: "failed" });
@@ -1284,9 +1314,32 @@ app.get("/api/posts/:id", async function(req, res){
     try {
         const post = await Posts.findById(req.params.id).populate("author", "username name");
         if (!post) return res.status(404).json({ error: "not-found" });
-        res.json({ post, permalinkBase: originOf(req) });
+        res.json({ post: presentPost(post, req), permalinkBase: originOf(req) });
     } catch (err) {
         console.error("api/posts/:id:", err.message);
+        res.status(500).json({ error: "failed" });
+    }
+});
+
+// Likes are account-only, matching the ayah favourites. The body carries no
+// user id: it comes from the session, so one person cannot like as another.
+app.post("/api/posts/:id/like", requireLogin, async function(req, res){
+    if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ error: "not-found" });
+    try {
+        const post = await Posts.findById(req.params.id);
+        if (!post) return res.status(404).json({ error: "not-found" });
+
+        post.likedBy = post.likedBy || [];
+        const userId = String(req.user._id);
+        const index = post.likedBy.findIndex((id) => String(id) === userId);
+        const liked = index === -1;
+        if (liked) post.likedBy.push(req.user._id);
+        else post.likedBy.splice(index, 1);
+        await post.save();
+
+        res.json({ ok: true, liked, likeCount: post.likedBy.length });
+    } catch (err) {
+        console.error("api/posts/:id/like:", err.message);
         res.status(500).json({ error: "failed" });
     }
 });
@@ -1315,7 +1368,7 @@ app.patch("/api/posts/:id", requireLogin, async function(req, res){
         await post.save();
 
         const populated = await post.populate("author", "username name");
-        res.json({ post: populated });
+        res.json({ post: presentPost(populated, req) });
     } catch (err) {
         console.error("api/posts/:id PATCH:", err.message);
         res.status(500).json({ error: "failed" });
@@ -1351,7 +1404,12 @@ app.get("/api/u/:username", async function(req, res){
 
         const posts = await Posts.find({ author: author._id }).sort({ _id: -1 });
         const isOwner = Boolean(req.isAuthenticated() && req.user && String(req.user._id) === String(author._id));
-        res.json({ owner: author, posts, permalinkBase: originOf(req), isOwner });
+        res.json({
+            owner: author,
+            posts: posts.map((post) => presentPost(post, req)),
+            permalinkBase: originOf(req),
+            isOwner
+        });
     } catch (err) {
         console.error("api/u/:username:", err.message);
         res.status(500).json({ error: "failed" });

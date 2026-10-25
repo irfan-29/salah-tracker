@@ -100,15 +100,20 @@ export default function Player() {
   };
 
   return (
-    <div className="global-audio-bar" id="globalAudioBar">
+    <div className={`global-audio-bar${playing ? ' is-playing' : ''}`} id="globalAudioBar">
       <div className="audio-bar-inner">
         <div className="audio-bar-track-info">
           <span className={`audio-equalizer${playing ? ' is-playing' : ''}`} aria-hidden="true">
             <span /><span /><span /><span />
           </span>
           <div className="audio-track-meta">
-            <div className="surah-title">{track.surahNo}. {track.surahName}</div>
-            <div className="reciter-name">{track.reciterName}</div>
+            <div className="surah-title" title={`${track.surahNo}. ${track.surahName}`}>
+              <span className="audio-track-dot" aria-hidden="true" />
+              <span className="audio-track-title-text">{track.surahNo}. {track.surahName}</span>
+            </div>
+            <div className="reciter-name" title={track.reciterName || 'Qur’an recitation'}>
+              {track.reciterName || 'Qur’an recitation'}
+            </div>
           </div>
         </div>
 

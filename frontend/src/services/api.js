@@ -99,6 +99,7 @@ export const posts = {
   // the post type (text vs video) fixed at creation.
   update: (id, payload) => api.request(`/posts/${id}`, { method: 'PATCH', body: payload }),
   remove: (id) => api.request(`/posts/${id}`, { method: 'DELETE' }),
+  toggleLike: (id) => api.post(`/posts/${id}/like`),
   profile: (username) => api.get(`/u/${encodeURIComponent(username)}`),
 };
 

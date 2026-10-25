@@ -1,8 +1,27 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useSearchParams, Link } from 'react-router-dom';
 import { quran } from '../services/api';
 import { useFavourites } from '../hooks/useFavourites';
 import Loader from '../components/Loader';
+
+// navigator.clipboard needs a secure context. The fallback matters on a plain
+// http:// dev host, where the share button would otherwise do nothing.
+async function copyText(text) {
+  if (navigator.clipboard && window.isSecureContext) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+  const field = document.createElement('textarea');
+  field.value = text;
+  field.setAttribute('readonly', '');
+  field.style.position = 'absolute';
+  field.style.left = '-9999px';
+  document.body.appendChild(field);
+  field.select();
+  const copied = document.execCommand('copy');
+  document.body.removeChild(field);
+  if (!copied) throw new Error('copy-failed');
+}
 
 export default function SurahPage() {
   const { surahNo } = useParams();
@@ -10,6 +29,8 @@ export default function SurahPage() {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [selectedAyah, setSelectedAyah] = useState(1);
+  const [shareNotice, setShareNotice] = useState({ ayah: 0, status: '' });
+  const shareTimer = useRef(null);
   const { favourites, isFavourite, toggleFavourite } = useFavourites();
 
   const totalAyahs = data?.arabic?.length || 0;
@@ -24,6 +45,60 @@ export default function SurahPage() {
     el.scrollIntoView({ behavior: 'smooth', block: 'center' });
     el.focus({ preventScroll: true });
   }, []);
+
+  useEffect(() => () => window.clearTimeout(shareTimer.current), []);
+
+  // Shares the same translations the reader is looking at, all in one message.
+  // The URL ends the text deliberately: native share sheets keep text order,
+  // while a separate `url` field is often appended somewhere unpredictable.
+  async function shareAyah(ayahNo) {
+    if (!data) return;
+    const index = ayahNo - 1;
+    const translationText = data.translations
+      .map((t) => {
+        const translated = t.texts[index];
+        return translated ? `${t.label}\n${translated}` : '';
+      })
+      .filter(Boolean)
+      .join('\n\n');
+    const appUrl = `${window.location.origin}/surah/${data.surahNo}?ayah=${ayahNo}`;
+    const text = [
+      'Hasanath — Qur’an',
+      `${data.surahName} ${data.surahNo}:${ayahNo}`,
+      data.arabic[index] || '',
+      translationText,
+      appUrl,
+    ].filter(Boolean).join('\n\n');
+
+    const note = (status) => {
+      setShareNotice({ ayah: ayahNo, status });
+      window.clearTimeout(shareTimer.current);
+      shareTimer.current = window.setTimeout(() => {
+        setShareNotice({ ayah: 0, status: '' });
+      }, 1800);
+    };
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `${data.surahName} ${data.surahNo}:${ayahNo}`,
+          text,
+        });
+        note('shared');
+        return;
+      } catch (err) {
+        if (err && err.name === 'AbortError') return;
+        // A share sheet can fail for reasons the clipboard can still handle.
+      }
+    }
+
+    try {
+      await copyText(text);
+      note('copied');
+    } catch (err) {
+      note('failed');
+    }
+  }
 
   // Keeps the slider honest: a surah with fewer ayahs than the slider was left
   // on would show an out-of-range value.
@@ -70,6 +145,7 @@ export default function SurahPage() {
   return (
     <>
       <header className="page-header">
+        <p className="surah-page-kicker">Surah {data.surahNo} of 114</p>
         <h1>{data.surahName}</h1>
         <p>{data.surahNameArabic} · {data.surahNameTranslation}</p>
         <div className="surah-meta-row">
@@ -104,19 +180,40 @@ export default function SurahPage() {
       {data.arabic.map((text, index) => {
         const ayahNo = index + 1;
         const on = isFavourite(data.surahNo, ayahNo) || favKeys.has(`${data.surahNo}:${ayahNo}`);
+        const shared = shareNotice.ayah === ayahNo ? shareNotice.status : '';
+        const shareLabel = shared === 'copied'
+          ? 'Ayah text copied'
+          : shared === 'shared'
+            ? 'Ayah shared'
+            : shared === 'failed'
+              ? 'Could not share ayah'
+              : `Share ${data.surahName} ${data.surahNo}:${ayahNo}`;
         return (
           <article key={ayahNo} id={String(ayahNo)} className="ayah-block" style={{ marginBottom: '2.5rem' }}>
             <div className="ayah-head">
               <p className="ayah-number">Ayah {ayahNo}</p>
-              <button
-                type="button"
-                className={`fav-btn${on ? ' is-active' : ''}`}
-                aria-pressed={on}
-                aria-label={on ? 'Remove from favourites' : 'Add to favourites'}
-                onClick={() => toggleFavourite(data.surahNo, ayahNo)}
-              >
-                <span className="material-symbols-rounded">{on ? 'favorite' : 'favorite_border'}</span>
-              </button>
+              <div className="ayah-actions">
+                <button
+                  type="button"
+                  className={`fav-btn ayah-share-btn${shared ? ` is-${shared}` : ''}`}
+                  aria-label={shareLabel}
+                  title={shared === 'copied' ? 'Copied' : 'Share ayah'}
+                  onClick={() => shareAyah(ayahNo)}
+                >
+                  <span className="material-symbols-rounded">
+                    {shared === 'copied' || shared === 'shared' ? 'check' : shared === 'failed' ? 'error' : 'share'}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className={`fav-btn${on ? ' is-active' : ''}`}
+                  aria-pressed={on}
+                  aria-label={on ? 'Remove from favourites' : 'Add to favourites'}
+                  onClick={() => toggleFavourite(data.surahNo, ayahNo)}
+                >
+                  <span className="material-symbols-rounded">{on ? 'favorite' : 'favorite_border'}</span>
+                </button>
+              </div>
             </div>
 
             <p className="ayah-arabic-text" dir="rtl" lang="ar" style={{ fontFamily: `'${data.favoriteFont}', serif` }}>
@@ -145,13 +242,16 @@ export default function SurahPage() {
           <Link
             className="surah-pager-link"
             to={`/surah/${data.previousSurah.surahNo}`}
-            aria-label={`Previous surah: ${data.previousSurah.surahName}`}
+            aria-label={`Previous surah: ${data.previousSurah.surahNo}. ${data.previousSurah.surahName}`}
           >
             <span className="surah-pager-direction">
               <span className="material-symbols-rounded" aria-hidden="true">arrow_back</span>
               <span className="surah-pager-label">Previous surah</span>
             </span>
-            <strong className="surah-pager-name">{data.previousSurah.surahName}</strong>
+            <strong className="surah-pager-name">
+              <span className="surah-pager-no">{data.previousSurah.surahNo}</span>
+              <span className="surah-pager-title">{data.previousSurah.surahName}</span>
+            </strong>
           </Link>
         ) : (
           <span className="surah-pager-link is-disabled" aria-disabled="true">
@@ -159,7 +259,9 @@ export default function SurahPage() {
               <span className="material-symbols-rounded" aria-hidden="true">arrow_back</span>
               <span className="surah-pager-label">Previous surah</span>
             </span>
-            <strong className="surah-pager-name">Start of the Qur’an</strong>
+            <strong className="surah-pager-name">
+              <span className="surah-pager-title">Start of the Qur’an</span>
+            </strong>
           </span>
         )}
 
@@ -167,13 +269,16 @@ export default function SurahPage() {
           <Link
             className="surah-pager-link is-next"
             to={`/surah/${data.nextSurah.surahNo}`}
-            aria-label={`Next surah: ${data.nextSurah.surahName}`}
+            aria-label={`Next surah: ${data.nextSurah.surahNo}. ${data.nextSurah.surahName}`}
           >
             <span className="surah-pager-direction">
               <span className="surah-pager-label">Next surah</span>
               <span className="material-symbols-rounded" aria-hidden="true">arrow_forward</span>
             </span>
-            <strong className="surah-pager-name">{data.nextSurah.surahName}</strong>
+            <strong className="surah-pager-name">
+              <span className="surah-pager-no">{data.nextSurah.surahNo}</span>
+              <span className="surah-pager-title">{data.nextSurah.surahName}</span>
+            </strong>
           </Link>
         ) : (
           <span className="surah-pager-link is-next is-disabled" aria-disabled="true">
@@ -181,7 +286,9 @@ export default function SurahPage() {
               <span className="surah-pager-label">Next surah</span>
               <span className="material-symbols-rounded" aria-hidden="true">arrow_forward</span>
             </span>
-            <strong className="surah-pager-name">End of the Qur’an</strong>
+            <strong className="surah-pager-name">
+              <span className="surah-pager-title">End of the Qur’an</span>
+            </strong>
           </span>
         )}
       </nav>

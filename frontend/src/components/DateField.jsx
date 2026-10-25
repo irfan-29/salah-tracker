@@ -88,6 +88,15 @@ export default function DateField({
     const place = () => {
       const trigger = triggerRef.current;
       if (!trigger) return;
+
+      // On a phone the anchored popup has to fit between the field and the
+      // viewport edge, which left a short scroll box whenever the field sat low
+      // on the screen. A bottom sheet gives the calendar its natural height.
+      if (window.innerWidth <= 600) {
+        setMenuPos((current) => (current?.mobile ? current : { mobile: true }));
+        return;
+      }
+
       const rect = trigger.getBoundingClientRect();
       const gap = 6;
       const width = Math.min(318, window.innerWidth - 16);
@@ -96,6 +105,7 @@ export default function DateField({
       const openUp = below < 250 && above > below;
       const available = Math.max(150, openUp ? above : below);
       setMenuPos({
+        mobile: false,
         top: openUp ? Math.max(8, rect.top - Math.min(360, available) - gap) : rect.bottom + gap,
         left: Math.min(Math.max(8, rect.left), Math.max(8, window.innerWidth - width - 8)),
         width,
@@ -110,6 +120,14 @@ export default function DateField({
       window.removeEventListener('scroll', place, true);
     };
   }, [open]);
+
+  // The sheet is fixed, so the page behind it must not scroll under the thumb.
+  useEffect(() => {
+    if (!open || !menuPos?.mobile) return undefined;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = previous; };
+  }, [open, menuPos?.mobile]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -194,68 +212,86 @@ export default function DateField({
       </button>
 
       {open && createPortal(
-        <div
-          ref={dialogRef}
-          id={dialogId}
-          className="app-date-menu is-portal"
-          role="dialog"
-          aria-label={label ? `${label} calendar` : 'Calendar'}
-          style={{
-            top: menuPos ? `${menuPos.top}px` : undefined,
-            left: menuPos ? `${menuPos.left}px` : undefined,
-            width: menuPos ? `${menuPos.width}px` : undefined,
-            maxHeight: menuPos ? `${menuPos.maxHeight}px` : undefined,
-            visibility: menuPos ? 'visible' : 'hidden',
-          }}
-        >
-          <div className="app-date-head">
-            <button type="button" className="app-date-nav" aria-label="Previous month"
-                    onClick={() => moveMonth(-1)}>
-              <span className="material-symbols-rounded" aria-hidden="true">chevron_left</span>
-            </button>
-            <strong>{monthLabel(view.year, view.month)}</strong>
-            <button type="button" className="app-date-nav" aria-label="Next month"
-                    onClick={() => moveMonth(1)}>
-              <span className="material-symbols-rounded" aria-hidden="true">chevron_right</span>
-            </button>
-          </div>
+        <>
+          {menuPos?.mobile && (
+            <div
+              className="app-date-scrim"
+              aria-hidden="true"
+              onPointerDown={() => setOpen(false)}
+            />
+          )}
+          <div
+            ref={dialogRef}
+            id={dialogId}
+            className={`app-date-menu is-portal${menuPos?.mobile ? ' is-sheet' : ''}`}
+            role="dialog"
+            aria-modal={menuPos?.mobile ? 'true' : undefined}
+            aria-label={label ? `${label} calendar` : 'Calendar'}
+            style={menuPos?.mobile ? {
+              top: 'auto',
+              left: '12px',
+              right: '12px',
+              bottom: '12px',
+              width: 'auto',
+              maxHeight: 'calc(100dvh - 24px)',
+              visibility: 'visible',
+            } : {
+              top: menuPos ? `${menuPos.top}px` : undefined,
+              left: menuPos ? `${menuPos.left}px` : undefined,
+              width: menuPos ? `${menuPos.width}px` : undefined,
+              maxHeight: menuPos ? `${menuPos.maxHeight}px` : undefined,
+              visibility: menuPos ? 'visible' : 'hidden',
+            }}
+          >
+            <div className="app-date-head">
+              <button type="button" className="app-date-nav" aria-label="Previous month"
+                      onClick={() => moveMonth(-1)}>
+                <span className="material-symbols-rounded" aria-hidden="true">chevron_left</span>
+              </button>
+              <strong>{monthLabel(view.year, view.month)}</strong>
+              <button type="button" className="app-date-nav" aria-label="Next month"
+                      onClick={() => moveMonth(1)}>
+                <span className="material-symbols-rounded" aria-hidden="true">chevron_right</span>
+              </button>
+            </div>
 
-          <div className="app-date-grid app-date-weekdays" aria-hidden="true">
-            {WEEKDAYS.map((day, index) => <span key={`${day}-${index}`}>{day}</span>)}
-          </div>
+            <div className="app-date-grid app-date-weekdays" aria-hidden="true">
+              {WEEKDAYS.map((day, index) => <span key={`${day}-${index}`}>{day}</span>)}
+            </div>
 
-          <div className="app-date-grid">
-            {calendarDays.map((date, index) => {
-              if (!date) return <span key={`blank-${index}`} />;
-              const iso = toISO(date);
-              const selected = iso === value;
-              const today = iso === todayISO;
-              const unavailable = isDisabled(date);
-              return (
-                <button
-                  key={iso}
-                  type="button"
-                  className={`app-date-day${selected ? ' is-selected' : ''}${today ? ' is-today' : ''}`}
-                  data-selected={selected ? 'true' : undefined}
-                  data-today={today ? 'true' : undefined}
-                  aria-current={today ? 'date' : undefined}
-                  aria-label={fullDateLabel(date)}
-                  aria-pressed={selected}
-                  disabled={unavailable}
-                  onClick={() => choose(date)}
-                >
-                  {date.getDate()}
-                </button>
-              );
-            })}
-          </div>
+            <div className="app-date-grid">
+              {calendarDays.map((date, index) => {
+                if (!date) return <span key={`blank-${index}`} />;
+                const iso = toISO(date);
+                const selected = iso === value;
+                const today = iso === todayISO;
+                const unavailable = isDisabled(date);
+                return (
+                  <button
+                    key={iso}
+                    type="button"
+                    className={`app-date-day${selected ? ' is-selected' : ''}${today ? ' is-today' : ''}`}
+                    data-selected={selected ? 'true' : undefined}
+                    data-today={today ? 'true' : undefined}
+                    aria-current={today ? 'date' : undefined}
+                    aria-label={fullDateLabel(date)}
+                    aria-pressed={selected}
+                    disabled={unavailable}
+                    onClick={() => choose(date)}
+                  >
+                    {date.getDate()}
+                  </button>
+                );
+              })}
+            </div>
 
-          <div className="app-date-foot">
-            <button type="button" className="app-date-today" onClick={() => choose(fromISO(todayISO))}>
-              Today
-            </button>
+            <div className="app-date-foot">
+              <button type="button" className="app-date-today" onClick={() => choose(fromISO(todayISO))}>
+                Today
+              </button>
+            </div>
           </div>
-        </div>,
+        </>,
         document.body,
       )}
     </div>
