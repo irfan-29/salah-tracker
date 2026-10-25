@@ -8,8 +8,8 @@ import AudioTab from '../components/quran/AudioTab';
 import FavouritesTab from '../components/quran/FavouritesTab';
 
 const TABS = [
-  { id: 'read', label: 'Read', icon: 'menu_book' },
   { id: 'audio', label: 'Audio', icon: 'headphones' },
+  { id: 'read', label: 'Read', icon: 'menu_book' },
   { id: 'favourites', label: 'Favourites', icon: 'favorite' },
 ];
 
