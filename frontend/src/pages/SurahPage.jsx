@@ -119,7 +119,7 @@ export default function SurahPage() {
               </button>
             </div>
 
-            <p className="quran-text-display" dir="rtl" lang="ar" style={{ fontFamily: `'${data.favoriteFont}', serif`, lineHeight: 2, fontSize: '28px', textAlign: 'right' }}>
+            <p className="ayah-arabic-text" dir="rtl" lang="ar" style={{ fontFamily: `'${data.favoriteFont}', serif` }}>
               {text}
             </p>
 
@@ -128,13 +128,11 @@ export default function SurahPage() {
               if (!translated) return null;
               const isPrimary = data.primaryTranslationId === t.id;
               return (
-                <div key={t.id} style={{ textAlign: 'left', marginTop: '1rem', marginBottom: '1.25rem', padding: '0.75rem 0 0.75rem 1rem', borderLeft: '3px solid var(--color-primary)', background: 'var(--color-primary-glow)', borderRadius: '0 var(--radius-sm) var(--radius-sm) 0' }}>
-                  <p style={{ color: 'var(--color-primary)', fontSize: '0.6875rem', marginBottom: '0.375rem', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 700 }}>
+                <div className="ayah-translation" key={t.id}>
+                  <p className="ayah-translation-label">
                     {t.label}{isPrimary ? ' · Primary' : ''}
                   </p>
-                  <p style={{ fontFamily: "'Mukta Malar', sans-serif", fontSize: '1.0625rem', color: 'var(--color-text)', lineHeight: 1.6, margin: 0 }}>
-                    {translated}
-                  </p>
+                  <p className="ayah-translation-text">{translated}</p>
                 </div>
               );
             })}
@@ -142,12 +140,49 @@ export default function SurahPage() {
         );
       })}
 
-      <div className="surah-back-wrap">
-        <Link to="/quran" className="surah-back">
-          <span className="material-symbols-rounded" aria-hidden="true">arrow_back</span>
-          Back to Quran
-        </Link>
-      </div>
+      <nav className="surah-pager" aria-label="Surah navigation">
+        {data.previousSurah ? (
+          <Link className="surah-pager-link" to={`/surah/${data.previousSurah.surahNo}`}>
+            <span className="surah-pager-direction">
+              <span className="material-symbols-rounded" aria-hidden="true">arrow_back</span>
+              Previous surah
+            </span>
+            <strong className="surah-pager-name">{data.previousSurah.surahName}</strong>
+            {data.previousSurah.surahNameArabic && (
+              <span className="surah-pager-arabic" lang="ar" dir="rtl">{data.previousSurah.surahNameArabic}</span>
+            )}
+          </Link>
+        ) : (
+          <span className="surah-pager-link is-disabled" aria-disabled="true">
+            <span className="surah-pager-direction">
+              <span className="material-symbols-rounded" aria-hidden="true">arrow_back</span>
+              Previous surah
+            </span>
+            <strong className="surah-pager-name">Start of the Qur’an</strong>
+          </span>
+        )}
+
+        {data.nextSurah ? (
+          <Link className="surah-pager-link is-next" to={`/surah/${data.nextSurah.surahNo}`}>
+            <span className="surah-pager-direction">
+              Next surah
+              <span className="material-symbols-rounded" aria-hidden="true">arrow_forward</span>
+            </span>
+            <strong className="surah-pager-name">{data.nextSurah.surahName}</strong>
+            {data.nextSurah.surahNameArabic && (
+              <span className="surah-pager-arabic" lang="ar" dir="rtl">{data.nextSurah.surahNameArabic}</span>
+            )}
+          </Link>
+        ) : (
+          <span className="surah-pager-link is-next is-disabled" aria-disabled="true">
+            <span className="surah-pager-direction">
+              Next surah
+              <span className="material-symbols-rounded" aria-hidden="true">arrow_forward</span>
+            </span>
+            <strong className="surah-pager-name">End of the Qur’an</strong>
+          </span>
+        )}
+      </nav>
     </>
   );
 }

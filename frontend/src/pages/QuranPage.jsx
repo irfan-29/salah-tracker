@@ -135,6 +135,7 @@ export default function QuranPage() {
           isLoggedIn={data.isLoggedIn}
           onToggle={toggleFavourite}
           onReload={reload}
+          favoriteFont={data.favoriteFont}
         />
       )}
     </>

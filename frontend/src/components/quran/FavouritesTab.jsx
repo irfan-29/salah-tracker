@@ -1,5 +1,9 @@
-// Class names mirror views/quran-favourites.ejs.
-export default function FavouritesTab({ entries, isLoggedIn, onToggle }) {
+import { Link } from 'react-router-dom';
+
+// This list intentionally uses the same ayah typography and heart treatment as
+// the reader. It used to have its own smaller Arabic face, outlined heart and
+// separately styled translation box, which made the two screens feel unrelated.
+export default function FavouritesTab({ entries, isLoggedIn, onToggle, favoriteFont = 'QPC-Hafs' }) {
   if (!isLoggedIn) {
     return (
       <div className="quran-tab-panel" data-tab-panel="favourites">
@@ -33,17 +37,18 @@ export default function FavouritesTab({ entries, isLoggedIn, onToggle }) {
           entries.map((entry) => (
             <article className="favourite-card" key={`${entry.surahNo}:${entry.ayahNo}`}>
               <header className="favourite-head">
-                <a className="favourite-ref" href={`/surah/${entry.surahNo}?ayah=${entry.ayahNo}`}>
-                  {entry.surahName}
-                  {entry.surahNameArabic ? ` · ${entry.surahNameArabic}` : ''}
-                </a>
-                <span className="favourite-num">Ayah {entry.ayahNo}</span>
-                {/* A filled heart in the same red the reader uses
-                    (.favourite-remove is already #e11d48). This rendered
-                    `heart_broken`, which reads as broken rather than full. */}
+                <div className="favourite-heading">
+                  <Link className="favourite-ref" to={`/surah/${entry.surahNo}?ayah=${entry.ayahNo}`}>
+                    {entry.surahName}
+                    {entry.surahNameArabic ? ` · ${entry.surahNameArabic}` : ''}
+                  </Link>
+                  <span className="favourite-num">Ayah {entry.ayahNo}</span>
+                </div>
+                {/* Same .fav-btn/is-active treatment as the reader, so the
+                    heart is the same size and fills instead of staying outlined. */}
                 <button
                   type="button"
-                  className="favourite-remove is-active"
+                  className="fav-btn is-active"
                   onClick={() => onToggle(entry.surahNo, entry.ayahNo)}
                   title="Remove from favourites"
                   aria-label={`Remove ${entry.surahName} ayah ${entry.ayahNo} from favourites`}
@@ -56,12 +61,14 @@ export default function FavouritesTab({ entries, isLoggedIn, onToggle }) {
                 <p className="favourite-missing">This ayah could not be loaded just now.</p>
               ) : (
                 <>
-                  <p className="favourite-arabic" dir="rtl" lang="ar">{entry.arabicText}</p>
+                  <p className="ayah-arabic-text" dir="rtl" lang="ar" style={{ fontFamily: `'${favoriteFont}', serif` }}>
+                    {entry.arabicText}
+                  </p>
                   {entry.translationText && (
-                    <>
-                      {entry.translationLabel && <p className="favourite-edition">{entry.translationLabel}</p>}
-                      <p className="favourite-translation">{entry.translationText}</p>
-                    </>
+                    <div className="ayah-translation">
+                      <p className="ayah-translation-label">{entry.translationLabel || 'Translation'}</p>
+                      <p className="ayah-translation-text">{entry.translationText}</p>
+                    </div>
                   )}
                 </>
               )}

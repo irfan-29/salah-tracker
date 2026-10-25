@@ -35,6 +35,7 @@ function defaults() {
     defaultHome: "quran",
     location: "Coimbatore",
     favoriteReciter: 1,
+    favoriteFont: "QPC-Hafs",
     theme: "light",
     favoriteEdition: [DEFAULT_EDITION],
     primaryTranslation: DEFAULT_EDITION

@@ -851,7 +851,7 @@ app.get("/api/quran/index", async function(req, res){
         surahs,
         ayahOfTheDay: ayah,
         lastReadSurahs: await userData.getLastReadSurahs(req),
-        favoriteFont: settings.favoriteFont || 'Amiri',
+        favoriteFont: settings.favoriteFont || 'QPC-Hafs',
         activeReciter: settings.favoriteReciter ? String(settings.favoriteReciter) : "1",
         reciters: reciterSource && reciterSource.audio
             ? Object.entries(reciterSource.audio).map(([id, a]) => ({ id: String(id), name: a.reciter }))
@@ -871,8 +871,22 @@ app.get("/api/quran/surah/:surahNo", async function(req, res){
     }
 
     const settings = await userData.getSettings(req);
-    const surah = await cachedJsonOrNull(`https://quranapi.pages.dev/api/${surahNo}.json`);
+    const [surah, surahIndex] = await Promise.all([
+        cachedJsonOrNull(`https://quranapi.pages.dev/api/${surahNo}.json`),
+        // Neighbours carry names so the reader can offer a useful prev/next
+        // instead of a bare number. The index is already cached for /quran.
+        cachedJsonOrNull(`https://quranapi.pages.dev/api/surah.json`)
+    ]);
     if (!surah) return res.status(503).json({ error: "surah-unavailable" });
+
+    const neighbour = (n) => {
+        const meta = Array.isArray(surahIndex) ? surahIndex[n - 1] : null;
+        return {
+            surahNo: n,
+            surahName: (meta && meta.surahName) || `Surah ${n}`,
+            surahNameArabic: (meta && meta.surahNameArabic) || ""
+        };
+    };
 
     const favoriteEdition = getFavoriteEditions(settings);
     const translations = [];
@@ -908,9 +922,11 @@ app.get("/api/quran/surah/:surahNo", async function(req, res){
             const parsed = primary ? parseEdition(primary) : null;
             return parsed ? parsed.id : null;
         })(),
-        favoriteFont: settings.favoriteFont || 'Amiri',
+        favoriteFont: settings.favoriteFont || 'QPC-Hafs',
         favouriteKeys: Array.from(favourites.keysFor(req)),
-        isLoggedIn: Boolean(req.isAuthenticated && req.isAuthenticated())
+        isLoggedIn: Boolean(req.isAuthenticated && req.isAuthenticated()),
+        previousSurah: surahNo > 1 ? neighbour(surahNo - 1) : null,
+        nextSurah: surahNo < 114 ? neighbour(surahNo + 1) : null
     });
 });
 
