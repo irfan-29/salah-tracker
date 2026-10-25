@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { posts as api } from '../services/api';
 import { useSession } from '../hooks/useSession';
@@ -15,6 +15,9 @@ export function PostCard({ post, permalinkBase = '', canManage, onChanged, onDel
   const [deleting, setDeleting] = useState(false);
   const [removed, setRemoved] = useState(false);
   const [error, setError] = useState('');
+  const [menuOpen, setMenuOpen] = useState(false);
+  const moreRef = useRef(null);
+  const moreButtonRef = useRef(null);
   const [likeState, setLikeState] = useState({
     liked: Boolean(post.likedByMe),
     count: Number(post.likeCount) || 0,
@@ -29,6 +32,25 @@ export function PostCard({ post, permalinkBase = '', canManage, onChanged, onDel
     });
   }, [post._id, post.likedByMe, post.likeCount]);
 
+  useEffect(() => {
+    if (!menuOpen) return undefined;
+    const closeOutside = (event) => {
+      if (!moreRef.current?.contains(event.target)) setMenuOpen(false);
+    };
+    const onKey = (event) => {
+      if (event.key === 'Escape') {
+        setMenuOpen(false);
+        moreButtonRef.current?.focus();
+      }
+    };
+    document.addEventListener('pointerdown', closeOutside);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('pointerdown', closeOutside);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [menuOpen]);
+
   // Profile responses do not populate `author` (every post there belongs to the
   // profile owner), so that page passes an explicit canManage. Everywhere else
   // the post carries its populated author.
@@ -38,6 +60,7 @@ export function PostCard({ post, permalinkBase = '', canManage, onChanged, onDel
 
   const handle = post.author && post.author.username ? post.author.username : null;
   const permalink = permalinkBase + '/post/' + post._id;
+  const moreMenuId = `post-more-${post._id}`;
 
   async function handleLike() {
     if (!isLoggedIn) {
@@ -129,22 +152,59 @@ export function PostCard({ post, permalinkBase = '', canManage, onChanged, onDel
           </span>
           {likeState.count > 0 && <span className="post-like-count">{likeState.count}</span>}
         </button>
-        <button type="button" className="post-share" data-share-url={permalink}
-                title="Copy link to this post" aria-label="Copy link to this post">
-          <span className="material-symbols-rounded">share</span>
-        </button>
-        {owned && (
-          <div className="post-manage-actions">
-            <button type="button" className="post-share" onClick={() => setEditing(true)}
-                    title="Edit post" aria-label="Edit post">
-              <span className="material-symbols-rounded">edit</span>
-            </button>
-            <button type="button" className="post-share post-share-danger" onClick={handleDelete}
-                    disabled={deleting} title="Delete post" aria-label="Delete post">
-              <span className="material-symbols-rounded">{deleting ? 'hourglass_top' : 'delete'}</span>
-            </button>
-          </div>
-        )}
+        <div className="post-action-group">
+          <button type="button" className="post-share" data-share-url={permalink}
+                  title="Copy link to this post" aria-label="Copy link to this post">
+            <span className="material-symbols-rounded">share</span>
+          </button>
+          {owned && (
+            <div className="post-more" ref={moreRef}>
+              <button
+                ref={moreButtonRef}
+                type="button"
+                className={`post-share post-more-btn${menuOpen ? ' is-open' : ''}`}
+                aria-haspopup="menu"
+                aria-expanded={menuOpen}
+                aria-controls={menuOpen ? moreMenuId : undefined}
+                title="More options"
+                aria-label="More options"
+                onClick={() => setMenuOpen((open) => !open)}
+              >
+                <span className="material-symbols-rounded">more_vert</span>
+              </button>
+              {menuOpen && (
+                <div className="post-more-menu" id={moreMenuId} role="menu" aria-label="Post options">
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      setEditing(true);
+                    }}
+                  >
+                    <span className="material-symbols-rounded" aria-hidden="true">edit</span>
+                    Edit post
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="is-danger"
+                    disabled={deleting}
+                    onClick={() => {
+                      setMenuOpen(false);
+                      handleDelete();
+                    }}
+                  >
+                    <span className="material-symbols-rounded" aria-hidden="true">
+                      {deleting ? 'hourglass_top' : 'delete'}
+                    </span>
+                    {deleting ? 'Deleting…' : 'Delete post'}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -232,29 +292,20 @@ export function PostsPage() {
         </button>
 
         {isLoggedIn && (
-          <div className="post-filter-tabs" role="tablist" aria-label="Filter posts">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={filter === 'all'}
-              className={`post-filter-tab${filter === 'all' ? ' is-active' : ''}`}
-              onClick={() => setFilter('all')}
-            >
-              <span className="material-symbols-rounded" aria-hidden="true">dynamic_feed</span>
-              All
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={filter === 'liked'}
-              className={`post-filter-tab${filter === 'liked' ? ' is-active' : ''}`}
-              onClick={() => setFilter('liked')}
-            >
-              <span className="material-symbols-rounded" aria-hidden="true">favorite</span>
-              Liked
-              <span className="post-filter-count">{likedCount}</span>
-            </button>
-          </div>
+          <button
+            type="button"
+            className={`post-filter-toggle${filter === 'liked' ? ' is-active' : ''}`}
+            aria-pressed={filter === 'liked'}
+            aria-label={filter === 'liked' ? 'Show all posts' : 'Show liked posts'}
+            title={filter === 'liked' ? 'Show all posts' : 'Show liked posts'}
+            onClick={() => setFilter((current) => (current === 'liked' ? 'all' : 'liked'))}
+          >
+            <span className="material-symbols-rounded" aria-hidden="true">
+              {filter === 'liked' ? 'favorite' : 'favorite_border'}
+            </span>
+            Liked
+            <span className="post-filter-count">{likedCount}</span>
+          </button>
         )}
       </div>
 

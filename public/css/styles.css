@@ -1967,6 +1967,7 @@ body:has(.global-audio-bar) .main-content {
 /* --- Posts --- */
 .post-actions {
   display: flex;
+  align-items: center;
   gap: 0.75rem;
   max-width: 860px;
   margin: 0 auto 1.5rem;
@@ -2941,10 +2942,8 @@ hr {
   white-space: nowrap;
 }
 
-/* Edit/Delete sit beside Share rather than in a floating menu: the card has no
-   other chrome, and a menu would need click-outside and escape handling for two
-   actions. Icon-only, like a social feed: the title/aria-label carries the
-   meaning and the 34px circle keeps the tap target usable. */
+/* The card footer uses one flex row: Like stays left, while Share and the
+   owner-only More menu sit together on the right. */
 .post-card-actions {
   display: flex;
   align-items: center;
@@ -2963,14 +2962,96 @@ hr {
 
 .post-card-footer .post-card-actions {
   width: 100%;
-  justify-content: flex-start;
+  justify-content: space-between;
+  gap: 0.35rem;
 }
 
-.post-manage-actions {
+.post-card-footer .post-like {
+  margin-right: auto;
+}
+
+.post-action-group {
   display: flex;
   align-items: center;
   gap: 0.15rem;
-  margin-left: auto;
+}
+
+/* Edit and delete are rare, owner-only actions. Keep the footer to Like on the
+   left and Share/More on the right, with the two management actions tucked into
+   a small menu instead of competing for attention. */
+.post-more {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.post-card-actions .post-more-btn.is-open {
+  color: var(--color-text);
+  background: var(--color-border-light);
+}
+
+.post-more-menu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 0.45rem);
+  z-index: 30;
+  min-width: 158px;
+  padding: 0.32rem;
+  border: 1px solid var(--color-border-light);
+  border-radius: 14px;
+  background: var(--color-surface-elevated);
+  box-shadow: 0 18px 40px -22px rgba(16, 42, 40, 0.45);
+  transform-origin: bottom right;
+  animation: post-more-in 0.16s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes post-more-in {
+  from { opacity: 0; transform: translateY(4px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.post-more-menu button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.55rem 0.62rem;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: 0.81rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: color var(--transition), background var(--transition);
+}
+
+.post-more-menu button:hover:not(:disabled) {
+  background: var(--color-border-light);
+}
+
+.post-more-menu button:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+}
+
+.post-more-menu button .material-symbols-rounded { font-size: 1.05rem; }
+
+.post-more-menu button.is-danger { color: var(--color-danger); }
+
+.post-more-menu button.is-danger:hover:not(:disabled) {
+  background: rgba(217, 83, 79, 0.09);
+}
+
+.post-more-menu button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .post-more-menu { animation: none; }
 }
 
 .post-card-actions .post-share {
@@ -3031,50 +3112,46 @@ hr {
   cursor: default;
 }
 
-.post-filter-tabs {
-  display: flex;
-  align-items: center;
-  gap: 0.12rem;
-  margin-left: auto;
-  padding: 0.22rem;
-  border: 1px solid var(--color-border-light);
-  border-radius: 999px;
-  background: rgba(16, 42, 40, 0.055);
-}
-
-[data-theme="dark"] .post-filter-tabs { background: rgba(255, 255, 255, 0.045); }
-
-.post-filter-tab {
+/* Liked posts are a small history, not a primary section. A compact toggle
+   beside Add Post keeps All as the default without a second navigation bar. */
+.post-filter-toggle {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.28rem;
-  min-height: 34px;
-  padding: 0.38rem 0.68rem;
-  border: none;
+  gap: 0.32rem;
+  min-height: 42px;
+  padding: 0.5rem 0.85rem;
+  border: 1px solid var(--color-border-light);
   border-radius: 999px;
-  background: transparent;
+  background: var(--color-surface);
   color: var(--color-text-secondary);
   font-family: var(--font-sans);
-  font-size: 0.76rem;
+  font-size: 0.8rem;
   font-weight: 700;
   cursor: pointer;
-  transition: color var(--transition), background var(--transition), box-shadow var(--transition);
+  transition: color var(--transition), background var(--transition), border-color var(--transition), box-shadow var(--transition);
 }
 
-.post-filter-tab .material-symbols-rounded { font-size: 1rem; }
+.post-filter-toggle .material-symbols-rounded { font-size: 1.05rem; }
 
-.post-filter-tab:hover { color: var(--color-text); }
-
-.post-filter-tab.is-active {
+.post-filter-toggle:hover {
   color: var(--color-primary-dark);
-  background: var(--color-surface);
-  box-shadow: 0 7px 18px -14px rgba(16, 42, 40, 0.4);
+  border-color: rgba(13, 148, 136, 0.32);
 }
 
-[data-theme="dark"] .post-filter-tab.is-active { color: var(--color-primary-light); }
+.post-filter-toggle.is-active {
+  color: var(--color-primary-dark);
+  background: rgba(13, 148, 136, 0.1);
+  border-color: rgba(13, 148, 136, 0.28);
+}
 
-.post-filter-tab.is-active .material-symbols-rounded {
+[data-theme="dark"] .post-filter-toggle.is-active {
+  color: var(--color-primary-light);
+  background: rgba(45, 212, 191, 0.12);
+  border-color: rgba(45, 212, 191, 0.26);
+}
+
+.post-filter-toggle.is-active .material-symbols-rounded {
   font-variation-settings: 'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24;
 }
 
@@ -3091,15 +3168,16 @@ hr {
   font-variant-numeric: tabular-nums;
 }
 
-.post-filter-tab.is-active .post-filter-count {
+[data-theme="dark"] .post-filter-count { background: rgba(255, 255, 255, 0.09); }
+
+.post-filter-toggle.is-active .post-filter-count {
   background: var(--color-primary);
   color: #fff;
 }
 
 @media (max-width: 600px) {
   .post-actions { flex-wrap: wrap; }
-  .post-filter-tabs { width: 100%; margin-left: 0; }
-  .post-filter-tab { flex: 1; }
+  .post-filter-toggle { flex: 0 0 auto; }
 }
 
 /* Type choice lives inside the compose form, so there is one Add Post button
