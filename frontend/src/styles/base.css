@@ -2928,6 +2928,23 @@ hr {
   margin-bottom: 0.75rem;
 }
 
+/* The posted date moved into the slot the action row used to occupy. Keep it
+   quiet enough that the author still leads the card, and let it ellipsize on a
+   narrow phone instead of pushing the avatar off the edge. */
+.post-card .post-head-date {
+  flex: 0 1 auto;
+  min-width: 0;
+  margin: 0 0 0 auto;
+  overflow: hidden;
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+  font-style: normal;
+  line-height: 1.35;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* Edit/Delete sit beside Share rather than in a floating menu: the card has no
    other chrome, and a menu would need click-outside and escape handling for two
    actions. Icon-only, like a social feed: the title/aria-label carries the
@@ -2938,6 +2955,26 @@ hr {
   justify-content: flex-end;
   flex-wrap: wrap;
   gap: 0.15rem;
+}
+
+/* Engagement and management live together at the end of the card, matching the
+   familiar social-feed order: like and share first, owner tools pushed right. */
+.post-card-footer {
+  margin-top: 1rem;
+  padding-top: 0.8rem;
+  border-top: 1px solid var(--color-border-light);
+}
+
+.post-card-footer .post-card-actions {
+  width: 100%;
+  justify-content: flex-start;
+}
+
+.post-manage-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+  margin-left: auto;
 }
 
 .post-card-actions .post-share {

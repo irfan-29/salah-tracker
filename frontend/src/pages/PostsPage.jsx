@@ -100,10 +100,53 @@ export function PostCard({ post, permalinkBase = '', canManage, onChanged, onDel
     );
   }
 
+  // Instagram-style card order: author and posted date on top, media/content in
+  // the middle, and every action together at the end. Putting the date where
+  // the action row used to be keeps the top line balanced.
   const date = (
-    <p className="post-date">
+    <p className="post-date post-head-date">
       <Link className="post-permalink" to={`/post/${post._id}`}>{post.postedDate}</Link>
     </p>
+  );
+
+  const actions = (
+    <div className="post-card-footer">
+      <div className="post-card-actions">
+        <button
+          type="button"
+          className={`fav-btn post-like${likeState.liked ? ' is-active' : ''}`}
+          aria-pressed={likeState.liked}
+          aria-busy={likeState.busy}
+          disabled={likeState.busy}
+          aria-label={likeState.liked
+            ? `Unlike this post${likeState.count ? `, ${likeState.count} likes` : ''}`
+            : `Like this post${likeState.count ? `, ${likeState.count} likes` : ''}`}
+          title={likeState.liked ? 'Unlike' : 'Like'}
+          onClick={handleLike}
+        >
+          <span className="material-symbols-rounded">
+            {likeState.liked ? 'favorite' : 'favorite_border'}
+          </span>
+          {likeState.count > 0 && <span className="post-like-count">{likeState.count}</span>}
+        </button>
+        <button type="button" className="post-share" data-share-url={permalink}
+                title="Copy link to this post" aria-label="Copy link to this post">
+          <span className="material-symbols-rounded">share</span>
+        </button>
+        {owned && (
+          <div className="post-manage-actions">
+            <button type="button" className="post-share" onClick={() => setEditing(true)}
+                    title="Edit post" aria-label="Edit post">
+              <span className="material-symbols-rounded">edit</span>
+            </button>
+            <button type="button" className="post-share post-share-danger" onClick={handleDelete}
+                    disabled={deleting} title="Delete post" aria-label="Delete post">
+              <span className="material-symbols-rounded">{deleting ? 'hourglass_top' : 'delete'}</span>
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
   );
 
   return (
@@ -118,41 +161,7 @@ export function PostCard({ post, permalinkBase = '', canManage, onChanged, onDel
           <span className="post-author post-author-anonymous">{post.authorName}</span>
         ) : null}
 
-        <div className="post-card-actions">
-          <button
-            type="button"
-            className={`fav-btn post-like${likeState.liked ? ' is-active' : ''}`}
-            aria-pressed={likeState.liked}
-            aria-busy={likeState.busy}
-            disabled={likeState.busy}
-            aria-label={likeState.liked
-              ? `Unlike this post${likeState.count ? `, ${likeState.count} likes` : ''}`
-              : `Like this post${likeState.count ? `, ${likeState.count} likes` : ''}`}
-            title={likeState.liked ? 'Unlike' : 'Like'}
-            onClick={handleLike}
-          >
-            <span className="material-symbols-rounded">
-              {likeState.liked ? 'favorite' : 'favorite_border'}
-            </span>
-            {likeState.count > 0 && <span className="post-like-count">{likeState.count}</span>}
-          </button>
-          {owned && (
-            <>
-              <button type="button" className="post-share" onClick={() => setEditing(true)}
-                      title="Edit post" aria-label="Edit post">
-                <span className="material-symbols-rounded">edit</span>
-              </button>
-              <button type="button" className="post-share post-share-danger" onClick={handleDelete}
-                      disabled={deleting} title="Delete post" aria-label="Delete post">
-                <span className="material-symbols-rounded">{deleting ? 'hourglass_top' : 'delete'}</span>
-              </button>
-            </>
-          )}
-          <button type="button" className="post-share" data-share-url={permalink}
-                  title="Copy link to this post" aria-label="Copy link to this post">
-            <span className="material-symbols-rounded">share</span>
-          </button>
-        </div>
+        {date}
       </div>
 
       {error && <p className="post-error" role="alert">{error}</p>}
@@ -166,14 +175,14 @@ export function PostCard({ post, permalinkBase = '', canManage, onChanged, onDel
               the rest of the card uses instead of on the border. */}
           <div className="post-card-body">
             {post.reference && <p className="post-reference">{post.reference}</p>}
-            {date}
+            {actions}
           </div>
         </>
       ) : (
         <>
           <p className="post-content">{post.content}</p>
           {post.reference && <p className="post-reference">Reference: {post.reference}</p>}
-          {date}
+          {actions}
         </>
       )}
     </div>
