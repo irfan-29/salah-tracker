@@ -6135,3 +6135,302 @@ input[type="datetime-local"] { color-scheme: light; }
   margin-left: auto;
   margin-right: auto;
 }
+
+/* The variable Material Symbols font used to be pinned to FILL 0, so the
+   "favorite" glyph only ever drew its outline. Give an active favourite a real
+   filled heart instead of a red outline. */
+.fav-btn.is-active {
+  color: #e5484d;
+  background: rgba(229, 72, 77, 0.09);
+}
+
+.fav-btn.is-active .material-symbols-rounded {
+  font-variation-settings: 'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24;
+  animation: favourite-pop 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.fav-btn .material-symbols-rounded { transition: transform 0.18s ease; }
+.fav-btn:hover .material-symbols-rounded { transform: scale(1.06); }
+
+@keyframes favourite-pop {
+  50% { transform: scale(1.2); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fav-btn.is-active .material-symbols-rounded { animation: none; }
+  .fav-btn:hover .material-symbols-rounded { transform: none; }
+}
+
+/* Surah meta used to sit alone in a full-width card, which read as a large
+   empty panel. Keep the same facts beside the title as compact pills. */
+.surah-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.surah-meta-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.38rem 0.7rem;
+  border: 1px solid var(--color-border-light);
+  border-radius: 999px;
+  background: var(--color-surface-elevated);
+  color: var(--color-text-secondary);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.surah-meta-pill .material-symbols-rounded {
+  color: var(--color-primary);
+  font-size: 1rem;
+}
+
+.surah-back-wrap {
+  max-width: 820px;
+  margin: 2rem auto 0;
+}
+
+.surah-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.55rem 0.9rem;
+  border: 1px solid var(--color-border-light);
+  border-radius: 999px;
+  background: var(--color-surface-elevated);
+  color: var(--color-text-secondary);
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: color var(--transition), border-color var(--transition), transform var(--transition), background var(--transition);
+}
+
+.surah-back .material-symbols-rounded { font-size: 1rem; }
+
+.surah-back:hover {
+  color: var(--color-primary-dark);
+  border-color: rgba(13, 148, 136, 0.32);
+  background: var(--color-surface);
+  transform: translateX(-2px);
+}
+
+[data-theme="dark"] .surah-back:hover { color: var(--color-primary-light); }
+
+/* Salah overview: the landing page promised a glanceable day, so show the
+   same ring-and-status picture with the data the tracker already loads. */
+.salah-overview { overflow: hidden; }
+
+.salah-overview-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.salah-overview-kicker {
+  display: block;
+  margin-bottom: 0.35rem;
+  color: var(--color-primary-dark);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+[data-theme="dark"] .salah-overview-kicker { color: var(--color-primary-light); }
+
+.salah-overview-head h2 {
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1.15;
+}
+
+.salah-overview-badge {
+  flex-shrink: 0;
+  padding: 0.35rem 0.7rem;
+  border: 1px solid rgba(13, 148, 136, 0.16);
+  border-radius: 999px;
+  background: var(--color-primary-glow);
+  color: var(--color-primary-dark);
+  font-size: 0.72rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+[data-theme="dark"] .salah-overview-badge {
+  color: var(--color-primary-light);
+  border-color: rgba(45, 212, 191, 0.2);
+}
+
+.salah-overview-body {
+  display: grid;
+  grid-template-columns: 190px minmax(0, 1fr);
+  gap: 2rem;
+  align-items: center;
+}
+
+.salah-ring {
+  position: relative;
+  width: 180px;
+  height: 180px;
+  justify-self: center;
+}
+
+.salah-ring svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  transform: rotate(-90deg);
+}
+
+.salah-ring-track,
+.salah-ring-fill {
+  fill: none;
+  stroke-width: 9;
+  stroke-linecap: round;
+}
+
+.salah-ring-track { stroke: var(--color-border-light); }
+
+.salah-ring-fill {
+  stroke: url(#salah-ring-gradient);
+  transition: stroke-dashoffset 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.salah-ring-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.salah-ring-label strong {
+  color: var(--color-text);
+  font-size: 2.55rem;
+  font-weight: 800;
+  letter-spacing: -0.06em;
+}
+
+.salah-ring-label span {
+  margin-top: 0.15rem;
+  color: var(--color-text-secondary);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.salah-ring-label em {
+  margin-top: 0.35rem;
+  color: var(--color-text-muted);
+  font-size: 0.6rem;
+  font-style: normal;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.salah-prayer-statuses {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.salah-status {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--color-border-light);
+  border-radius: 13px;
+  background: var(--color-surface);
+}
+
+.salah-status-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  font-size: 1.05rem;
+}
+
+.salah-status-name {
+  color: var(--color-text);
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.salah-status-value {
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.salah-status.is-jamah .salah-status-icon,
+.salah-status.is-ontime .salah-status-icon {
+  background: rgba(13, 148, 136, 0.12);
+  color: var(--color-primary-dark);
+}
+
+[data-theme="dark"] .salah-status.is-jamah .salah-status-icon,
+[data-theme="dark"] .salah-status.is-ontime .salah-status-icon {
+  color: var(--color-primary-light);
+}
+
+.salah-status.is-jamah .salah-status-value,
+.salah-status.is-ontime .salah-status-value { color: var(--color-primary-dark); }
+[data-theme="dark"] .salah-status.is-jamah .salah-status-value,
+[data-theme="dark"] .salah-status.is-ontime .salah-status-value { color: var(--color-primary-light); }
+
+.salah-status.is-late .salah-status-icon {
+  background: rgba(192, 138, 53, 0.13);
+  color: #946421;
+}
+[data-theme="dark"] .salah-status.is-late .salah-status-icon { color: #f4d696; }
+.salah-status.is-late .salah-status-value { color: #946421; }
+[data-theme="dark"] .salah-status.is-late .salah-status-value { color: #f4d696; }
+
+.salah-status.is-missed .salah-status-icon {
+  background: rgba(217, 83, 79, 0.11);
+  color: #c2413c;
+}
+[data-theme="dark"] .salah-status.is-missed .salah-status-icon { color: #fca5a5; }
+
+.salah-status.is-empty { opacity: 0.82; }
+
+.salah-form-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.salah-form-grid .form-floating { max-width: none; width: 100%; }
+
+@media (max-width: 768px) {
+  .salah-overview-head { flex-direction: column; }
+  .salah-overview-body { grid-template-columns: 1fr; gap: 1.25rem; }
+  .salah-ring { width: 156px; height: 156px; }
+  .salah-form-grid { grid-template-columns: 1fr; }
+}
+
+/* Bootstrap's striped table paints row cells with its own --bs-table-* colour
+   variables, which are pinned to the light body colour even in dark mode. Feed
+   those variables the theme text colour so the row labels stay readable. */
+.table {
+  --bs-table-color: var(--color-text);
+  --bs-table-striped-color: var(--color-text);
+  --bs-table-hover-color: var(--color-text);
+  --bs-table-active-color: var(--color-text);
+}
+
+.table tbody td strong { color: inherit; }

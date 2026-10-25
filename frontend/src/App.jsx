@@ -160,7 +160,7 @@ function Shell() {
   // marketing page.
   if (pathname === '/') {
     if (resolved.isLoggedIn) {
-      const target = resolved.homePath && resolved.homePath !== '/' ? resolved.homePath : '/salah';
+      const target = resolved.homePath && resolved.homePath !== '/' ? resolved.homePath : '/quran';
       return <Navigate to={target} replace />;
     }
     return (

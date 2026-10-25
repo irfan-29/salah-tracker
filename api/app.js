@@ -977,11 +977,10 @@ app.get("/api/app/meta", async function(req, res){
         console.error("api/app/meta:", err.message);
     }
 
-    // Resolve once. `settings.defaultHome || "salah"` and a lookup keyed on the
-    // raw value can disagree when the raw value is falsy - which is exactly the
-    // bug that made "/" ignore a stored "salah" for any guest who had saved a
-    // setting. One variable cannot drift from itself.
-    const defaultHome = settings.defaultHome || "salah";
+    // Resolve once. Quran is the safe default now that Salah requires an
+    // account: a guest who lands in the app should reach something they can
+    // actually use. Signed-in users still get whatever they configured.
+    const defaultHome = settings.defaultHome || "quran";
 
     res.set("Cache-Control", "no-store");
     res.json({
@@ -1367,7 +1366,7 @@ app.get("/api/settings", async function(req, res){
 
         res.json({
             settings: {
-                defaultHome: settings.defaultHome || "salah",
+                defaultHome: settings.defaultHome || "quran",
                 location: settings.location || "Coimbatore",
                 favoriteReciter: settings.favoriteReciter || 1,
                 favoriteFont: settings.favoriteFont || "QPC-Hafs",

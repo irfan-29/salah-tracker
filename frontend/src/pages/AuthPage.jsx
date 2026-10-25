@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../services/api';
 import Loader from '../components/Loader';
 
@@ -33,7 +33,6 @@ export default function AuthPage({ mode: initialMode = 'login' }) {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [cooldown, setCooldown] = useState(0);
-  const navigate = useNavigate();
   const [params] = useSearchParams();
 
   const returnTo = params.get('returnTo') || null;
@@ -44,20 +43,21 @@ export default function AuthPage({ mode: initialMode = 'login' }) {
     window.history.replaceState(null, '', target);
   }
 
-  function done(username) {
+  function done() {
     if (returnTo) { window.location.href = returnTo; return; }
-    navigate(username ? '/account' : '/challenges', { replace: true });
-    // A full load is deliberate: the navbar reads /api/session, and the session
-    // cookie only exists on a real navigation the browser has accepted.
-    window.location.reload();
+    // "/" is the one place that knows the user's configured home. Sending
+    // everyone to /account ignored that setting and made sign-in feel like a
+    // detour. A full load is deliberate: the shell reads /api/app/meta, and the
+    // session cookie only exists on a real navigation the browser has accepted.
+    window.location.href = '/';
   }
 
   async function submitLogin(e) {
     e.preventDefault();
     setBusy(true); setError('');
     try {
-      const result = await api.post('/auth/login', { email, password });
-      done(result.username);
+      await api.post('/auth/login', { email, password });
+      done();
     } catch (err) {
       setError(MESSAGES[err.body?.error] || 'Could not sign you in.');
     } finally {
@@ -84,8 +84,8 @@ export default function AuthPage({ mode: initialMode = 'login' }) {
     e.preventDefault();
     setBusy(true); setError('');
     try {
-      const result = await api.post('/auth/verify', { code });
-      done(result.username);
+      await api.post('/auth/verify', { code });
+      done();
     } catch (err) {
       const left = err.body?.attemptsLeft;
       setError(MESSAGES[err.body?.error] || 'Could not verify that code.' +

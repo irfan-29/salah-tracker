@@ -32,7 +32,7 @@ const DEFAULT_EDITION = "eng-abdullahyusufal:English:Abdullah Yusuf Ali";
 
 function defaults() {
   return {
-    defaultHome: "salah",
+    defaultHome: "quran",
     location: "Coimbatore",
     favoriteReciter: 1,
     theme: "light",

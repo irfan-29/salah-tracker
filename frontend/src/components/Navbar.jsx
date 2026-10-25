@@ -46,6 +46,17 @@ export default function Navbar({ session }) {
     window.location.href = '/';
   }, []);
 
+  // On phones the nav is a full-height drawer. A route change should leave it
+  // closed; otherwise every tap on a page leaves the drawer covering the page
+  // the visitor just asked for.
+  useEffect(() => {
+    const sidebar = sidebarRef.current;
+    if (!sidebar) return;
+    sidebar.classList.remove('menu-active');
+    const icon = sidebar.querySelector('.menu-toggler span');
+    if (icon) icon.textContent = 'menu';
+  }, [pathname]);
+
   useEffect(() => {
     const sidebar = sidebarRef.current;
     if (!sidebar) return undefined;
@@ -94,7 +105,7 @@ export default function Navbar({ session }) {
         {/* The brand goes to the app's home, not the marketing page: a guest who is
               already inside should stay inside. The landing page has its own
               brand link. */}
-        <Link to={session.homePath || '/salah'} className="header-logo">
+        <Link to={session.homePath || '/quran'} className="header-logo">
           <div className="logo-icon">
             <span className="material-symbols-rounded">mosque</span>
           </div>

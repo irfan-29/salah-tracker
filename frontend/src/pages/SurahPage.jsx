@@ -72,15 +72,17 @@ export default function SurahPage() {
       <header className="page-header">
         <h1>{data.surahName}</h1>
         <p>{data.surahNameArabic} · {data.surahNameTranslation}</p>
-      </header>
-
-      {/* Mirrors the .container1 > .surah-item block in views/surah.ejs, down to
-          the inline overrides, so the spacing matches exactly. */}
-      <div className="container1" style={{ textAlign: 'left' }}>
-        <div className="surah-item" style={{ borderBottom: 'none', paddingBottom: 0 }}>
-          <p className="surah-meta">{data.revelationPlace} · {data.totalAyah} Ayahs</p>
+        <div className="surah-meta-row">
+          <span className="surah-meta-pill">
+            <span className="material-symbols-rounded" aria-hidden="true">place</span>
+            {data.revelationPlace}
+          </span>
+          <span className="surah-meta-pill">
+            <span className="material-symbols-rounded" aria-hidden="true">menu_book</span>
+            {data.totalAyah} Ayahs
+          </span>
         </div>
-      </div>
+      </header>
 
       {/* Ayah navigator. views/surah.ejs had this between the surah meta and the
           ayah list; the port dropped it, so there was no way to jump to an ayah
@@ -140,7 +142,12 @@ export default function SurahPage() {
         );
       })}
 
-      <p className="post-back"><Link to="/quran">← Back to Quran</Link></p>
+      <div className="surah-back-wrap">
+        <Link to="/quran" className="surah-back">
+          <span className="material-symbols-rounded" aria-hidden="true">arrow_back</span>
+          Back to Quran
+        </Link>
+      </div>
     </>
   );
 }

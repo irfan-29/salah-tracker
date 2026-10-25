@@ -265,7 +265,7 @@ const PREVIEWS = {
 
 export default function LandingPage() {
   const { homePath, setTheme, theme } = useSession();
-  const appHref = homePath || '/salah';
+  const appHref = homePath || '/quran';
 
   // The salah card is a real little demo, not a screenshot: tapping a prayer
   // updates the ring. It is the smallest possible taste of the product.

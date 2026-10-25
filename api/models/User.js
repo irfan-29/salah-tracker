@@ -20,7 +20,7 @@ const salahEntrySchema = new mongoose.Schema({
 }, { _id: false });
 
 const settingsSchema = new mongoose.Schema({
-    defaultHome: { type: String, default: "salah" },
+    defaultHome: { type: String, default: "quran" },
     location: { type: String, default: "Coimbatore" },
     favoriteReciter: { type: Number, default: 1 },
     favoriteFont: String,
