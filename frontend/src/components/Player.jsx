@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAudio } from './AudioProvider';
 import { quran } from '../services/api';
 
@@ -17,6 +17,10 @@ export default function Player() {
   const { track, playing, position, duration, toggle, seek, close, load, hasTrack,
           skip, canSkipBack, canSkipForward } = useAudio();
   const [restored, setRestored] = useState(false);
+  const [scrubPct, setScrubPct] = useState(null);
+  const trackRef = useRef(null);
+  const rangeRef = useRef(null);
+  const dragging = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -32,7 +36,68 @@ export default function Player() {
 
   if (!restored || !hasTrack) return null;
 
-  const pct = duration > 0 ? (position / duration) * 100 : 0;
+  const pct = duration > 0
+    ? (scrubPct !== null ? scrubPct : Math.min(100, Math.max(0, (position / duration) * 100)))
+    : 0;
+
+  // The native range stays for keyboard access, but pointer input is handled by
+  // the track itself. The old input was clipped to the 4px rail, which made the
+  // thumb almost impossible to grab. We also preview the selected position
+  // locally while dragging instead of waiting for timeupdate to catch up.
+  const fractionAt = (clientX) => {
+    const el = trackRef.current;
+    if (!el) return 0;
+    const rect = el.getBoundingClientRect();
+    if (!rect.width) return 0;
+    return Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+  };
+
+  const preview = (clientX) => {
+    const fraction = fractionAt(clientX);
+    setScrubPct(fraction * 100);
+    return fraction;
+  };
+
+  const beginScrub = (event) => {
+    if (!duration || duration <= 0) return;
+    event.preventDefault();
+    dragging.current = true;
+    try {
+      trackRef.current?.setPointerCapture?.(event.pointerId);
+    } catch (err) {
+      // Pointer capture is a convenience; dragging still works without it.
+    }
+    preview(event.clientX);
+    rangeRef.current?.focus({ preventScroll: true });
+  };
+
+  const moveScrub = (event) => {
+    if (!dragging.current) return;
+    preview(event.clientX);
+  };
+
+  const endScrub = (event) => {
+    if (!dragging.current) return;
+    dragging.current = false;
+    const fraction = preview(event.clientX);
+    try {
+      trackRef.current?.releasePointerCapture?.(event.pointerId);
+    } catch (err) {
+      // Already released by the browser.
+    }
+    seek(fraction);
+    setScrubPct(null);
+  };
+
+  const cancelScrub = (event) => {
+    dragging.current = false;
+    try {
+      trackRef.current?.releasePointerCapture?.(event.pointerId);
+    } catch (err) {
+      // Already released by the browser.
+    }
+    setScrubPct(null);
+  };
 
   return (
     <div className="global-audio-bar" id="globalAudioBar">
@@ -65,20 +130,35 @@ export default function Player() {
             </button>
           </div>
           <div className="audio-progress-row">
-            <span className="audio-time">{formatTime(position)}</span>
-            <div className="audio-progress-track" onClick={(e) => {
-              const rect = e.currentTarget.getBoundingClientRect();
-              seek((e.clientX - rect.left) / rect.width);
-            }}>
+            <span className="audio-time">{formatTime(scrubPct !== null ? (scrubPct / 100) * duration : position)}</span>
+            <div
+              ref={trackRef}
+              className={`audio-progress-track${scrubPct !== null ? ' is-scrubbing' : ''}`}
+              onPointerDown={beginScrub}
+              onPointerMove={moveScrub}
+              onPointerUp={endScrub}
+              onPointerCancel={cancelScrub}
+            >
               <div className="audio-progress-fill" style={{ width: `${pct}%` }} />
+              <span
+                className="audio-progress-thumb"
+                style={{ left: `${pct}%`, display: duration > 0 ? undefined : 'none' }}
+                aria-hidden="true"
+              />
               <input
+                ref={rangeRef}
                 type="range"
                 className="audio-progress-input"
                 min="0"
                 max="100"
                 value={pct}
                 aria-label="Seek"
-                onChange={(e) => seek(Number(e.target.value) / 100)}
+                onChange={(e) => {
+                  const fraction = Number(e.target.value) / 100;
+                  setScrubPct(fraction * 100);
+                  seek(fraction);
+                  setScrubPct(null);
+                }}
               />
             </div>
             <span className="audio-time">{formatTime(duration)}</span>

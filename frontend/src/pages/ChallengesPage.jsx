@@ -8,6 +8,7 @@ export default function ChallengesPage() {
   const { isLoggedIn } = useSession();
   const [list, setList] = useState([]);
   const [canManage, setCanManage] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [completed, setCompleted] = useState([]);
   const [editing, setEditing] = useState(null);
@@ -22,6 +23,8 @@ export default function ChallengesPage() {
       setCanManage(Boolean(data.canManage));
     } catch (err) {
       setError('Could not load your challenges.');
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -70,14 +73,28 @@ export default function ChallengesPage() {
     );
   }
 
+  if (loading) {
+    return (
+      <>
+        <div className="page-header">
+          <h1>Challenges</h1>
+          <p>Build habits and track your streaks</p>
+        </div>
+        <Loader variant="inline" label="Loading challenges" />
+      </>
+    );
+  }
+
   async function submitStreaks() {
     setSaving(true);
     setError('');
     try {
       // completedIds + date, matching POST /api/challenges/streaks, which
       // validates the date server-side before writing anything.
-      const result = await api.saveStreaks({ completed, date });
-      setList((result.challenges || []).map((c) => ({ ...c, _id: c.id })));
+      await api.saveStreaks({ completed, date });
+      // Reload instead of trusting the short save response: it omits the
+      // challenge name and last-updated label, which blanked the cards.
+      await load();
     } catch (err) {
       setError(err.status === 400 ? 'That date could not be read.' : 'Could not update streaks.');
     } finally {
@@ -90,9 +107,10 @@ export default function ChallengesPage() {
     if (!name) return;
     setSaving(true);
     try {
-      const result = await api.create(name);
-      setList((current) => [...current, result.challenge]);
+      await api.create(name);
       setDraft('');
+      setEditing(null);
+      await load();
     } catch (err) {
       setError('Could not add that challenge.');
     } finally {
@@ -105,10 +123,10 @@ export default function ChallengesPage() {
     if (!name || !editing) return;
     setSaving(true);
     try {
-      const result = await api.rename(editing, name);
-      setList((current) => current.map((c) => (c._id === editing ? result.challenge : c)));
+      await api.rename(editing, name);
       setEditing(null);
       setDraft('');
+      await load();
     } catch (err) {
       setError('Could not rename that challenge.');
     } finally {
@@ -121,12 +139,16 @@ export default function ChallengesPage() {
     // one stray click away.
     if (!window.confirm('Delete this challenge?')) return;
     try {
-      const result = await api.remove(id);
-      setList(result.challenges || []);
+      await api.remove(id);
+      await load();
     } catch (err) {
       setError('Could not delete that challenge.');
     }
   }
+
+  const bestCurrent = list.reduce((best, item) => Math.max(best, Number(item.currentStreak) || 0), 0);
+  const bestEver = list.reduce((best, item) => Math.max(best, Number(item.maxStreak ?? item.currentStreak) || 0), 0);
+  const activeCount = list.filter((item) => (Number(item.currentStreak) || 0) > 0).length;
 
   return (
     <>
@@ -135,8 +157,33 @@ export default function ChallengesPage() {
         <p>Build habits and track your streaks</p>
       </div>
 
+      {list.length > 0 && (
+        <div className="challenge-consistency">
+          <div className="challenge-consistency-head">
+            <span className="challenge-consistency-eyebrow">Consistency</span>
+            <span className="challenge-consistency-pill">
+              {bestEver} {bestEver === 1 ? 'day' : 'days'} best
+            </span>
+          </div>
+          <div className="challenge-consistency-body">
+            <span className="challenge-consistency-flame material-symbols-rounded" aria-hidden="true">
+              local_fire_department
+            </span>
+            <div className="challenge-consistency-copy">
+              <strong>{bestCurrent}</strong>
+              <span>day streak</span>
+            </div>
+            <div className="challenge-consistency-meta">
+              <span>{list.length} {list.length === 1 ? 'challenge' : 'challenges'}</span>
+              <span>{activeCount} active</span>
+            </div>
+          </div>
+          <p className="challenge-consistency-hint">Small and steady beats big and brief.</p>
+        </div>
+      )}
+
       {canManage && (
-        <div className="post-actions">
+        <div className="post-actions challenge-add-row">
           <button type="button" className="btn btn-primary" onClick={() => { setEditing('__new__'); setDraft(''); }}>
             Add new challenge
           </button>
@@ -144,7 +191,7 @@ export default function ChallengesPage() {
       )}
 
       {editing && (
-        <div className="container1">
+        <div className="container1 challenge-panel">
           <div className="form-floating">
             <input
               className="form-control"
@@ -172,67 +219,93 @@ export default function ChallengesPage() {
 
       {error && <div className="auth-alert" role="alert"><span className="material-symbols-rounded">error</span>{error}</div>}
 
-      <div className="container1">
+      <div className="container1 challenge-panel">
         {canManage && (
           <div className="form-floating">
-            <input className="form-control" type="date" required value={date} onChange={(e) => setDate(e.target.value)} />
+            <input className="form-control" type="date" required value={date}
+                   onChange={(e) => { setDate(e.target.value); setCompleted([]); }} />
             <label htmlFor="challenge-date">Date</label>
           </div>
         )}
 
         <div className="challenge-list" style={{ marginTop: '1.25rem' }}>
           {list.length === 0 && (
-            <p className="challenge-empty">{canManage ? 'No challenges yet. Add one to start a streak.' : 'No challenges yet.'}</p>
+            <div className="challenge-empty-state">
+              <span className="challenge-empty-icon material-symbols-rounded" aria-hidden="true">local_fire_department</span>
+              <strong>Start with one small habit.</strong>
+              <p>{canManage
+                ? 'Add a challenge above, then check in each day to build your streak.'
+                : 'No challenges have been added yet.'}</p>
+            </div>
           )}
 
-          {list.map((challenge, i) => (
-            <div className="challenge-card" data-challenge-id={challenge._id} key={challenge._id}>
-              {canManage && (
-                <input
-                  type="checkbox"
-                  checked={completed.includes(String(challenge._id))}
-                  onChange={(e) => setCompleted((current) => e.target.checked
-                    ? [...current, String(challenge._id)]
-                    : current.filter((id) => id !== String(challenge._id)))}
-                  id={`challenge_${i}`}
-                />
-              )}
-              <div className="challenge-info">
-                <div className="challenge-header-row">
-                  <label htmlFor={`challenge_${i}`} className="challenge-title-label">
-                    <strong>{challenge.challenge}</strong>
+          {list.map((challenge, i) => {
+            const isDone = completed.includes(String(challenge._id));
+            const streak = Number(challenge.currentStreak) || 0;
+            const best = Number(challenge.maxStreak) || 0;
+            return (
+              <article
+                className={`challenge-card${isDone ? ' is-done' : ''}`}
+                data-challenge-id={challenge._id}
+                key={challenge._id}
+              >
+                {canManage && (
+                  <label className="challenge-check">
+                    <input
+                      type="checkbox"
+                      checked={isDone}
+                      aria-label={`Mark ${challenge.challenge} complete for this date`}
+                      onChange={(e) => setCompleted((current) => e.target.checked
+                        ? [...current, String(challenge._id)]
+                        : current.filter((id) => id !== String(challenge._id)))}
+                      id={`challenge_${i}`}
+                    />
+                    <span className="challenge-check-box" aria-hidden="true">
+                      <span className="material-symbols-rounded">check</span>
+                    </span>
                   </label>
-                  {canManage && (
-                    <div className="challenge-actions">
-                      <button
-                        type="button"
-                        className="challenge-icon-btn challenge-icon-btn-edit"
-                        aria-label="Edit challenge"
-                        title="Edit"
-                        onClick={() => { setEditing(String(challenge._id)); setDraft(challenge.challenge); }}
-                      >
-                        <span className="material-symbols-rounded" aria-hidden="true">edit</span>
-                      </button>
-                      <button
-                        type="button"
-                        className="challenge-icon-btn challenge-icon-btn-danger"
-                        aria-label="Delete challenge"
-                        title="Delete"
-                        onClick={() => remove(challenge._id)}
-                      >
-                        <span className="material-symbols-rounded" aria-hidden="true">delete</span>
-                      </button>
+                )}
+                <div className="challenge-info">
+                  <div className="challenge-header-row">
+                    <div className="challenge-title-block">
+                      <span className="challenge-card-eyebrow">Challenge</span>
+                      <strong className="challenge-card-title">{challenge.challenge}</strong>
                     </div>
-                  )}
+                    {canManage && (
+                      <div className="challenge-actions">
+                        <button
+                          type="button"
+                          className="challenge-icon-btn challenge-icon-btn-edit"
+                          aria-label="Edit challenge"
+                          title="Edit"
+                          onClick={() => { setEditing(String(challenge._id)); setDraft(challenge.challenge); }}
+                        >
+                          <span className="material-symbols-rounded" aria-hidden="true">edit</span>
+                        </button>
+                        <button
+                          type="button"
+                          className="challenge-icon-btn challenge-icon-btn-danger"
+                          aria-label="Delete challenge"
+                          title="Delete"
+                          onClick={() => remove(challenge._id)}
+                        >
+                          <span className="material-symbols-rounded" aria-hidden="true">delete</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  <div className="challenge-card-stats">
+                    <span className="streak-badge">
+                      <span className="material-symbols-rounded" aria-hidden="true">local_fire_department</span>
+                      {streak} day streak
+                    </span>
+                    <span className="challenge-best-badge">Best {best}</span>
+                    <span className="challenge-meta">Last updated: {challenge.lastUpdated || '—'}</span>
+                  </div>
                 </div>
-                <div style={{ marginTop: '0.5rem' }}>
-                  <span className="streak-badge">🔥 {challenge.currentStreak || 0} day streak</span>
-                  <span className="badge badge-accent">Best: {challenge.maxStreak || 0}</span>
-                </div>
-                <p className="challenge-meta">Last updated: {challenge.lastUpdated || '—'}</p>
-              </div>
-            </div>
-          ))}
+              </article>
+            );
+          })}
         </div>
 
         {canManage && list.length > 0 && (

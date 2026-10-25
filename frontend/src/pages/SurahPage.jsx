@@ -148,9 +148,6 @@ export default function SurahPage() {
               Previous surah
             </span>
             <strong className="surah-pager-name">{data.previousSurah.surahName}</strong>
-            {data.previousSurah.surahNameArabic && (
-              <span className="surah-pager-arabic" lang="ar" dir="rtl">{data.previousSurah.surahNameArabic}</span>
-            )}
           </Link>
         ) : (
           <span className="surah-pager-link is-disabled" aria-disabled="true">
@@ -169,9 +166,6 @@ export default function SurahPage() {
               <span className="material-symbols-rounded" aria-hidden="true">arrow_forward</span>
             </span>
             <strong className="surah-pager-name">{data.nextSurah.surahName}</strong>
-            {data.nextSurah.surahNameArabic && (
-              <span className="surah-pager-arabic" lang="ar" dir="rtl">{data.nextSurah.surahNameArabic}</span>
-            )}
           </Link>
         ) : (
           <span className="surah-pager-link is-next is-disabled" aria-disabled="true">

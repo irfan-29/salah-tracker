@@ -37,7 +37,12 @@ function SelectRow({ label, hint, value, options, onChange, renderLabel }) {
       {label && <div className="form-section-title">{label}</div>}
       {hint && <p className="form-section-hint">{hint}</p>}
       <div className="custom-selector form-control d-flex align-items-center justify-content-between"
-           onClick={() => setOpen((o) => !o)} role="button" tabIndex={0}>
+           onClick={() => setOpen((o) => !o)} role="button" tabIndex={0}
+           aria-haspopup="listbox" aria-expanded={open}
+           onKeyDown={(e) => {
+             if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen((o) => !o); }
+             if (e.key === 'Escape') setOpen(false);
+           }}>
         <span>{renderLabel ? renderLabel(value) : (value || 'Choose…')}</span>
         <span className="material-symbols-rounded" style={{ opacity: 0.5 }}>expand_more</span>
       </div>
@@ -45,14 +50,20 @@ function SelectRow({ label, hint, value, options, onChange, renderLabel }) {
           .custom-dropdown-menu rule is display:none and there is no .show rule,
           so adding a class here would leave it permanently closed. */}
       {open && (
-        <div className="custom-dropdown-menu" style={{ display: 'block' }}>
+        <div className="custom-dropdown-menu" style={{ display: 'block' }} role="listbox">
           <div className="options-list">
-            {options.map((opt) => (
-              <div key={opt.value} className="option-item-custom"
-                   onClick={() => { onChange(opt.value); setOpen(false); }}>
-                {opt.label}
-              </div>
-            ))}
+            {options.map((opt) => {
+              const selected = String(opt.value) === String(value);
+              return (
+                <div key={opt.value}
+                     className={`option-item-custom${selected ? ' is-selected' : ''}`}
+                     role="option" aria-selected={selected}
+                     onClick={() => { onChange(opt.value); setOpen(false); }}>
+                  <span>{opt.label}</span>
+                  {selected && <span className="material-symbols-rounded" aria-hidden="true">check</span>}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

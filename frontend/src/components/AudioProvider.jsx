@@ -100,7 +100,16 @@ export function AudioProvider({ children }) {
 
   const seek = useCallback((fraction) => {
     if (!audio || !isFinite(audio.duration) || audio.duration <= 0) return;
-    audio.currentTime = fraction * audio.duration;
+    const clamped = Math.min(1, Math.max(0, Number(fraction) || 0));
+    const next = clamped * audio.duration;
+    try {
+      audio.currentTime = next;
+    } catch (err) {
+      return;
+    }
+    // Move the fill immediately. The next timeupdate tick would otherwise make
+    // a completed drag look as if it had not registered for up to 250ms.
+    setPosition(next);
   }, [audio]);
 
   const close = useCallback(() => {

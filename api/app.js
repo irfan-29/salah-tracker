@@ -1093,9 +1093,14 @@ app.get("/api/challenges", async function(req, res){
 });
 
 app.post("/api/challenges", requireLogin, async function(req, res){
+    const challenge = String(req.body.challenge || "").trim();
+    if (!challenge) return res.status(400).json({ error: "invalid" });
     try {
-        const challenge = await userData.addChallenge(req, { challenge: req.body.challenge });
-        res.status(201).json({ challenge });
+        // addChallenge expects the name itself. Passing the whole body object
+        // made Mongoose try to cast `{ challenge: ... }` to a string, which
+        // returned 500 from the Add new challenge button.
+        const challenges = await userData.addChallenge(req, challenge);
+        res.status(201).json({ challenges });
     } catch (err) {
         console.error("api/challenges POST:", err.message);
         res.status(500).json({ error: "failed" });
