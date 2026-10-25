@@ -231,12 +231,8 @@ export function PostCard({ post, permalinkBase = '', canManage, onChanged, onDel
           <div className="post-video-embed">
             <iframe src={`https://www.youtube.com/embed/${post.content}`} allowFullScreen title="Embedded video" />
           </div>
-          {/* The player is edge-to-edge, so the caption sits in the same inset
-              the rest of the card uses instead of on the border. */}
-          <div className="post-card-body">
-            {post.reference && <p className="post-reference">{post.reference}</p>}
-            {actions}
-          </div>
+          {post.reference && <p className="post-reference">{post.reference}</p>}
+          {actions}
         </>
       ) : (
         <>

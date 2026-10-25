@@ -1988,14 +1988,20 @@ body:has(.global-audio-bar) .main-content {
   text-align: left;
 }
 
-.post-card-video,
 .post-card-shorts {
   padding: 0;
   overflow: hidden;
 }
 
+/* Video cards use the same card padding as text posts, so the author, media,
+   caption and action row all share one edge. The player itself is rounded to
+   match the card instead of cutting a sharp rectangle inside it. */
 .post-video-embed {
   aspect-ratio: 16 / 9;
+  margin-bottom: 0.95rem;
+  overflow: hidden;
+  border: 1px solid var(--color-border-light);
+  border-radius: 16px;
   background: #000;
 }
 
@@ -2011,11 +2017,9 @@ body:has(.global-audio-bar) .main-content {
   aspect-ratio: 9 / 16;
   max-height: 560px;
   margin: 0 auto;
+  overflow: hidden;
+  border-radius: 16px;
   background: #000;
-}
-
-.post-card-body {
-  padding: 1rem 1.5rem 1.25rem;
 }
 
 .post-card .post-content {
@@ -3190,22 +3194,6 @@ hr {
   display: flex;
   gap: 0.5rem;
   margin-bottom: 1rem;
-}
-
-/* Video cards run the player edge-to-edge, so the author line above it and the
-   caption below it carry their own inset. With padding: 0 they sat directly on
-   the card's border - the Share button was clipped by the rounded corner and
-   the description/date looked detached from the card. */
-.post-card-video .post-card-head {
-  padding: 1.25rem 1.5rem 0;
-}
-
-.post-card-video .post-error {
-  padding: 0 1.5rem;
-}
-
-.post-card-video .post-date {
-  margin-bottom: 0;
 }
 
 .post-card .post-error {
@@ -6258,7 +6246,6 @@ body {
   box-shadow: 0 24px 64px -42px rgba(0, 0, 0, 0.8);
 }
 
-.post-card-body { padding: 1.1rem 1.6rem 1.4rem; }
 .post-card .post-content { font-size: 1.02rem; line-height: 1.72; }
 .post-card .post-date { color: var(--color-text-muted); }
 
@@ -6522,8 +6509,6 @@ hr { border-color: var(--color-border-light); }
 
   .post-actions { max-width: 100%; }
   .post-card { padding: 1.25rem; border-radius: 20px; }
-  .post-card-video .post-card-head { padding: 1.15rem 1.25rem 0; }
-  .post-card-body { padding: 1rem 1.25rem 1.25rem; }
 
   .quran-tabs { border-radius: 999px; }
   .quran-tab { border-radius: 999px; padding: 0.6rem 0.4rem; font-size: 0.8rem; }
@@ -7311,6 +7296,7 @@ select.form-control option,
 }
 
 .app-field-control {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -7354,16 +7340,32 @@ select.form-control option,
   white-space: nowrap;
 }
 
+/* The label makes the control's content box taller at the top than the bottom,
+   so a normal flex item used to sit below the field's true optical centre. Pin
+   the icon to the right edge and centre it on the full control instead. */
 .app-field-icon {
-  flex: 0 0 auto;
+  position: absolute;
+  top: 50%;
+  right: 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.35rem;
+  height: 1.35rem;
   color: var(--color-text-muted);
-  font-size: 1.14rem;
+  font-size: 1.18rem;
+  pointer-events: none;
+  transform: translateY(-50%);
   transition: transform var(--transition), color var(--transition);
+}
+
+.app-field-control:hover:not(:disabled) .app-field-icon {
+  color: var(--color-primary-dark);
 }
 
 .app-select-trigger[aria-expanded="true"] .app-field-icon {
   color: var(--color-primary);
-  transform: rotate(180deg);
+  transform: translateY(-50%) rotate(180deg);
 }
 
 .app-date-trigger[aria-expanded="true"] .app-field-icon {
@@ -7379,12 +7381,13 @@ select.form-control option,
 .app-field--compact .app-field-control {
   width: auto;
   min-height: 44px;
-  padding: 0.52rem 2rem 0.52rem 0.8rem;
+  padding: 0.52rem 2.2rem 0.52rem 0.8rem;
   border-radius: 14px;
   font-size: 0.9rem;
 }
 
 .app-field--compact .app-field-icon {
+  right: 0.72rem;
   font-size: 1rem;
 }
 
