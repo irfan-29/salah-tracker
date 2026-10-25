@@ -163,6 +163,11 @@ async function clearAudioProgress(req) {
 }
 
 // --- Challenges -------------------------------------------------------------
+//
+// A challenge history is capped rather than made unbounded: seven hundred
+// dated check-ins is enough for weekly reports, and the embedded user document
+// cannot be allowed to grow without limit.
+const MAX_CHALLENGE_HISTORY = 730;
 
 async function listChallenges(req) {
   if (req.isAuthenticated && req.isAuthenticated()) {
@@ -215,8 +220,23 @@ async function deleteChallenge(req, id) {
   return true;
 }
 
+// Keep one dated record per challenge/day in a newest-first list. A date that
+// arrives twice means the same day was re-checked/re-unchecked, so replace it
+// rather than letting the chart double-count it.
+function mergeChallengeHistory(challenge, completed, dateKey) {
+    if (!dateKey) return;
+    const history = Array.from(challenge.history || []).filter(Boolean);
+    const filtered = history.filter((date) => date !== dateKey);
+    challenge.history = completed
+        ? [dateKey, ...filtered].slice(0, MAX_CHALLENGE_HISTORY)
+        : filtered;
+}
+
 // Apply a day's checkboxes: increment the ticked ones, reset the rest.
-async function applyStreakUpdate(req, { completedIds, lastUpdated }) {
+// `historyDate` (ISO YYYY-MM-DD, optional) records the completion on the
+// challenge itself, so the stats page can plot actual days later without
+// having to infer them from a streak number.
+async function applyStreakUpdate(req, { completedIds, lastUpdated, historyDate }) {
   const ids = completedIds.map(String);
 
   if (req.isAuthenticated && req.isAuthenticated()) {
@@ -231,6 +251,7 @@ async function applyStreakUpdate(req, { completedIds, lastUpdated }) {
         challenge.currentStreak = 0;
       }
       challenge.lastUpdated = lastUpdated;
+      mergeChallengeHistory(challenge, done, historyDate);
     }
     await req.user.save();
     return req.user.challenges;
@@ -248,9 +269,203 @@ async function applyStreakUpdate(req, { completedIds, lastUpdated }) {
       challenge.currentStreak = 0;
     }
     challenge.lastUpdated = lastUpdated;
+    mergeChallengeHistory(challenge, done, historyDate);
   }
   writeGuest(req, res_of(req), guest);
   return guest.challenges;
+}
+
+// --- Charity ---------------------------------------------------------------
+//
+// A charity has a recurring target and a list of dated donations. The target
+// is evaluated against the current window (day / week / month / year) so "£50 a
+// month" means the current calendar month, while lifetime totals stay visible.
+const CHARITY_PERIODS = ["daily", "weekly", "monthly", "yearly"];
+
+const CHARITY_PERIOD_LABELS = {
+  daily: "Today",
+  weekly: "This week",
+  monthly: "This month",
+  yearly: "This year"
+};
+
+// Boundaries are local dates, matching the ISO keys salah log and donations
+// use. `midnight` forces start/end comparisons into separate day boundary
+// rather than relying on the caller having passed a parseable date string.
+function shiftDate(date, days) {
+  const next = new Date(date.getTime());
+  next.setDate(next.getDate() + days);
+  return next;
+}
+
+function periodBounds(period, referenceDate) {
+  const date = referenceDate ? new Date(referenceDate) : new Date();
+  const start = new Date(date.getTime());
+  const end = new Date(date.getTime());
+
+  if (period === "daily") {
+    start.setHours(0, 0, 0, 0);
+    end.setHours(23, 59, 59, 999);
+  } else if (period === "weekly") {
+    // ISO week: Monday is the first day. The +6 so a Sunday stays in the week
+    // that ends on Sunday, which reads more familiarly than week-of-year.
+    const weekday = (date.getDay() + 6) % 7;
+    start.setDate(start.getDate() - weekday);
+    start.setHours(0, 0, 0, 0);
+    end.setDate(start.getDate() + 6);
+    end.setHours(23, 59, 59, 999);
+  } else if (period === "monthly") {
+    start.setDate(1);
+    start.setHours(0, 0, 0, 0);
+    end.setMonth(start.getMonth() + 1, 0);
+    end.setHours(23, 59, 59, 999);
+  } else {
+    // yearly
+    start.setMonth(0, 1);
+    start.setHours(0, 0, 0, 0);
+    end.setMonth(11, 31);
+    end.setHours(23, 59, 59, 999);
+  }
+
+  return { start, end, startKey: isoDateKey(start), endKey: isoDateKey(end) };
+}
+
+function presentCharity(charity, referenceDateKey) {
+  const raw = charity && typeof charity.toObject === "function"
+    ? charity.toObject()
+    : { ...charity };
+  const target = Number(raw.targetAmount) || 0;
+  const donations = Array.isArray(raw.donations) ? raw.donations : [];
+  const reference = referenceDateKey || isoDateKey(new Date());
+  const bounds = periodBounds(raw.period || "monthly", `${reference}T12:00:00`);
+
+  const donated = donations
+    .filter((donation) => {
+      const date = String(donation.date || "");
+      return date >= bounds.startKey && date <= bounds.endKey;
+    })
+    .reduce((total, donation) => total + (Number(donation.amount) || 0), 0);
+
+  const lifetime = donations.reduce((total, donation) => total + (Number(donation.amount) || 0), 0);
+  const remaining = Math.max(target - donated, 0);
+  const percent = target > 0 ? Math.min((donated / target) * 100, 100) : 0;
+
+  return {
+    id: String(raw._id || ""),
+    name: raw.name || "",
+    period: raw.period || "monthly",
+    periodLabel: CHARITY_PERIOD_LABELS[raw.period] || "",
+    targetAmount: target,
+    donations: donations.map((donation) => ({
+      amount: Number(donation.amount) || 0,
+      date: donation.date,
+      note: donation.note || ""
+    })),
+    lifeTime: {
+      given: lifetime,
+      donations: donations.length
+    },
+    // Current window progress. `periodStart` / `periodEnd` are exposed so the
+    // client can render an unambiguous "today / this week..." label.
+    progress: {
+      donated,
+      remaining,
+      percent,
+      target,
+      start: bounds.startKey,
+      end: bounds.endKey,
+      reference: CHARITY_PERIOD_LABELS[raw.period] || ""
+    }
+  };
+}
+
+async function listCharities(req, referenceDateKey) {
+  if (!req.isAuthenticated || !req.isAuthenticated()) return [];
+  return (req.user.charities || []).map((charity) => presentCharity(charity, referenceDateKey));
+}
+
+async function addCharity(req, { name, targetAmount, period }) {
+  const cleanName = String(name || "").trim();
+  const amount = Number(targetAmount);
+  const cleanPeriod = String(period || "monthly").trim().toLowerCase();
+
+  if (!cleanName || !Number.isFinite(amount) || amount <= 0
+      || !CHARITY_PERIODS.includes(cleanPeriod)) {
+    return null;
+  }
+  if (!req.isAuthenticated || !req.isAuthenticated()) return { loginRequired: true };
+
+  const existing = (req.user.charities || []).find((charity) => charity.name.toLowerCase() === cleanName.toLowerCase());
+  if (existing) return { duplicate: true };
+
+  req.user.charities.push({
+    name: cleanName,
+    targetAmount: amount,
+    period: cleanPeriod,
+    donations: []
+  });
+  await req.user.save();
+  const added = req.user.charities[req.user.charities.length - 1];
+  return presentCharity(added);
+}
+
+// Only the editable fields can change; donation rows are never overwritten by
+// a client-supplied `donations` array. That would let someone silently rewrite
+// their giving history.
+async function updateCharity(req, id, patch = {}) {
+  if (!req.isAuthenticated || !req.isAuthenticated()) return null;
+  const charity = req.user.charities.id(id);
+  if (!charity) return null;
+
+  if (patch.name !== undefined) {
+    const cleanName = String(patch.name || "").trim();
+    if (!cleanName) return { invalid: true };
+    charity.name = cleanName;
+  }
+  if (patch.targetAmount !== undefined) {
+    const amount = Number(patch.targetAmount);
+    if (!Number.isFinite(amount) || amount <= 0) return { invalid: true };
+    charity.targetAmount = amount;
+  }
+  if (patch.period !== undefined) {
+    const cleanPeriod = String(patch.period || "").trim().toLowerCase();
+    if (!CHARITY_PERIODS.includes(cleanPeriod)) return { invalid: true };
+    charity.period = cleanPeriod;
+  }
+
+  await req.user.save();
+  return presentCharity(charity);
+}
+
+async function deleteCharity(req, id) {
+  if (!req.isAuthenticated || !req.isAuthenticated()) return false;
+  const charity = req.user.charities.id(id);
+  if (!charity) return false;
+  charity.deleteOne();
+  await req.user.save();
+  return true;
+}
+
+// A donation is just a dated amount against the charity's target. Note is
+// optional. The returned object re-presents the charity with the same progress
+// pipeline, so no route has to recalculate percentages on its own.
+async function addDonation(req, id, { amount, date, note } = {}) {
+  if (!req.isAuthenticated || !req.isAuthenticated()) return null;
+
+  const value = Number(amount);
+  const isoDate = normaliseSalahDate(date);
+  if (!Number.isFinite(value) || value <= 0 || !isoDate) return { invalid: true };
+
+  const charity = req.user.charities.id(id);
+  if (!charity) return { notFound: true };
+
+  charity.donations.push({
+    amount: value,
+    date: isoDate,
+    note: String(note || "").trim().slice(0, 180)
+  });
+  await req.user.save();
+  return presentCharity(charity, isoDate);
 }
 
 // --- Salah log --------------------------------------------------------------
@@ -406,6 +621,13 @@ module.exports = {
   resolveSalahDay,
   entriesForDay,
   normaliseSalahDate,
+  listCharities,
+  addCharity,
+  updateCharity,
+  deleteCharity,
+  addDonation,
+  CHARITY_PERIODS,
+  CHARITY_PERIOD_LABELS,
   getTelegramChatId,
   setTelegramChatId,
   listFavourites,

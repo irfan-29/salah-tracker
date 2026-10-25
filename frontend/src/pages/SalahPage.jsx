@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { salah as api } from '../services/api';
 import { useSession } from '../hooks/useSession.jsx';
 import Loader from '../components/Loader';
@@ -127,9 +128,12 @@ export default function SalahPage() {
 
   return (
     <>
-      <div className="page-header">
-        <h1>Salah Tracker</h1>
-        <p>Log and review your daily prayers</p>
+      <div className="page-header page-header-with-action">
+        <div>
+          <h1>Salah Tracker</h1>
+          <p>Log and review your daily prayers</p>
+        </div>
+        {isLoggedIn && <Link className="btn btn-outline" to="/stats">View detailed stats</Link>}
       </div>
 
       {isLoggedIn && (

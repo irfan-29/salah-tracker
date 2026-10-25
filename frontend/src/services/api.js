@@ -111,4 +111,17 @@ export const settings = {
   get: () => api.get('/settings'),
 };
 
+export const charity = {
+  list: () => api.get('/charity'),
+  create: (payload) => api.post('/charity', payload),
+  update: (id, payload) => api.request(`/charity/${id}`, { method: 'PATCH', body: payload }),
+  remove: (id) => api.request(`/charity/${id}`, { method: 'DELETE' }),
+  donate: (id, payload) => api.post(`/charity/${id}/donate`, payload),
+};
+
+export const stats = {
+  get: ({ days = 30, charityMonths = 6 } = {}) =>
+    api.get(`/stats?days=${encodeURIComponent(days)}&charityMonths=${encodeURIComponent(charityMonths)}`),
+};
+
 export { ApiError };

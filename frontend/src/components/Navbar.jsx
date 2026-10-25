@@ -12,6 +12,8 @@ const PRIMARY = [
   { to: '/salah-timings', path: '/salah-timings', icon: 'schedule', label: 'Salah Timings' },
   { to: '/calendar', path: '/calendar', icon: 'calendar_month', label: 'Islamic Calendar' },
   { to: '/challenges', path: '/challenges', icon: 'emoji_events', label: 'Challenges' },
+  { to: '/charity', path: '/charity', icon: 'volunteer_activism', label: 'Charity' },
+  { to: '/stats', path: '/stats', icon: 'insights', label: 'Stats' },
   { to: '/posts', path: '/posts', icon: 'favorite', label: 'Posts' },
 ];
 

@@ -9,6 +9,8 @@ import useShareHandler from './hooks/useShareHandler';
 import { api } from './services/api';
 import QuranPage from './pages/QuranPage';
 import ChallengesPage from './pages/ChallengesPage';
+import CharityPage from './pages/CharityPage';
+import StatsPage from './pages/StatsPage';
 import SalahPage from './pages/SalahPage';
 import SettingsPage from './pages/SettingsPage';
 import SalahTimingsPage from './pages/SalahTimingsPage';
@@ -178,6 +180,8 @@ function Shell() {
           <Route path="/quran" element={<QuranPage />} />
           <Route path="/surah/:surahNo" element={<SurahPage />} />
           <Route path="/challenges" element={<ChallengesPage />} />
+          <Route path="/charity" element={<CharityPage />} />
+          <Route path="/stats" element={<StatsPage />} />
           <Route path="/salah" element={<SalahPage />} />
           <Route path="/posts" element={<PostsPage />} />
           <Route path="/settings" element={<SettingsPage />} />

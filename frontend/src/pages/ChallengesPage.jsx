@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { challenges as api } from '../services/api';
 import { useSession } from '../hooks/useSession.jsx';
 import Loader from '../components/Loader';
@@ -153,9 +154,12 @@ export default function ChallengesPage() {
 
   return (
     <>
-      <div className="page-header">
-        <h1>Challenges</h1>
-        <p>Build habits and track your streaks</p>
+      <div className="page-header page-header-with-action">
+        <div>
+          <h1>Challenges</h1>
+          <p>Build habits and track your streaks</p>
+        </div>
+        <Link className="btn btn-outline" to="/stats">View detailed stats</Link>
       </div>
 
       {list.length > 0 && (

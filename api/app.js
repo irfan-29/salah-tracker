@@ -26,6 +26,7 @@ const usernameUtil = require("./utils/username.js");
 const emailService = require("./services/email.js");
 const passwordUtil = require("./utils/password.js");
 const favourites = require("./services/favourites.js");
+const statsService = require("./services/stats.js");
 const User = require("./models/User.js");
 
 const app=express();
@@ -489,7 +490,8 @@ const HOME_OPTIONS = {
     'salah-tracker': 'Salah Tracker',
     'salah-timings': 'Salah Timings',
     challenges: 'Challenges',
-    analytics: 'Analytics',
+    charity: 'Charity',
+    stats: 'Stats',
     posts: 'Posts',
     settings: 'Settings'
 };
@@ -511,6 +513,8 @@ const HOME_PATHS = {
     "salah-tracker": "/salah",
     "salah-timings": "/salah-timings",
     challenges: "/challenges",
+    charity: "/charity",
+    stats: "/stats",
     posts: "/posts",
     settings: "/settings"
 };
@@ -1137,6 +1141,46 @@ app.post("/api/challenges", requireLogin, async function(req, res){
     }
 });
 
+// The streaks route must run BEFORE the dynamic `:id` route: otherwise Express
+// matches `/api/challenges/streaks` as a rename request and the whole route is
+// silently unreachable.
+app.post("/api/challenges/streaks", requireLogin, async function(req, res){
+    const completed = [].concat(req.body.completed || []).map(String);
+
+    const lastUpdated = new Date(req.body.date);
+    if (isNaN(lastUpdated.getTime())) {
+        return res.status(400).json({ error: "invalid-date" });
+    }
+    const formattedDate = lastUpdated.toLocaleDateString("en-US", {
+        weekday: "long", month: "short", day: "2-digit", year: "numeric"
+    });
+
+    try {
+        const allChallenges = await userData.applyStreakUpdate(req, {
+            completedIds: completed,
+            lastUpdated: formattedDate,
+            // ISO key, not the display label: the stats report needs an unambiguous
+            // day to plot, and the same-service helper stores exactly that.
+            historyDate: userData.normaliseSalahDate(req.body.date)
+        });
+        const updatedChallenges = allChallenges.map((c) => ({
+            id: String(c._id),
+            name: c.challenge,
+            currentStreak: c.currentStreak,
+            maxStreak: c.maxStreak
+        }));
+
+        // Awaited for the same reason as the EJS route: on Vercel the function
+        // can be frozen once the response is sent.
+        await notifyStreakUpdate(req, { formattedDate, completed, updatedChallenges });
+
+        res.json({ challenges: updatedChallenges, date: formattedDate });
+    } catch (err) {
+        console.error("api/challenges streaks:", err.message);
+        res.status(500).json({ error: "failed" });
+    }
+});
+
 app.post("/api/challenges/:id", requireLogin, async function(req, res){
     const challenge = String(req.body.challenge || "").trim();
     if (!req.params.id || !challenge) return res.status(400).json({ error: "invalid" });
@@ -1164,38 +1208,73 @@ app.delete("/api/challenges/:id", requireLogin, async function(req, res){
     }
 });
 
-// Mirrors POST /update-streaks exactly, including the date validation that
-// rejects a missing or unparseable date before anything is written.
-app.post("/api/challenges/streaks", requireLogin, async function(req, res){
-    const completed = [].concat(req.body.completed || []).map(String);
-
-    const lastUpdated = new Date(req.body.date);
-    if (isNaN(lastUpdated.getTime())) {
-        return res.status(400).json({ error: "invalid-date" });
-    }
-    const formattedDate = lastUpdated.toLocaleDateString("en-US", {
-        weekday: "long", month: "short", day: "2-digit", year: "numeric"
-    });
-
+// ---- Charity ----
+//
+// The module is account-only: targets and a giving history are personal, and
+// the same reason the salah log requires an account for writes. All routes read
+// req.user, never an id carried in the body.
+app.get("/api/charity", requireLogin, async function(req, res){
     try {
-        const allChallenges = await userData.applyStreakUpdate(req, {
-            completedIds: completed,
-            lastUpdated: formattedDate
+        const charities = await userData.listCharities(req);
+        res.json({
+            charities,
+            canManage: true,
+            periods: userData.CHARITY_PERIODS.map((id) => ({
+                id,
+                label: id.charAt(0).toUpperCase() + id.slice(1)
+            }))
         });
-        const updatedChallenges = allChallenges.map((c) => ({
-            id: String(c._id),
-            name: c.challenge,
-            currentStreak: c.currentStreak,
-            maxStreak: c.maxStreak
-        }));
-
-        // Awaited for the same reason as the EJS route: on Vercel the function
-        // can be frozen once the response is sent.
-        await notifyStreakUpdate(req, { formattedDate, completed, updatedChallenges });
-
-        res.json({ challenges: updatedChallenges, date: formattedDate });
     } catch (err) {
-        console.error("api/challenges streaks:", err.message);
+        console.error("api/charity:", err.message);
+        res.status(500).json({ error: "failed" });
+    }
+});
+
+app.post("/api/charity", requireLogin, async function(req, res){
+    try {
+        const result = await userData.addCharity(req, req.body || {});
+        if (result && result.duplicate) return res.status(409).json({ error: "duplicate" });
+        if (result && result.loginRequired) return res.status(401).json({ error: "login-required" });
+        if (!result) return res.status(400).json({ error: "invalid" });
+        res.status(201).json({ charity: result });
+    } catch (err) {
+        console.error("api/charity POST:", err.message);
+        res.status(500).json({ error: "failed" });
+    }
+});
+
+app.patch("/api/charity/:id", requireLogin, async function(req, res){
+    try {
+        const result = await userData.updateCharity(req, req.params.id, req.body || {});
+        if (!result) return res.status(404).json({ error: "not-found" });
+        if (result.invalid) return res.status(400).json({ error: "invalid" });
+        res.json({ charity: result });
+    } catch (err) {
+        console.error("api/charity PATCH:", err.message);
+        res.status(500).json({ error: "failed" });
+    }
+});
+
+app.delete("/api/charity/:id", requireLogin, async function(req, res){
+    try {
+        const removed = await userData.deleteCharity(req, req.params.id);
+        if (!removed) return res.status(404).json({ error: "not-found" });
+        res.json({ ok: true });
+    } catch (err) {
+        console.error("api/charity DELETE:", err.message);
+        res.status(500).json({ error: "failed" });
+    }
+});
+
+app.post("/api/charity/:id/donate", requireLogin, async function(req, res){
+    try {
+        const result = await userData.addDonation(req, req.params.id, req.body || {});
+        if (result && result.notFound) return res.status(404).json({ error: "not-found" });
+        if (!result) return res.status(401).json({ error: "login-required" });
+        if (result.invalid) return res.status(400).json({ error: "invalid" });
+        res.json({ charity: result });
+    } catch (err) {
+        console.error("api/charity donate:", err.message);
         res.status(500).json({ error: "failed" });
     }
 });
@@ -1259,6 +1338,25 @@ app.post("/api/salah", requireLogin, async function(req, res){
         res.json({ entries: updated });
     } catch (err) {
         console.error("api/salah POST:", err.message);
+        res.status(500).json({ error: "failed" });
+    }
+});
+
+// ---- Stats ----
+//
+// One report endpoint rather than one per module: the page wants all three
+// modules side by side, and they already live on the same user document. The
+// range is user-selectable because "last 30 days" and "last 90 days" answer
+// different things without changing the data storage.
+app.get("/api/stats", requireLogin, async function(req, res){
+    try {
+        const payload = statsService.buildStats(req.user, {
+            days: Number(req.query.days) || 30,
+            charityMonths: Number(req.query.charityMonths) || 6
+        });
+        res.json(payload);
+    } catch (err) {
+        console.error("api/stats:", err.message);
         res.status(500).json({ error: "failed" });
     }
 });
