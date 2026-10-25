@@ -9,13 +9,27 @@ property. A `"//"` comment key failed the deploy with
 
 Every page is a React route, so the backend only needs to serve `/api`.
 
-1. `/api/:path*` → `https://salah-tracker-api.vercel.app/api/:path*`
+1. `/api/:path*` → `https://hasanath-api.vercel.app/api/:path*`
 2. `/:path*` → `/index.html`
 
 **Order is load-bearing.** Vercel applies rewrites top-down and the *first*
 match wins. If the SPA catch-all came first, every API call would be answered
 with `index.html` and the client would fail parsing JSON — which looks
 identical to a backend that is down, and sends you debugging the wrong project.
+
+## The destination must be the API host that answers directly
+
+The API rewrite has to point at the canonical API deployment, not at an old
+domain that redirects to it. If the destination returns a 307/308, Vercel
+relays that redirect to the browser. The browser then makes a second request
+to the redirected API host from the frontend origin, which is now cross-origin:
+without CORS the request fails, and the session/guest cookies are no longer
+first-party. The frontend looks alive while every data fetch fails with
+`net::ERR_FAILED`.
+
+Keep `https://hasanath-api.vercel.app/api/:path*` here even if the old API
+domain redirects to the same place. The redirect is only for old clients; the
+live frontend must reach the new API directly through this same-origin proxy.
 
 ## Why proxy instead of calling the backend directly
 

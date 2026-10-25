@@ -1909,7 +1909,7 @@ app.post("/api/auth/logout", function(req, res){
 const FRONTEND_URL = (
     process.env.FRONTEND_URL ||
     (process.env.NODE_ENV === "production"
-        ? "https://salah-tracker-umi-apps.vercel.app"
+        ? "https://hasanath.vercel.app"
         : "http://localhost:5173")
 ).replace(/\/+$/, "");
 
