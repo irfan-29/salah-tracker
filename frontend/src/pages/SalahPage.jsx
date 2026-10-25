@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { salah as api } from '../services/api';
 import { useSession } from '../hooks/useSession.jsx';
 import Loader from '../components/Loader';
+import DateField from '../components/DateField';
+import FormSelect from '../components/FormSelect';
 
 const PRAYERS = ['Fajr', 'Zuhur', 'Asar', 'Magrib', 'Isha', 'others'];
 const STATUSES = ['In Jamath', 'On Time', 'Late', 'Not Prayed', 'others'];
@@ -180,24 +182,21 @@ export default function SalahPage() {
         ) : (
           <>
             <div className="salah-form-grid">
-              <div className="form-floating">
-                <input className="form-control" type="date" required id="date" value={date} onChange={(e) => setDate(e.target.value)} />
-                <label htmlFor="date">Date</label>
-              </div>
-
-              <div className="form-floating">
-                <select value={name} onChange={(e) => setName(e.target.value)} className="form-control" id="salah">
-                  {PRAYERS.map((p) => <option key={p} value={p}>{p}</option>)}
-                </select>
-                <label htmlFor="salah">Salah</label>
-              </div>
-
-              <div className="form-floating">
-                <select value={value} onChange={(e) => setValue(e.target.value)} className="form-control" id="value">
-                  {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
-                </select>
-                <label htmlFor="value">Status</label>
-              </div>
+              <DateField id="date" label="Date" value={date} onChange={setDate} />
+              <FormSelect
+                id="salah"
+                label="Salah"
+                value={name}
+                onChange={setName}
+                options={PRAYERS.map((p) => ({ value: p, label: p }))}
+              />
+              <FormSelect
+                id="value"
+                label="Status"
+                value={value}
+                onChange={setValue}
+                options={STATUSES.map((s) => ({ value: s, label: s }))}
+              />
             </div>
 
             {error && <div className="auth-alert" role="alert"><span className="material-symbols-rounded">error</span>{error}</div>}
@@ -218,11 +217,7 @@ export default function SalahPage() {
           {/* No Find button. Choosing a date reloads the history immediately
               (see the effect above), so a second control only gave the user a way
               to ask for something that had already happened. */}
-          <div className="form-floating">
-            <input className="form-control" type="date" id="findDate" value={findDate}
-                   onChange={(e) => setFindDate(e.target.value)} />
-            <label htmlFor="findDate">Select Date</label>
-          </div>
+          <DateField id="findDate" label="Select Date" value={findDate} onChange={setFindDate} />
 
           <hr />
 

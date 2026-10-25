@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import FormSelect from '../FormSelect';
 
 // Class names mirror views/quran-audio.ejs.
 export default function AudioTab({ surahs, reciters, reciter, onReciterChange, onPlaySurah }) {
@@ -30,26 +31,19 @@ export default function AudioTab({ surahs, reciters, reciter, onReciterChange, o
       <div className="container1">
         <div className="card-header"><h3>Reciter</h3></div>
         <div className="reciter-row">
-          <div className="form-floating">
-            <select
-              name="reciter"
-              id="reciterSelect"
-              className="form-control"
-              value={reciter}
-              disabled={saving}
-              onChange={async (e) => {
-                setSaving(true);
-                try { await onReciterChange(e.target.value); setStatus('Saved.'); }
-                catch (err) { setStatus('Could not save.'); }
-                finally { setSaving(false); }
-              }}
-            >
-              {reciters.map((r) => (
-                <option key={r.id} value={r.id}>{r.name}</option>
-              ))}
-            </select>
-            <label htmlFor="reciterSelect">Reciter</label>
-          </div>
+          <FormSelect
+            id="reciterSelect"
+            label="Reciter"
+            value={reciter}
+            disabled={saving}
+            options={reciters.map((r) => ({ value: r.id, label: r.name }))}
+            onChange={async (nextReciter) => {
+              setSaving(true);
+              try { await onReciterChange(nextReciter); setStatus('Saved.'); }
+              catch (err) { setStatus('Could not save.'); }
+              finally { setSaving(false); }
+            }}
+          />
         </div>
         {status && <p className="tg-hint">{status}</p>}
       </div>

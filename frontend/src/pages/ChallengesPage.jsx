@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { challenges as api } from '../services/api';
 import { useSession } from '../hooks/useSession.jsx';
 import Loader from '../components/Loader';
+import DateField from '../components/DateField';
 
 // Markup mirrors views/challenges.ejs so the shared stylesheet applies.
 export default function ChallengesPage() {
@@ -221,11 +222,12 @@ export default function ChallengesPage() {
 
       <div className="container1 challenge-panel">
         {canManage && (
-          <div className="form-floating">
-            <input className="form-control" type="date" required value={date}
-                   onChange={(e) => { setDate(e.target.value); setCompleted([]); }} />
-            <label htmlFor="challenge-date">Date</label>
-          </div>
+          <DateField
+            id="challenge-date"
+            label="Date"
+            value={date}
+            onChange={(nextDate) => { setDate(nextDate); setCompleted([]); }}
+          />
         )}
 
         <div className="challenge-list" style={{ marginTop: '1.25rem' }}>

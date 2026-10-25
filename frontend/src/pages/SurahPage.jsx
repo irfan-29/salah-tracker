@@ -142,10 +142,14 @@ export default function SurahPage() {
 
       <nav className="surah-pager" aria-label="Surah navigation">
         {data.previousSurah ? (
-          <Link className="surah-pager-link" to={`/surah/${data.previousSurah.surahNo}`}>
+          <Link
+            className="surah-pager-link"
+            to={`/surah/${data.previousSurah.surahNo}`}
+            aria-label={`Previous surah: ${data.previousSurah.surahName}`}
+          >
             <span className="surah-pager-direction">
               <span className="material-symbols-rounded" aria-hidden="true">arrow_back</span>
-              Previous surah
+              <span className="surah-pager-label">Previous surah</span>
             </span>
             <strong className="surah-pager-name">{data.previousSurah.surahName}</strong>
           </Link>
@@ -153,16 +157,20 @@ export default function SurahPage() {
           <span className="surah-pager-link is-disabled" aria-disabled="true">
             <span className="surah-pager-direction">
               <span className="material-symbols-rounded" aria-hidden="true">arrow_back</span>
-              Previous surah
+              <span className="surah-pager-label">Previous surah</span>
             </span>
             <strong className="surah-pager-name">Start of the Qur’an</strong>
           </span>
         )}
 
         {data.nextSurah ? (
-          <Link className="surah-pager-link is-next" to={`/surah/${data.nextSurah.surahNo}`}>
+          <Link
+            className="surah-pager-link is-next"
+            to={`/surah/${data.nextSurah.surahNo}`}
+            aria-label={`Next surah: ${data.nextSurah.surahName}`}
+          >
             <span className="surah-pager-direction">
-              Next surah
+              <span className="surah-pager-label">Next surah</span>
               <span className="material-symbols-rounded" aria-hidden="true">arrow_forward</span>
             </span>
             <strong className="surah-pager-name">{data.nextSurah.surahName}</strong>
@@ -170,7 +178,7 @@ export default function SurahPage() {
         ) : (
           <span className="surah-pager-link is-next is-disabled" aria-disabled="true">
             <span className="surah-pager-direction">
-              Next surah
+              <span className="surah-pager-label">Next surah</span>
               <span className="material-symbols-rounded" aria-hidden="true">arrow_forward</span>
             </span>
             <strong className="surah-pager-name">End of the Qur’an</strong>

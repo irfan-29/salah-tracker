@@ -103,16 +103,16 @@ export default function Player() {
     <div className="global-audio-bar" id="globalAudioBar">
       <div className="audio-bar-inner">
         <div className="audio-bar-track-info">
-          <div className="audio-artwork">
-            <img src="/images/audio-player.webp" alt="Quran Audio" className="rotating-icon" />
-          </div>
+          <span className={`audio-equalizer${playing ? ' is-playing' : ''}`} aria-hidden="true">
+            <span /><span /><span /><span />
+          </span>
           <div className="audio-track-meta">
             <div className="surah-title">{track.surahNo}. {track.surahName}</div>
             <div className="reciter-name">{track.reciterName}</div>
           </div>
         </div>
 
-        <div className="audio-bar-center">
+        <div className="audio-bar-actions">
           {/* Same three controls as views/footer.ejs: previous, play/pause,
               next. The port kept only the middle one. Disabled at the ends of
               the Quran rather than silently doing nothing. */}
@@ -129,45 +129,46 @@ export default function Player() {
               <span className="material-symbols-rounded">skip_next</span>
             </button>
           </div>
-          <div className="audio-progress-row">
-            <span className="audio-time">{formatTime(scrubPct !== null ? (scrubPct / 100) * duration : position)}</span>
-            <div
-              ref={trackRef}
-              className={`audio-progress-track${scrubPct !== null ? ' is-scrubbing' : ''}`}
-              onPointerDown={beginScrub}
-              onPointerMove={moveScrub}
-              onPointerUp={endScrub}
-              onPointerCancel={cancelScrub}
-            >
-              <div className="audio-progress-fill" style={{ width: `${pct}%` }} />
-              <span
-                className="audio-progress-thumb"
-                style={{ left: `${pct}%`, display: duration > 0 ? undefined : 'none' }}
-                aria-hidden="true"
-              />
-              <input
-                ref={rangeRef}
-                type="range"
-                className="audio-progress-input"
-                min="0"
-                max="100"
-                value={pct}
-                aria-label="Seek"
-                onChange={(e) => {
-                  const fraction = Number(e.target.value) / 100;
-                  setScrubPct(fraction * 100);
-                  seek(fraction);
-                  setScrubPct(null);
-                }}
-              />
-            </div>
-            <span className="audio-time">{formatTime(duration)}</span>
-          </div>
+
+          <button type="button" className="audio-close-btn" onClick={close} aria-label="Close audio">
+            <span className="material-symbols-rounded">close</span>
+          </button>
         </div>
 
-        <button type="button" className="audio-close-btn" onClick={close} aria-label="Close audio">
-          <span className="material-symbols-rounded">close</span>
-        </button>
+        <div className="audio-progress-row">
+          <span className="audio-time">{formatTime(scrubPct !== null ? (scrubPct / 100) * duration : position)}</span>
+          <div
+            ref={trackRef}
+            className={`audio-progress-track${scrubPct !== null ? ' is-scrubbing' : ''}`}
+            onPointerDown={beginScrub}
+            onPointerMove={moveScrub}
+            onPointerUp={endScrub}
+            onPointerCancel={cancelScrub}
+          >
+            <div className="audio-progress-fill" style={{ width: `${pct}%` }} />
+            <span
+              className="audio-progress-thumb"
+              style={{ left: `${pct}%`, display: duration > 0 ? undefined : 'none' }}
+              aria-hidden="true"
+            />
+            <input
+              ref={rangeRef}
+              type="range"
+              className="audio-progress-input"
+              min="0"
+              max="100"
+              value={pct}
+              aria-label="Seek"
+              onChange={(e) => {
+                const fraction = Number(e.target.value) / 100;
+                setScrubPct(fraction * 100);
+                seek(fraction);
+                setScrubPct(null);
+              }}
+            />
+          </div>
+          <span className="audio-time">{formatTime(duration)}</span>
+        </div>
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../services/api';
 import Loader from '../components/Loader';
+import FormSelect from '../components/FormSelect';
 
 // Markup mirrors views/calendar.ejs.
 export default function CalendarPage() {
@@ -47,11 +48,16 @@ export default function CalendarPage() {
                       onClick={() => load(Number(month) === 1 ? 12 : Number(month) - 1, Number(month) === 1 ? Number(year) - 1 : year)}>
                 <span className="material-symbols-rounded">chevron_left</span>
               </button>
-              <select value={month} onChange={(e) => setMonth(e.target.value)}>
-                {Array.from({ length: 12 }, (_, i) => i + 1).map((i) => (
-                  <option key={i} value={i}>{i}</option>
-                ))}
-              </select>
+              <FormSelect
+                compact
+                ariaLabel="Month"
+                value={month}
+                onChange={setMonth}
+                options={Array.from({ length: 12 }, (_, i) => ({
+                  value: String(i + 1),
+                  label: String(i + 1),
+                }))}
+              />
               <input type="number" value={year} onChange={(e) => setYear(e.target.value)} />
               <button type="button" className="btn btn-primary btn-sm" onClick={() => load(Number(month), Number(year))}>Go</button>
               <button type="button" className="btn-ghost btn-icon" aria-label="Next month"
