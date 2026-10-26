@@ -6830,15 +6830,10 @@ body {
     padding-top: calc(var(--header-height) + 1.5rem);
   }
 
-  .global-audio-bar {
-    left: 1rem;
-    right: 1rem;
-    bottom: 1rem;
-    border-radius: 20px;
-  }
-
+  /* Audio dock geometry is owned by the base rule (bottom margin + side
+     inset); older per-breakpoint insets double-counted with better margins. */
   .sidebar.collapsed ~ .main-content ~ .global-audio-bar,
-  body:has(.sidebar.collapsed) .global-audio-bar { left: 1rem; }
+  body:has(.sidebar.collapsed) .global-audio-bar { left: var(--sidebar-collapsed); }
 }
 
 @media (max-width: 768px) {
@@ -6874,14 +6869,6 @@ body {
   .quran-tab { border-radius: 999px; padding: 0.6rem 0.4rem; font-size: 0.8rem; }
 
   .auth-card { padding: 2rem 1.4rem 1.5rem; border-radius: 24px; }
-
-  .global-audio-bar {
-    left: 0.75rem;
-    right: 0.75rem;
-    bottom: 0.75rem;
-    padding: 0.65rem 0.85rem;
-    border-radius: 20px;
-  }
 }
 
 /* ---- Dark-mode cleanup for older component rules ---- */
@@ -8336,72 +8323,94 @@ body:has(.global-audio-bar) .main-content {
   padding-bottom: 7.5rem;
 }
 
+/* Phones restack the dock instead of squeezing it onto two cramped columns:
+   the track info gets the full row, transport + timer + close centre on their
+   own row (the play button grows into the hero control), and the seek bar
+   runs underneath. Deskop keeps the two-column grid defined above. */
 @media (max-width: 768px) {
   .audio-bar-inner {
     grid-template-columns: minmax(0, 1fr) auto;
-    gap: 0.05rem 0.55rem;
+    grid-template-areas:
+      "info info"
+      "actions actions"
+      "progress progress";
+    align-items: center;
+    justify-items: center;
+    gap: 0.45rem 0.6rem;
+  }
+
+  .audio-bar-inner > * {
+    justify-self: center;
   }
 
   .global-audio-bar {
     margin: 0 0.75rem;
-    padding: 0.55rem 0.7rem 0.6rem;
+    padding: 0.6rem 0.7rem 0.55rem;
     border-radius: 18px;
   }
 
   .audio-bar-track-info {
+    justify-self: stretch;
     gap: 0.5rem;
   }
 
-  .audio-equalizer {
-    width: 32px;
-    height: 32px;
-    padding: 8px 7px;
-    border-radius: 10px;
+  .audio-bar-actions {
+    justify-content: center;
+    gap: 0.55rem;
   }
 
+  .audio-bar-actions .audio-transport {
+    gap: 0.4rem;
+  }
+
+  /* The phones' hero control: a bigger, centered play button between the two
+     skip buttons gives the row a clear focal point. */
   .audio-btn {
-    width: 32px;
-    height: 32px;
+    width: 34px;
+    height: 34px;
   }
 
   .audio-btn-play {
-    width: 38px;
-    height: 38px;
+    width: 44px;
+    height: 44px;
+  }
+
+  .audio-equalizer {
+    width: 34px;
+    height: 34px;
+    padding: 8px 7px;
+    border-radius: 11px;
   }
 
   body:has(.global-audio-bar) .main-content {
-    padding-bottom: 6.75rem;
+    padding-bottom: 8.5rem;
   }
 }
 
 @media (max-width: 480px) {
-  .audio-bar-actions {
-    gap: 0.15rem;
-  }
-
   .audio-time {
     min-width: 1.8rem;
     font-size: 0.64rem;
   }
 }
 
-/* At 360px the info column, transport and two ghost buttons share ~330px. The
-   countdown text shrinks with the controls, so the reciter name keeps its
-   ellipsis instead of the pill wrapping onto extra rows. */
+/* At 320-380px the centred control row still fits with room to spare, so the
+   trim only touches chip and label sizes - no button disappears. */
 @media (max-width: 380px) {
-  .audio-bar-inner { gap: 0.05rem 0.4rem; }
+  .audio-bar-inner { gap: 0.4rem 0.5rem; }
   .audio-bar-track-info { gap: 0.4rem; }
   .audio-equalizer {
-    width: 28px;
-    height: 28px;
+    width: 30px;
+    height: 30px;
     padding: 7px 6px;
-    border-radius: 9px;
+    border-radius: 10px;
   }
   .audio-transport { gap: 0.3rem; }
   .audio-btn { width: 30px; height: 30px; }
-  .audio-btn-play { width: 36px; height: 36px; }
+  .audio-btn-play { width: 40px; height: 40px; }
+  .audio-bar-actions { gap: 0.45rem; }
   .audio-sleep-btn { min-width: 30px; padding: 0 0.4rem; }
-  .audio-sleep-btn.is-on { padding: 0 0.5rem; }
+  .audio-sleep-btn.is-on { padding: 0 0.45rem; }
   .audio-sleep-count { font-size: 0.56rem; }
 }
 
