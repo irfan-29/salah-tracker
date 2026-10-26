@@ -8342,10 +8342,17 @@ body:has(.global-audio-bar) .main-content {
     justify-self: center;
   }
 
+  /* The dock anchors flush to the bottom edge, mirroring the header at the
+     top: full-bleed width, no margin, square corners, and clearance for the
+     phone's home-indicator safe area. */
   .global-audio-bar {
-    margin: 0 0.75rem;
-    padding: 0.6rem 0.7rem 0.55rem;
-    border-radius: 18px;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    margin: 0;
+    padding: 0.6rem 0.7rem calc(0.65rem + env(safe-area-inset-bottom, 0px));
+    border-radius: 0;
+    border-bottom: none;
   }
 
   .audio-bar-track-info {
@@ -8429,7 +8436,7 @@ body:has(.global-audio-bar) .main-content {
   }
 
   body:has(.global-audio-bar) .main-content {
-    padding-bottom: 8.5rem;
+    padding-bottom: calc(9.25rem + env(safe-area-inset-bottom, 0px));
   }
 }
 
