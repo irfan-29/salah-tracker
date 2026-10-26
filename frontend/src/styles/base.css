@@ -8119,10 +8119,12 @@ select.form-control option,
   to { transform: scaleY(1.1); }
 }
 
-/* --- Waveform seek bar -----------------------------------------------------
-   The track draws faint tick marks with a repeating gradient; the played fill
-   draws the same marks in teal on top of them, so progress reads as the
-   waveform "lighting up" instead of a flat bar travelling a rail. */
+/* --- Seek bar ---------------------------------------------------------
+   A "teal rise" bar: the rail is a soft 6px ridge that swells as you grab it,
+   the played part is a rounded teal gradient that glows faintly while the
+   recitation runs, and the playhead is a small luminous knob that tracks the
+   fill. Hover reveals a fuller, brighter knob so scrubbing still feels alive
+   when the player is paused. */
 .audio-progress-row {
   grid-area: progress;
   max-width: none;
@@ -8131,7 +8133,7 @@ select.form-control option,
 }
 
 .audio-progress-track {
-  height: 22px;
+  height: 24px;
 }
 
 .audio-progress-track::before {
@@ -8140,57 +8142,60 @@ select.form-control option,
   top: 50%;
   right: 0;
   left: 0;
-  height: 14px;
-  border-radius: 2px;
-  background: repeating-linear-gradient(
-    90deg,
-    rgba(255, 255, 255, 0.16) 0 2px,
-    transparent 2px 6px
-  );
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 1px 2px rgba(2, 12, 11, 0.45);
   transform: translateY(-50%);
+  transition: height 0.16s ease-out, background var(--transition);
+}
+
+.audio-progress-track:hover::before,
+.audio-progress-track.is-scrubbing::before,
+.audio-progress-track:focus-within::before {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.18);
 }
 
 .audio-progress-fill {
   top: 50%;
-  height: 14px;
-  border-radius: 0;
-  background: repeating-linear-gradient(
-    90deg,
-    rgba(94, 234, 212, 0.55) 0 2px,
-    transparent 2px 6px
-  );
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #0d9488, #2dd4bf 68%, #99f6e4);
+  box-shadow: 0 0 12px -3px rgba(45, 212, 191, 0.5);
   transform: translateY(-50%);
+  transition: height 0.16s ease-out, width 0.1s linear, box-shadow var(--transition);
 }
 
-.global-audio-bar.is-playing .audio-progress-fill {
-  background: repeating-linear-gradient(
-    90deg,
-    #5eead4 0 2px,
-    transparent 2px 6px
-  );
+.audio-progress-track:hover .audio-progress-fill,
+.audio-progress-track.is-scrubbing .audio-progress-fill,
+.audio-progress-track:focus-within .audio-progress-fill {
+  height: 8px;
+  box-shadow: 0 0 16px -2px rgba(45, 212, 191, 0.75);
 }
 
 .audio-progress-thumb {
-  width: 9px;
-  height: 9px;
+  width: 12px;
+  height: 12px;
   border: none;
   background: #f0fdfa;
-  transform: translate(-50%, -50%) scale(0.75);
+  box-shadow: 0 0 0 3px rgba(94, 234, 212, 0.28), 0 0 14px rgba(45, 212, 191, 0.6);
+  transform: translate(-50%, -50%) scale(0.7);
   opacity: 0;
-  transition: left 0.1s linear, transform var(--transition), opacity var(--transition);
+  transition: left 0.1s linear, transform var(--transition), opacity var(--transition), box-shadow var(--transition);
+}
+
+.global-audio-bar.is-playing .audio-progress-thumb {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(0.85);
 }
 
 .audio-progress-track:hover .audio-progress-thumb,
 .audio-progress-track.is-scrubbing .audio-progress-thumb,
 .audio-progress-track:focus-within .audio-progress-thumb {
   opacity: 1;
-  transform: translate(-50%, -50%) scale(1);
-}
-
-.audio-progress-track:hover .audio-progress-thumb,
-.audio-progress-track.is-scrubbing .audio-progress-thumb,
-.audio-progress-track:focus-within .audio-progress-thumb {
-  box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.45), 0 2px 8px rgba(2, 20, 18, 0.5);
+  transform: translate(-50%, -50%) scale(1.1);
+  box-shadow: 0 0 0 4px rgba(94, 234, 212, 0.35), 0 2px 10px rgba(2, 20, 18, 0.55);
 }
 
 .audio-progress-input:focus-visible {
@@ -8231,13 +8236,82 @@ select.form-control option,
 }
 
 .audio-sleep-menu {
+  position: fixed;
   z-index: 1250;
-  padding: 0.35rem;
-  animation: app-rise 0.18s ease-out both;
+  padding: 0.4rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 8% 0%, rgba(45, 212, 191, 0.1), transparent 40%),
+    linear-gradient(155deg, #0d302b 0%, #082320 55%, #051311 100%);
+  box-shadow:
+    0 22px 46px -22px rgba(2, 12, 11, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  color: #f2fffb;
+  animation: audio-menu-in 0.16s ease-out both;
 }
 
-.audio-sleep-menu .app-select-option {
-  min-height: 40px;
+/* The menu belongs to the dock, so it wears the same deep-teal glass as the
+   player in both themes; the header anchors it to the sleep-timer button. */
+.audio-sleep-head {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.42rem 0.5rem 0.4rem;
+  margin-bottom: 0.2rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(237, 247, 243, 0.62);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.audio-sleep-head .material-symbols-rounded {
+  flex: 0 0 auto;
+  font-size: 1.05rem;
+  color: #2dd4bf;
+}
+
+.audio-sleep-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  width: 100%;
+  min-height: 38px;
+  padding: 0.44rem 0.6rem;
+  border: none;
+  border-radius: 10px;
+  background: none;
+  color: rgba(237, 247, 243, 0.82);
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition);
+}
+
+.audio-sleep-option:hover,
+.audio-sleep-option.is-active {
+  background: rgba(45, 212, 191, 0.12);
+  color: #99f6e4;
+}
+
+.audio-sleep-option.is-selected {
+  color: #99f6e4;
+}
+
+.audio-sleep-option .material-symbols-rounded {
+  flex: 0 0 auto;
+  font-size: 1rem;
+  color: #5eead4;
+}
+
+@keyframes audio-menu-in {
+  from { opacity: 0; transform: translateY(6px) scale(0.98); }
+  to { opacity: 1; transform: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {

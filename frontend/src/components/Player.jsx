@@ -315,7 +315,7 @@ export default function Player() {
       {sleepOpen && createPortal(
         <div
           ref={sleepMenuRef}
-          className="app-select-menu is-portal audio-sleep-menu"
+          className="audio-sleep-menu"
           role="menu"
           aria-label="Sleep timer"
           style={{
@@ -325,12 +325,16 @@ export default function Player() {
             visibility: sleepMenuPos ? 'visible' : 'hidden',
           }}
         >
+          <div className="audio-sleep-head">
+            <span className="material-symbols-rounded" aria-hidden="true">bedtime</span>
+            Sleep timer
+          </div>
           {SLEEP_OPTIONS.map((option) => (
             <button
               key={option.id}
               type="button"
               role="menuitem"
-              className={`app-select-option audio-sleep-option${isActiveSleepOption(option) ? ' is-selected' : ''}`}
+              className={`audio-sleep-option${isActiveSleepOption(option) ? ' is-selected' : ''}`}
               onPointerEnter={(event) => event.currentTarget.classList.add('is-active')}
               onPointerLeave={(event) => event.currentTarget.classList.remove('is-active')}
               onClick={() => chooseSleep(option)}
