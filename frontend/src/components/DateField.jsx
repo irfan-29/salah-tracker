@@ -45,6 +45,10 @@ export default function DateField({
   disabled = false,
   min,
   max,
+  // Icon-only trigger: renders just the glyph (e.g. beside a heading the
+  // user already captions, like the Salah day selector's drop arrow).
+  iconOnly = false,
+  triggerIcon = 'calendar_month',
 }) {
   const generatedId = useId();
   const fieldId = id || `date-${generatedId}`;
@@ -189,7 +193,7 @@ export default function DateField({
         ref={triggerRef}
         type="button"
         id={fieldId}
-        className="app-field-control app-date-trigger"
+        className={`app-field-control app-date-trigger${iconOnly ? ' app-date-trigger--icon' : ''}`}
         disabled={disabled}
         aria-haspopup="dialog"
         aria-expanded={open}
@@ -207,8 +211,14 @@ export default function DateField({
           setOpen(true);
         }}
       >
-        <span className="app-field-value" id={`${fieldId}-value`}>{displayDate(value)}</span>
-        <span className="app-field-icon material-symbols-rounded" aria-hidden="true">calendar_month</span>
+        {iconOnly ? (
+          <span className="material-symbols-rounded" aria-hidden="true">{triggerIcon}</span>
+        ) : (
+          <>
+            <span className="app-field-value" id={`${fieldId}-value`}>{displayDate(value)}</span>
+            <span className="app-field-icon material-symbols-rounded" aria-hidden="true">calendar_month</span>
+          </>
+        )}
       </button>
 
       {open && createPortal(

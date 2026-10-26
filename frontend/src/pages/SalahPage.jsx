@@ -20,14 +20,17 @@ const PRAYER_LABELS = {
   Isha: 'Isha',
 };
 
+// Only drives the row's icon and color - the displayed text is always the
+// exact value the reader logged ("In Jamath" stays "In Jamath"), never a
+// paraphrase.
 const STATUS_META = {
-  'In Jamath': { key: 'jamah', icon: 'groups', label: 'In jamah' },
-  'On Time': { key: 'ontime', icon: 'check_circle', label: 'On time' },
-  Late: { key: 'late', icon: 'schedule', label: 'Late' },
-  'Not Prayed': { key: 'missed', icon: 'cancel', label: 'Not prayed' },
+  'In Jamath': { key: 'jamah', icon: 'groups' },
+  'On Time': { key: 'ontime', icon: 'check_circle' },
+  Late: { key: 'late', icon: 'schedule' },
+  'Not Prayed': { key: 'missed', icon: 'cancel' },
 };
 
-const EMPTY_STATUS = { key: 'empty', icon: 'radio_button_unchecked', label: 'Not logged' };
+const EMPTY_STATUS = { key: 'empty', icon: 'radio_button_unchecked' };
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -62,15 +65,8 @@ function SalahRing({ completed, total }) {
   );
 }
 
-function StatusBadge({ value }) {
-  // Same three states as the EJS table: kept, late, missed.
-  if (value === 'In Jamath' || value === 'On Time') return <span className="badge badge-primary">{value}</span>;
-  if (value === 'Late') return <span className="badge badge-accent">{value}</span>;
-  return <span className="badge" style={{ background: 'rgba(239,68,68,0.1)', color: '#dc2626' }}>{value}</span>;
-}
-
-// Salah is account-only. The overview reuses the same view the history card
-// loads, so a saved entry updates both without a second request.
+// Salah is account-only. Its overview shows the selected day's report, and
+// saving an entry reloads that report without a second request.
 export default function SalahPage() {
   const { isLoggedIn } = useSession();
 
@@ -139,10 +135,23 @@ export default function SalahPage() {
       {isLoggedIn && (
         <div className="container1 salah-overview">
           <div className="salah-overview-head">
-            <div>
+            <div className="salah-overview-day">
               <span className="salah-overview-kicker">Selected day</span>
               <h2>{history.loading ? 'Loading…' : (history.label || 'Choose a date')}</h2>
             </div>
+            {/*
+              The drop arrow beside the date opens the app's own calendar and
+              loads whichever day is picked - the same selection the old
+              history card offered, without the duplicate card.
+            */}
+            <DateField
+              id="selected-day"
+              className="salah-day-picker"
+              iconOnly
+              triggerIcon="expand_more"
+              value={findDate}
+              onChange={setFindDate}
+            />
             <span className="salah-overview-badge">{loggedCount} of 5 logged</span>
           </div>
 
@@ -156,7 +165,8 @@ export default function SalahPage() {
                   <div className={`salah-status is-${meta.key}`} key={prayer}>
                     <span className="salah-status-icon material-symbols-rounded" aria-hidden="true">{meta.icon}</span>
                     <span className="salah-status-name">{PRAYER_LABELS[prayer]}</span>
-                    <span className="salah-status-value">{meta.label}</span>
+                    {/* The value as logged - never a paraphrase of it. */}
+                    <span className="salah-status-value">{status || 'Not logged'}</span>
                   </div>
                 );
               })}
@@ -213,44 +223,6 @@ export default function SalahPage() {
           </>
         )}
       </div>
-
-      {isLoggedIn && (
-        <div className="container1">
-          <div className="card-header"><h3>View Salah History</h3></div>
-
-          {/* No Find button. Choosing a date reloads the history immediately
-              (see the effect above), so a second control only gave the user a way
-              to ask for something that had already happened. */}
-          <DateField id="findDate" label="Select Date" value={findDate} onChange={setFindDate} />
-
-          <hr />
-
-          <h4 style={{ fontWeight: 700, marginBottom: '1rem' }}>{history.label}</h4>
-
-          {history.loading ? (
-            <Loader variant="inline" label="Loading history" />
-          ) : history.entries.length > 0 ? (
-            <table className="table table-striped">
-              <thead>
-                <tr><th>Prayer</th><th>Status</th></tr>
-              </thead>
-              <tbody>
-                {history.entries.map((entry, i) => (
-                  <tr key={`${entry.name}-${i}`}>
-                    <td><strong>{PRAYER_LABELS[entry.name] || entry.name}</strong></td>
-                    <td><StatusBadge value={entry.value} /></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : (
-            <div className="empty-state">
-              <span className="material-symbols-rounded">event_busy</span>
-              <p>No salah records found for this date</p>
-            </div>
-          )}
-        </div>
-      )}
     </>
   );
 }
