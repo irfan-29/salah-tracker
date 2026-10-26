@@ -39,7 +39,7 @@ const SLEEP_MENU_HEIGHT = 332;
 // above the router, which is why playback survives navigation.
 export default function Player() {
   const { track, playing, position, duration, toggle, pause, seek, close, load, hasTrack,
-          skip, canSkipBack, canSkipForward } = useAudio();
+          skip, canSkipBack, canSkipForward, loop, loopsLeft, cycleLoop } = useAudio();
   const [restored, setRestored] = useState(false);
   const [scrubPct, setScrubPct] = useState(null);
   const trackRef = useRef(null);
@@ -255,6 +255,20 @@ export default function Player() {
               <span className="material-symbols-rounded">skip_next</span>
             </button>
           </div>
+
+          {/* Loop: cycles repeat-1, 2, 3 times, then off. The repeat glyph
+              stays visible the whole time and the count rides ON the icon as
+              a small badge, so the mode reads at a glance. */}
+          <button
+            type="button"
+            className={`audio-btn audio-loop-btn${loop ? ' is-on' : ''}`}
+            onClick={cycleLoop}
+            aria-label={loop ? `Repeat surah: ${loop} time${loop === 1 ? '' : 's'}` : 'Repeat surah: off'}
+            title={loop ? `Repeats remaining: ${loopsLeft}` : 'Repeat surah (1-3 times)'}
+          >
+            <span className="material-symbols-rounded" aria-hidden="true">repeat</span>
+            {loop > 0 && <span className="audio-loop-badge">{loopsLeft}</span>}
+          </button>
 
           <button
             ref={sleepBtnRef}

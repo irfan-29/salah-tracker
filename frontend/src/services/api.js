@@ -120,8 +120,16 @@ export const charity = {
 };
 
 export const stats = {
-  get: ({ days = 30, charityMonths = 6 } = {}) =>
-    api.get(`/stats?days=${encodeURIComponent(days)}&charityMonths=${encodeURIComponent(charityMonths)}`),
+  // Each stats module carries its own window on the report now, so every
+  // parameter is optional and only the defined ones reach the query string.
+  get: ({ days, charityMonths, challengeDays } = {}) => {
+    const params = new URLSearchParams();
+    if (days !== undefined) params.set('days', days);
+    if (charityMonths !== undefined) params.set('charityMonths', charityMonths);
+    if (challengeDays !== undefined) params.set('challengeDays', challengeDays);
+    const qs = params.toString();
+    return api.get(`/stats${qs ? `?${qs}` : ''}`);
+  },
 };
 
 export { ApiError };

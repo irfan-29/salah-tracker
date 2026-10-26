@@ -8,6 +8,10 @@
     <meta name="application-name" content="Hasanath" />
     <meta name="apple-mobile-web-app-title" content="Hasanath" />
     <meta name="theme-color" content="#0d9488" />
+    <!-- The app logo as the favicon so the browser tab wears the same teal
+         mosque mark as the sidebar. SVG keeps it crisp at every size. -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/favicon.svg" />
     <link rel="canonical" href="https://hasanath.vercel.app/" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Hasanath" />
@@ -66,6 +70,24 @@
           var stored = localStorage.getItem('salah-theme');
           if (stored === 'dark' || stored === 'light') {
             document.documentElement.setAttribute('data-theme', stored);
+          }
+          // Typography preferences replay the same trick: the app font id and
+          // the two text-size percents are mirrored by the shell when they
+          // arrive from /api/app/meta, and replayed here before the stylesheet
+          // loads so a reload keeps the chosen face and sizes. The keys are
+          // duplicated with APP_FONT/APP_SCALE/QURAN_SCALE_STORAGE_KEY in
+          // App.jsx, exactly like salah-theme above.
+          var appFont = localStorage.getItem('salah-appfont');
+          if (appFont) {
+            document.documentElement.setAttribute('data-app-font', appFont);
+          }
+          var appScale = parseFloat(localStorage.getItem('salah-appscale'));
+          if (appScale > 0) {
+            document.documentElement.style.setProperty('--app-font-scale', String(appScale / 100));
+          }
+          var quranScale = parseFloat(localStorage.getItem('salah-qscale'));
+          if (quranScale > 0) {
+            document.documentElement.style.setProperty('--quran-font-scale', String(quranScale / 100));
           }
         } catch (err) {
           /* Storage can throw in private mode. The default theme still applies. */

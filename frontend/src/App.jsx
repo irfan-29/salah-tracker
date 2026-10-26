@@ -7,6 +7,7 @@ import Player from './components/Player';
 import { SessionProvider, THEME_STORAGE_KEY } from './hooks/useSession';
 import useShareHandler from './hooks/useShareHandler';
 import { api } from './services/api';
+import * as typography from './services/typography';
 import QuranPage from './pages/QuranPage';
 import ChallengesPage from './pages/ChallengesPage';
 import CharityPage from './pages/CharityPage';
@@ -124,6 +125,24 @@ function Shell() {
   useEffect(() => {
     if (metaTheme) setTheme(metaTheme);
   }, [metaTheme, setTheme]);
+
+  // Apply the three reader-typography settings and mirror them into storage
+  // for the pre-paint script, the same contract setTheme has. The applier
+  // lives in services/typography.js so the Settings page can reuse it for
+  // drag previews without persisting.
+  const applyTypography = useCallback((t) => {
+    typography.applyTypography(t, { persist: true });
+  }, []);
+
+  // Keyed on the three values rather than the meta object, so an unrelated
+  // meta refresh does not re-write storage for nothing.
+  const metaFont = meta ? meta.appFont : null;
+  const metaAppSize = meta ? meta.appFontSize : null;
+  const metaQuranSize = meta ? meta.quranFontSize : null;
+  useEffect(() => {
+    if (metaFont === null) return;
+    applyTypography({ appFont: metaFont, appFontSize: metaAppSize, quranFontSize: metaQuranSize });
+  }, [metaFont, metaAppSize, metaQuranSize, applyTypography]);
 
   const resolved = useMemo(() => ({
     isLoggedIn: meta && meta.session ? meta.session.isLoggedIn : null,

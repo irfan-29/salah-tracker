@@ -55,6 +55,12 @@ const settingsSchema = new mongoose.Schema({
     favoriteEdition: [String],
     primaryTranslation: String,
     theme: { type: String, default: "light" },
+    // Interface typography (App Font / App Text Size / Quran Text Size).
+    // Explicit so Mongoose strict mode does not silently discard the fields
+    // on user.settings writes the way it does unknown keys.
+    appFont: { type: String, default: "default" },
+    appFontSize: { type: Number, default: 100 },
+    quranFontSize: { type: Number, default: 100 },
     audioProgress: {
         surahNo: Number,
         surahName: String,

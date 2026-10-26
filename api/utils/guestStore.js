@@ -70,6 +70,17 @@ function sanitize(raw) {
         : undefined,
       primaryTranslation: s.primaryTranslation ? String(s.primaryTranslation).slice(0, 120) : undefined,
       theme: s.theme === "dark" ? "dark" : s.theme === "light" ? "light" : undefined,
+      // Interface typography, same whitelist treatment: the font id is length
+      // bounded only (it is translated to a known stack on the client), while
+      // the two text scales are clamped so a hand-edited cookie cannot shrink
+      // or blow up the app's type.
+      appFont: s.appFont ? String(s.appFont).slice(0, 24) : undefined,
+      appFontSize: Number.isFinite(Number(s.appFontSize))
+        ? Math.min(150, Math.max(80, Math.round(Number(s.appFontSize))))
+        : undefined,
+      quranFontSize: Number.isFinite(Number(s.quranFontSize))
+        ? Math.min(150, Math.max(80, Math.round(Number(s.quranFontSize))))
+        : undefined,
       // Absent from this whitelist until now, which silently discarded the field
       // on every cookie write: writeGuest -> withinBudget -> sanitize rebuilds
       // settings key by key, so a key not named here is dropped no matter what

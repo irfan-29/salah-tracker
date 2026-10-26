@@ -23,7 +23,13 @@ const SETTINGS_FIELDS = [
   "favoriteEdition",
   "primaryTranslation",
   "theme",
-  "audioProgress"
+  "audioProgress",
+  // Interface typography: the app-wide font family plus a scale for regular
+  // (Latin and translated) text and a separate scale for the Arabic mushaf
+  // text. Percent values, 100 meaning exactly today's sizes.
+  "appFont",
+  "appFontSize",
+  "quranFontSize"
 ];
 
 // Kept in sync with DEFAULT_TRANSLATION in api/app.js: a guest (or a brand-new
@@ -38,7 +44,10 @@ function defaults() {
     favoriteFont: "QPC-Hafs",
     theme: "light",
     favoriteEdition: [DEFAULT_EDITION],
-    primaryTranslation: DEFAULT_EDITION
+    primaryTranslation: DEFAULT_EDITION,
+    appFont: "default",
+    appFontSize: 100,
+    quranFontSize: 100
   };
 }
 
@@ -56,6 +65,21 @@ async function updateSettings(req, patch) {
   for (const key of SETTINGS_FIELDS) {
     if (patch[key] !== undefined) clean[key] = patch[key];
   }
+
+  // The text-size scales are stored as whole percents and clamped to the same
+  // range the settings page offers, so a hand-built request cannot set a 2px
+  // root font (nothing readable) either by accident or on purpose. A value
+  // that does not survive clamping is dropped outright rather than written as
+  // undefined into settings.
+  for (const key of ["appFontSize", "quranFontSize"]) {
+    if (clean[key] !== undefined) {
+      const n = Math.round(Number(clean[key]));
+      if (Number.isFinite(n)) clean[key] = Math.min(150, Math.max(80, n));
+      else delete clean[key];
+    }
+  }
+  if (clean.appFont !== undefined) clean.appFont = String(clean.appFont).slice(0, 24);
+
   if (!Object.keys(clean).length) return getSettings(req);
 
   if (req.isAuthenticated && req.isAuthenticated()) {

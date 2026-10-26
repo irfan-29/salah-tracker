@@ -142,6 +142,12 @@ const settingsSchema = new mongoose.Schema({
     lastReadSurahs: [String],
     theme: { type: String, default: 'light' },
     primaryTranslation: String,
+    // Interface typography (App Font / App Text Size / Quran Text Size).
+    // Explicit so Mongoose strict mode does not discard the fields on
+    // user.settings writes the way it would unknown keys.
+    appFont: { type: String, default: "default" },
+    appFontSize: { type: Number, default: 100 },
+    quranFontSize: { type: Number, default: 100 },
     telegramBotToken: String,
     telegramChatId: String,
     audioProgress: {
@@ -914,11 +920,21 @@ app.get("/api/quran/surah/:surahNo", async function(req, res){
     };
 
     const favoriteEdition = getFavoriteEditions(settings);
-    const translations = [];
+    // Translation order everywhere: the primary translation first, then the
+    // reader's own added editions in the order they were added. The primary
+    // usually already sits among the favourites, so dedupe instead of showing
+    // the same edition twice.
+    const orderedEditions = [
+        ...new Set([getPrimaryEdition(settings), ...favoriteEdition].filter(Boolean))
+    ];
 
     // Parallel, and each failure isolated: one missing edition should not blank
-    // the whole reader.
-    await Promise.all(favoriteEdition.map(async (combined) => {
+    // the whole reader. Slots are pre-sized and filled by index, because pushing
+    // on promise resolution made the array order depend on which upstream
+    // edition answered first - the reader could see translations shuffled for
+    // the same settings.
+    const slots = orderedEditions.map(() => null);
+    await Promise.all(orderedEditions.map(async (combined, index) => {
         const parts = combined.split(':');
         const id = parts[0];
         const language = parts[1] || '';
@@ -926,12 +942,13 @@ app.get("/api/quran/surah/:surahNo", async function(req, res){
         try {
             const data = await cachedJson(`https://cdn.jsdelivr.net/gh/fawazahmed0/quran-api@1/editions/${id}/${surahNo}.json`);
             if (data && Array.isArray(data.chapter)) {
-                translations.push({ id, label: `${language} - ${author}`, texts: data.chapter.map((c) => c.text) });
+                slots[index] = { id, label: `${language} - ${author}`, texts: data.chapter.map((c) => c.text) };
             }
         } catch (err) {
             console.error(`api/quran/surah: edition ${id} -`, err.message);
         }
     }));
+    const translations = slots.filter(Boolean);
 
     // Opening a surah is what "last read" means. This used to only happen when
     // the player saved progress, so reading on the page left the Quran home
@@ -1040,7 +1057,13 @@ app.get("/api/app/meta", async function(req, res){
         },
         theme: settings.theme === "dark" ? "dark" : "light",
         defaultHome,
-        homePath: HOME_PATHS[defaultHome] || "/quran"
+        homePath: HOME_PATHS[defaultHome] || "/quran",
+        // Interface typography, mirrored into localStorage by the shell so the
+        // next first paint replays it before the bundles arrive (same trick as
+        // the theme above).
+        appFont: settings.appFont || "default",
+        appFontSize: Number.isFinite(Number(settings.appFontSize)) ? Number(settings.appFontSize) : 100,
+        quranFontSize: Number.isFinite(Number(settings.quranFontSize)) ? Number(settings.quranFontSize) : 100
     });
 });
 
@@ -1358,7 +1381,12 @@ app.get("/api/stats", requireLogin, async function(req, res){
     try {
         const payload = statsService.buildStats(req.user, {
             days: Number(req.query.days) || 30,
-            charityMonths: Number(req.query.charityMonths) || 6
+            charityMonths: Number(req.query.charityMonths) || 6,
+            // Separate module windows: the stats page gives each report its
+            // own filter, so salah and challenges can span different ranges.
+            challengeDays: req.query.challengeDays === undefined
+                ? undefined
+                : Number(req.query.challengeDays) || undefined
         });
         res.json(payload);
     } catch (err) {
@@ -1555,7 +1583,14 @@ app.get("/api/settings", async function(req, res){
                 favoriteFont: settings.favoriteFont || "QPC-Hafs",
                 favoriteEdition: getFavoriteEditions(settings),
                 primaryTranslation: getPrimaryEdition(settings) || "",
-                theme: settings.theme || "light"
+                theme: settings.theme || "light",
+                // Interface typography: absent values resolve to the same
+                // defaults the meta endpoint reports, so the Settings page and
+                // the shell agree even when the stored record predates these
+                // preferences.
+                appFont: settings.appFont || "default",
+                appFontSize: Number.isFinite(Number(settings.appFontSize)) ? Number(settings.appFontSize) : 100,
+                quranFontSize: Number.isFinite(Number(settings.quranFontSize)) ? Number(settings.quranFontSize) : 100
                 // audioProgress removed: no frontend file reads it. The player
                 // restores from GET /api/quran/progress, which is the only
                 // consumer, and it resolves the audio URL itself. Shipping it
@@ -1613,6 +1648,14 @@ app.post("/api/settings", async function(req, res){
     if (body.font !== undefined) patch.favoriteFont = String(body.font);
     if (body.location !== undefined) patch.location = String(body.location);
     if (body.primaryTranslation !== undefined) patch.primaryTranslation = String(body.primaryTranslation);
+
+    // Interface typography. The font id is one of the fixed ids the settings
+    // page offers (userData trims it); the two scales arrive as percents and
+    // are clamped to 80-150 in userData so neither client nor a crafted
+    // request can shrink the app to unreadable sizes.
+    if (body.appFont !== undefined) patch.appFont = String(body.appFont);
+    if (body.appFontSize !== undefined) patch.appFontSize = Number(body.appFontSize);
+    if (body.quranFontSize !== undefined) patch.quranFontSize = Number(body.quranFontSize);
 
     // Reciter is validated against the live catalogue rather than trusted, for
     // the same reason /reciter validates: an unknown id would break playback

@@ -24,6 +24,35 @@ export function AudioProvider({ children }) {
   const [position, setPosition] = useState(0);
   const [duration, setDuration] = useState(0);
 
+  // --- Loop (repeat the recitation) ------------------------------------------
+  //
+  // `loop` is the reader's choice and drives the dock badge: 0 off, then 1, 2,
+  // 3 repeats of the current surah once it finishes, cycling back to 0.
+  // `loopsLeft` is the live count shown on the button: it starts at the chosen
+  // number and drains as each repeat is consumed, so after the last replay the
+  // badge returns to off and a finished track stops as it always did.
+  //
+  // The ref mirrors the mode synchronously because React state commits lag
+  // behind clicks: two rapid taps on the cycle button must read 0 -> 1 -> 2,
+  // not compute twice from the same stale 0 and land on 2 twice.
+  const [loop, setLoop] = useState(0);
+  const [loopsLeft, setLoopsLeft] = useState(0);
+  const loopState = useRef({ mode: 0, left: 0 });
+
+  const setLoopCount = useCallback((count) => {
+    const mode = Math.min(3, Math.max(0, Math.round(Number(count)) || 0));
+    // Selecting a mode re-arms the full count even mid-playback.
+    loopState.current = { mode, left: mode };
+    setLoop(mode);
+    setLoopsLeft(mode);
+  }, []);
+
+  const cycleLoop = useCallback(() => {
+    // Reads the ref, not the state: setLoopCount plays through ref + both
+    // setters, so batched clicks advance one mode per tap.
+    setLoopCount((loopState.current.mode + 1) % 4);
+  }, [setLoopCount]);
+
   // Persist the position so a full page load or a return visit resumes where
   // the user stopped. Throttled while playing, and forced on pause/unload -
   // the previous implementation only saved every 5s during playback, so closing
@@ -64,6 +93,10 @@ export function AudioProvider({ children }) {
     audio.src = next.url;
     if (changed) {
       audio.currentTime = Number(next.startAt) || 0;
+      // A different surah gets the full repeat allowance again: the armed
+      // loop applies to whatever the listener queued, not just the surah it
+      // was armed on.
+      loopState.current = { mode: loopState.current.mode, left: loopState.current.mode };
     }
     try {
       await audio.play();
@@ -155,7 +188,33 @@ export function AudioProvider({ children }) {
     };
     const onPlay = () => setPlaying(true);
     const onPause = () => { setPlaying(false); savePosition(true); };
-    const onEnded = () => { setPlaying(false); savePosition(true); };
+    const onEnded = () => {
+      // Loop first: while repeats remain, drain one and restart the same
+      // recitation from the top without touching the saved position. When the
+      // count drains to 0 the badge resets and this ending stops normally, so
+      // "repeat 3 times" plays three replays and then pauses at the end.
+      const info = loopState.current;
+      if (info && info.left > 0) {
+        info.left -= 1;
+        setLoopsLeft(info.left);
+        if (info.left === 0) {
+          // Exhausted: the last repeat has been consumed, so the badge resets
+          // to off and this ending stops as it always did.
+          info.mode = 0;
+          setLoop(0);
+          setPlaying(false);
+          savePosition(true);
+          return;
+        }
+        audio.currentTime = 0;
+        const replay = audio.play();
+        if (replay && typeof replay.catch === 'function') replay.catch(() => {});
+        setPlaying(true);
+        return;
+      }
+      setPlaying(false);
+      savePosition(true);
+    };
 
     audio.addEventListener('loadedmetadata', onLoaded);
     audio.addEventListener('timeupdate', onTime);
@@ -213,10 +272,11 @@ export function AudioProvider({ children }) {
   const value = useMemo(() => ({
     track, playing, position, duration,
     play, load, toggle, pause, seek, close, savePosition, skip,
+    loop, loopsLeft, cycleLoop, setLoopCount,
     hasTrack: Boolean(track),
     canSkipBack: Boolean(track) && Number(track.surahNo) > 1,
     canSkipForward: Boolean(track) && Number(track.surahNo) < 114,
-  }), [track, playing, position, duration, play, load, toggle, pause, seek, close, savePosition, skip]);
+  }), [track, playing, position, duration, play, load, toggle, pause, seek, close, savePosition, skip, loop, loopsLeft, cycleLoop, setLoopCount]);
 
   return <AudioContext.Provider value={value}>{children}</AudioContext.Provider>;
 }

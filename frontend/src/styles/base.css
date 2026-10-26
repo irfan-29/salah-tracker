@@ -6,7 +6,35 @@
    Track My Salah — Modern Design System
    ============================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap');
+/* The default face (Plus Jakarta Sans) plus the alternates the App Font
+   setting offers. All ship with the same 400-800 weights so switching fonts
+   in Settings never leaves a page half-bold. */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Lora:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&family=Poppins:wght@400;500;600;700&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Roboto:wght@400;500;700&display=swap');
+
+/* --- Typography preferences ---------------------------------------------------
+   Three reader settings, all owned by Settings and applied to <html>:
+
+   - data-app-font selects the UI font. Every rule here only swaps the
+     --font-sans custom property, which the whole stylesheet consumes, so one
+     attribute restyles the entire app. Absent attribute = the default stack.
+   - --app-font-scale resizes the root, so every rem measurement in the app
+     (type and rhythm together) follows the App Text Size setting.
+   - --quran-font-scale multiplies only the Arabic mushaf text sizes below the
+     tokens, so QURAN TEXT SIZE sets how large the Arabic text displays
+     without touching Latin type at all. */
+html[data-app-font="inter"]   { --font-sans: 'Inter', system-ui, -apple-system, sans-serif; }
+html[data-app-font="roboto"]  { --font-sans: 'Roboto', system-ui, -apple-system, sans-serif; }
+html[data-app-font="poppins"] { --font-sans: 'Poppins', system-ui, -apple-system, sans-serif; }
+html[data-app-font="nunito"]  { --font-sans: 'Nunito', system-ui, -apple-system, sans-serif; }
+html[data-app-font="lora"]    { --font-sans: 'Lora', Georgia, serif; }
+
+:root {
+  --quran-font-scale: 1;
+}
+
+html {
+  font-size: calc(16px * var(--app-font-scale, 1));
+}
 
 /* --- Design Tokens --- */
 :root {
@@ -1457,7 +1485,7 @@ body:has(.global-audio-bar) .main-content {
 }
 
 .surah-arabic {
-  font-size: 1.125rem;
+  font-size: calc(1.125rem * var(--quran-font-scale, 1));
   color: var(--color-primary);
   direction: rtl;
   font-weight: 600;
@@ -1604,8 +1632,8 @@ body:has(.global-audio-bar) .main-content {
 }
 
 .featured-ayah-arabic {
-  font-size: 1.75rem;
-  line-height: 2;
+  font-size: calc(1.75rem * var(--quran-font-scale, 1));
+  line-height: calc(2 * var(--quran-font-scale, 1));
   text-align: right;
   direction: rtl;
   color: var(--color-text);
@@ -3733,8 +3761,8 @@ hr {
 
 .favourite-arabic {
   margin: 0 0 0.75rem;
-  font-size: 1.375rem;
-  line-height: 2;
+  font-size: calc(1.375rem * var(--quran-font-scale, 1));
+  line-height: calc(2 * var(--quran-font-scale, 1));
   text-align: right;
   color: var(--color-text);
 }
@@ -4381,8 +4409,8 @@ hr {
   margin: 0 0 0.7rem;
   color: var(--landing-ink);
   font-family: 'QPC-Hafs', 'Amiri', serif;
-  font-size: 1.6rem;
-  line-height: 2;
+  font-size: calc(1.6rem * var(--quran-font-scale, 1));
+  line-height: calc(2 * var(--quran-font-scale, 1));
   text-align: right;
   direction: rtl;
 }
@@ -4913,8 +4941,8 @@ hr {
   margin: 0 0 0.6rem;
   color: var(--landing-ink);
   font-family: 'QPC-Hafs', 'Amiri', serif;
-  font-size: 1.45rem;
-  line-height: 2;
+  font-size: calc(1.45rem * var(--quran-font-scale, 1));
+  line-height: calc(2 * var(--quran-font-scale, 1));
   text-align: right;
   direction: rtl;
 }
@@ -5082,8 +5110,8 @@ hr {
   margin: 0 0 1rem;
   color: var(--landing-ink);
   font-family: 'QPC-Hafs', 'Amiri', serif;
-  font-size: clamp(1.6rem, 3vw, 2.2rem);
-  line-height: 2;
+  font-size: calc(clamp(1.6rem, 3vw, 2.2rem) * var(--quran-font-scale, 1));
+  line-height: calc(2 * var(--quran-font-scale, 1));
   text-align: right;
   direction: rtl;
 }
@@ -5212,8 +5240,8 @@ hr {
   margin: 0 0 1.2rem;
   color: var(--landing-ink);
   font-family: 'QPC-Hafs', 'Amiri', serif;
-  font-size: clamp(1.5rem, 3vw, 2.1rem);
-  line-height: 2;
+  font-size: calc(clamp(1.5rem, 3vw, 2.1rem) * var(--quran-font-scale, 1));
+  line-height: calc(2 * var(--quran-font-scale, 1));
   direction: rtl;
 }
 
@@ -6630,6 +6658,81 @@ body {
 .stats-section-head h2 { margin: 0; font-size: 1.28rem; font-weight: 800; letter-spacing: -0.03em; }
 .stats-section-meta { color: var(--color-text-muted); font-size: 0.82rem; }
 
+/* ---- Per-module filter ------------------------------------------------------
+   The module title wears its current range ("Last 30 days") with a drop
+   arrow; the menu offers that module's own options and only its section
+   rebuilds. */
+.stats-module-filter { position: relative; align-self: center; flex-shrink: 0; }
+
+.stats-module-filter-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.32rem 0.55rem 0.32rem 0.75rem;
+  border: 1px solid var(--color-border-light);
+  border-radius: 999px;
+  background: var(--color-surface-elevated);
+  color: var(--color-text-secondary);
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color var(--transition), color var(--transition);
+}
+.stats-module-filter-btn:hover { color: var(--color-primary-dark); border-color: rgba(13, 148, 136, 0.35); }
+.stats-module-filter-btn .material-symbols-rounded { font-size: 1.05rem; opacity: 0.65; }
+.stats-module-filter-btn.is-busy { color: var(--color-text-muted); opacity: 0.7; }
+
+.stats-module-filter-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: default;
+}
+
+.stats-module-filter-menu {
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  right: 0;
+  z-index: 31;
+  min-width: 11.5rem;
+  padding: 0.3rem;
+  border: 1px solid var(--color-border-light);
+  border-radius: 14px;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-lg);
+}
+.stats-module-filter-menu button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.5rem 0.65rem;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  color: var(--color-text);
+  font-size: 0.82rem;
+  text-align: left;
+  cursor: pointer;
+}
+.stats-module-filter-menu button:hover { background: var(--color-primary-glow); }
+.stats-module-filter-menu button.is-active {
+  color: var(--color-primary-dark);
+  font-weight: 700;
+}
+.stats-module-filter-menu button .material-symbols-rounded { font-size: 1rem; color: var(--color-primary); }
+
+/* A section whose filter was just changed dims while its numbers rebuild. */
+.stats-section.is-reloading { opacity: 0.55; transition: opacity 0.2s ease; }
+
+[data-theme="dark"] .stats-module-filter-menu button.is-active { color: var(--color-primary-light); }
+[data-theme="dark"] .stats-module-filter-btn:hover { color: var(--color-primary-light); }
+
 .stats-page-header { position: relative; }
 .stats-range-chips {
   display: flex;
@@ -7017,6 +7120,31 @@ input[type="datetime-local"] { color-scheme: light; }
   box-shadow: 0 4px 14px rgba(13, 148, 136, 0.45);
 }
 
+/* Reused for the Settings text-size pickers: same widget, slightly narrower
+   so it indexes against the settings column instead of the reader's width. */
+.ayah-jump--settings {
+  max-width: 420px;
+  margin: 1.25rem auto;
+}
+
+.ayah-jump--settings .form-section-hint {
+  margin: -0.55rem auto 0.9rem;
+  max-width: 20rem;
+  text-align: center;
+}
+
+/* Compact single-line footer: the value pill stays on one line at all
+   percents, so the row never wraps into two. */
+.ayah-jump--settings .ayah-jump-row { margin-top: 0.8rem; flex-wrap: nowrap; }
+.ayah-jump--settings .ayah-jump-value {
+  min-width: 3rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 10px;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
 [data-theme="dark"] .form-range::-webkit-slider-runnable-track,
 [data-theme="dark"] .form-range::-moz-range-track {
   background: linear-gradient(90deg, rgba(45, 212, 191, 0.36), rgba(230, 189, 116, 0.25));
@@ -7370,8 +7498,8 @@ input[type="datetime-local"] { color-scheme: light; }
 .ayah-arabic-text {
   margin: 0;
   color: var(--color-text);
-  font-size: 1.75rem;
-  line-height: 2;
+  font-size: calc(1.75rem * var(--quran-font-scale, 1));
+  line-height: calc(2 * var(--quran-font-scale, 1));
   text-align: right;
   direction: rtl;
 }
@@ -8239,6 +8367,42 @@ select.form-control option,
   white-space: nowrap;
 }
 
+/* --- Loop / repeat ----------------------------------------------------------
+   Companion to the sleep pill, sharing its ghost-button recipe but wearing a
+   teal accent instead of gold, so the two "armed" modifiers read as different
+   knobs. The repeat glyph never changes; a small badge rides on the icon and
+   carries the remaining repeats. */
+.audio-loop-btn {
+  position: relative;
+}
+
+/* Armed: the glyph itself tints, no chip background — the badge is the
+   indicator now. */
+.audio-loop-btn.is-on {
+  color: #99f6e4;
+}
+
+.audio-loop-badge {
+  position: absolute;
+  /* Centred on the icon's bottom edge so the number reads as part of the
+     glyph, not as a separate corner dot. */
+  left: 50%;
+  bottom: 0.28rem;
+  transform: translateX(-50%);
+  min-width: 0.8rem;
+  padding: 0 0.14rem;
+  border-radius: 999px;
+  background: #f0fdfa;
+  color: #0f766e;
+  font-size: 0.56rem;
+  font-weight: 800;
+  line-height: 0.9rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+  box-shadow: 0 1px 3px rgba(8, 47, 42, 0.55);
+}
+
 .audio-sleep-menu {
   position: fixed;
   z-index: 1250;
@@ -8382,8 +8546,31 @@ body:has(.global-audio-bar) .main-content {
 
   .audio-bar-actions .audio-transport {
     grid-column: 2;
+    /* Explicit row: with sparse auto-placement the transport (column 2) is
+       placed first and the side buttons' column-1/3 placements trail the
+       cursor, dropping them to a phantom second row. Pinning the row keeps
+       all three lanes on one line and the dock compact. */
+    grid-row: 1;
     justify-self: center;
     gap: 0.4rem;
+  }
+
+  .audio-bar-actions .audio-loop-btn {
+    grid-column: 1;
+    grid-row: 1;
+    justify-self: start;
+    /* Mirrors the sleep pill's 0.8rem pull-in, so the two lane buttons sit at
+       matching distances from their dock edges. */
+    margin-left: 0.8rem;
+    height: 34px;
+    min-width: 34px;
+  }
+
+  .audio-bar-actions .audio-loop-btn .audio-loop-badge {
+    bottom: 0.22rem;
+    font-size: 0.5rem;
+    line-height: 0.78rem;
+    min-width: 0.72rem;
   }
 
   .audio-bar-actions .audio-sleep-btn {
@@ -8466,6 +8653,8 @@ body:has(.global-audio-bar) .main-content {
   .audio-btn { width: 30px; height: 30px; }
   .audio-btn-play { width: 40px; height: 40px; }
   .audio-bar-actions { gap: 0.45rem; }
+  .audio-bar-actions .audio-loop-btn { height: 32px; min-width: 32px; margin-left: 0.6rem; }
+  .audio-bar-actions .audio-loop-badge { bottom: 0.18rem; font-size: 0.46rem; line-height: 0.72rem; min-width: 0.66rem; }
   .audio-bar-actions .audio-sleep-btn { height: 32px; width: auto; min-width: 46px; padding: 0 0.5rem; margin-right: 0.6rem; }
   .audio-bar-actions .audio-sleep-btn.is-on { padding: 0 0.5rem; }
   .audio-bar-actions .audio-sleep-btn .audio-sleep-count { font-size: 0.7rem; }

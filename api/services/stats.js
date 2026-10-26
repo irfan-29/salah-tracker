@@ -301,15 +301,23 @@ function buildCharityStats(charities, months = 6, today = new Date()) {
     };
 }
 
-function buildStats(user, { days = 30, charityMonths = 6 } = {}) {
+function buildStats(user, { days = 30, charityMonths = 6, challengeDays } = {}) {
     const today = new Date();
     const windowDays = clampDayCount(days);
+    // Challenges keep their own window: the module filter on the stats page
+    // selects salah and challenges independently, so the challenge report no
+    // longer inherits the salah range (fallback stays the old shared range
+    // for callers that do not pass challengeDays).
+    const challengeWindow = challengeDays === undefined
+        ? Math.min(windowDays, 90)
+        : Math.min(clampDayCount(challengeDays), 90);
     return {
         generatedAt: today.toISOString(),
         days: windowDays,
+        challengeDays: challengeWindow,
         charityMonths,
         salah: buildSalahStats(user.salahLog || [], windowDays, today),
-        challenges: buildChallengeStats(user.challenges || [], Math.min(windowDays, 90), today),
+        challenges: buildChallengeStats(user.challenges || [], challengeWindow, today),
         charity: buildCharityStats(user.charities || [], Math.max(3, Math.min(charityMonths, 12)), today)
     };
 }

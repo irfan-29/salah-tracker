@@ -12,6 +12,68 @@ const TG_ERRORS = {
   'send-failed': 'Telegram did not accept that message.',
 };
 
+// App Font choices: the current face kept as default plus five widely used
+// Google faces whose stacks are defined once in styles.css keyed off
+// html[data-app-font=...]. The ids here and in App.jsx must stay in step.
+const APP_FONTS = [
+  { value: 'default', label: 'Default · Plus Jakarta Sans (current)' },
+  { value: 'inter', label: 'Inter' },
+  { value: 'roboto', label: 'Roboto' },
+  { value: 'poppins', label: 'Poppins' },
+  { value: 'nunito', label: 'Nunito' },
+  { value: 'lora', label: 'Lora' },
+];
+
+// Text-size picker built to match the reader's "Go to Ayah" navigator
+// (`.ayah-jump`): one slider, a caption, the saved value and a Set button.
+// Deliberately NOT live: dragging only moves the thumb; the label shows the
+// saved value and nothing is applied until Set is pressed.
+const SIZE_MIN = 80;
+const SIZE_MAX = 150;
+const SIZE_STEP = 5;
+
+function SizeJump({ label, value, hint, saving, onCommit }) {
+  // Two-phase on purpose (the reader asked for it exactly this way): dragging
+  // updates ONLY the number shown in the row - the page itself keeps its
+  // current size until Set saves the choice and reloads, which is what applies
+  // the new size across the app.
+  const [draft, setDraft] = useState(value);
+  useEffect(() => {
+    // Keep the draft in step with the stored value after externally driven
+    // changes (a failed save reverts here).
+    setDraft(value);
+  }, [value]);
+
+  const commit = useCallback(async () => {
+    if (saving || draft === value) return;
+    const ok = await onCommit(draft);
+    if (!ok) setDraft(value); // Save failed: the label rolls back to the saved size.
+  }, [draft, value, saving, onCommit]);
+
+  const id = `size-jump-${label.replace(/\s+/g, '-').toLowerCase()}`;
+  return (
+    <div className="ayah-jump ayah-jump--settings">
+      <label className="ayah-jump-label" htmlFor={id}>{label}</label>
+      {hint && <p className="form-section-hint">{hint}</p>}
+      <input
+        type="range" id={id} className="form-range"
+        min={SIZE_MIN} max={SIZE_MAX} step={SIZE_STEP} value={draft}
+        aria-label={label}
+        onChange={(e) => setDraft(Number(e.target.value))}
+      />
+      <div className="ayah-jump-row">
+        <span className="ayah-jump-caption">Size</span>
+        <span className="ayah-jump-value">{draft}%</span>
+        <button type="button" className="btn btn-primary btn-sm"
+                disabled={saving || draft === value}
+                onClick={commit}>
+          Set
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // Each section persists independently, so a failure names the section that
 // failed instead of "settings could not be saved".
 function useSection() {
@@ -284,6 +346,40 @@ export default function SettingsPage() {
         ))}
       </div>
       {savingError(theme)}
+
+      {/* Typography - applies via the shell when the refreshed meta arrives:
+          App.jsx writes data-app-font plus the two scale custom properties and
+          mirrors them into localStorage for the pre-paint script. */}
+      <SelectRow label="App Font" value={s.appFont || 'default'}
+        options={APP_FONTS}
+        onChange={async (value) => {
+          if (await theme.save({ appFont: value })) {
+            setData({ ...data, settings: { ...s, appFont: value } });
+            refresh();
+          }
+        }}
+        hint="Typeface used across the whole app - menus, pages and cards."
+        renderLabel={(v) => (APP_FONTS.find((f) => f.value === v) || APP_FONTS[0]).label} />
+
+      <SizeJump label="App Text Size" value={Number(s.appFontSize) || 100}
+        saving={theme.saving}
+        /* Set = the only API hit, followed by a reload so the shell, the
+           pre-paint localStorage replay and the page all apply the new size. */
+        onCommit={async (value) => {
+          const ok = await theme.save({ appFontSize: value });
+          if (ok) window.location.reload();
+          return ok;
+        }}
+        hint="Scales the whole interface, not the Arabic text. Default is 100%." />
+
+      <SizeJump label="Quran Text Size" value={Number(s.quranFontSize) || 100}
+        saving={theme.saving}
+        onCommit={async (value) => {
+          const ok = await theme.save({ quranFontSize: value });
+          if (ok) window.location.reload();
+          return ok;
+        }}
+        hint="Sizes only the Arabic ayah text. Default is 100%." />
 
       {/* Home */}
       <SelectRow label="Default Home Page" value={s.defaultHome}
