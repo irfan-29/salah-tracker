@@ -43,7 +43,7 @@ function PrayerBar({ prayer }) {
       </div>
       <span className="stats-prayer-amount">
         <strong>{prayer.good}</strong>/ {total}
-        <em>{prayer.rate}% clean</em>
+        <em>{prayer.rate}% on time</em>
       </span>
     </div>
   );
@@ -163,7 +163,7 @@ export default function StatsPage() {
       <div className="page-header stats-page-header">
         <div>
           <h1>Stats</h1>
-          <p>Six-module view of your Salah, challenge and charity record</p>
+          <p>A visual report across your Salah, challenge and charity record</p>
         </div>
         <div className="stats-range-chips" role="tablist" aria-label="Report range">
           {[30, 60, 90].map((days) => (

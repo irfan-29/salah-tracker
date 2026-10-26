@@ -9,7 +9,6 @@ const PRAYERS = ["Fajr", "Zuhur", "Asar", "Magrib", "Isha"];
 // The exact spellings stored by the older pages and the React page. Both are
 // counted together so a pre-React log still reads as one history.
 const GOOD_STATUSES = new Set(["In Jamath", "On Time"]);
-const STATUS_ORDER = ["In Jamath", "On Time", "Late", "Not Prayed", "others"];
 
 function isoKey(date) {
     const y = date.getFullYear();
@@ -83,7 +82,6 @@ function activeStreak(loggedDays, today = new Date()) {
 // string, so the report stays readable even when a new status is introduced.
 function buildSalahStats(entries, days, today = new Date()) {
     const range = dayRange(days, today);
-    const rangeSet = new Set(range);
     const allDays = new Set();
 
     // Keyed by day so re-opening a prayer on the same day replaces the old
