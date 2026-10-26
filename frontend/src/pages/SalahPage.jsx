@@ -135,23 +135,23 @@ export default function SalahPage() {
       {isLoggedIn && (
         <div className="container1 salah-overview">
           <div className="salah-overview-head">
-            <div className="salah-overview-day">
-              <span className="salah-overview-kicker">Selected day</span>
-              <h2>{history.loading ? 'Loading…' : (history.label || 'Choose a date')}</h2>
-            </div>
             {/*
-              The drop arrow beside the date opens the app's own calendar and
+              The date itself is the selector: clicking the day label (the
+              arrow marks it as changeable) opens the app's own calendar and
               loads whichever day is picked - the same selection the old
               history card offered, without the duplicate card.
             */}
-            <DateField
-              id="selected-day"
-              className="salah-day-picker"
-              iconOnly
-              triggerIcon="expand_more"
-              value={findDate}
-              onChange={setFindDate}
-            />
+            <div className="salah-overview-day">
+              <span className="salah-overview-kicker">Selected day</span>
+              <DateField
+                id="selected-day"
+                className="salah-day-picker"
+                triggerIcon="expand_more"
+                valueLabel={history.loading ? 'Loading…' : (history.label || 'Choose a date')}
+                value={findDate}
+                onChange={setFindDate}
+              />
+            </div>
             <span className="salah-overview-badge">{loggedCount} of 5 logged</span>
           </div>
 

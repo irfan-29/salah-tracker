@@ -49,6 +49,9 @@ export default function DateField({
   // user already captions, like the Salah day selector's drop arrow).
   iconOnly = false,
   triggerIcon = 'calendar_month',
+  // Overrides the formatted date shown in the trigger (e.g. when the trigger
+  // should read exactly like a page label).
+  valueLabel,
 }) {
   const generatedId = useId();
   const fieldId = id || `date-${generatedId}`;
@@ -215,8 +218,8 @@ export default function DateField({
           <span className="material-symbols-rounded" aria-hidden="true">{triggerIcon}</span>
         ) : (
           <>
-            <span className="app-field-value" id={`${fieldId}-value`}>{displayDate(value)}</span>
-            <span className="app-field-icon material-symbols-rounded" aria-hidden="true">calendar_month</span>
+            <span className="app-field-value" id={`${fieldId}-value`}>{valueLabel !== undefined ? valueLabel : displayDate(value)}</span>
+            <span className="app-field-icon material-symbols-rounded" aria-hidden="true">{triggerIcon}</span>
           </>
         )}
       </button>

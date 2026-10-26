@@ -7306,34 +7306,84 @@ input[type="datetime-local"] { color-scheme: light; }
   line-height: 1.15;
 }
 
-/* The drop arrow beside the selected day. It opens the app's own calendar -
-   the same control the removed history card offered, kept without the
-   duplicate card the pie chart already covers. */
+/* The date itself is the selector: the day label closes into a button that
+   opens the app's own calendar, and the trailing arrow only marks the label
+   as changeable. */
 .salah-overview-day { min-width: 0; }
 
 .salah-overview-head .salah-day-picker {
   width: auto;
   max-width: none;
   margin: 0;
-  align-self: center;
-  flex-shrink: 0;
 }
 
-.salah-day-picker .app-date-trigger--icon {
-  width: 42px;
-  height: 42px;
-  min-height: 42px;
+.salah-overview-head .salah-day-picker .app-date-trigger {
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: flex-start;
+  gap: 0.35rem;
+  width: auto;
+  min-height: 0;
   padding: 0;
-  justify-content: center;
-  border: 1px solid var(--color-border-light);
-  border-radius: 999px;
-  background: var(--color-surface-elevated);
-  color: var(--color-text-secondary);
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1.15;
+  text-align: left;
+  white-space: nowrap;
   cursor: pointer;
-  transition: border-color var(--transition), color var(--transition);
+  transition: color var(--transition);
 }
-.salah-day-picker .app-date-trigger--icon:hover { color: var(--color-primary-dark); border-color: rgba(13, 148, 136, 0.35); }
-[data-theme="dark"] .salah-day-picker .app-date-trigger--icon:hover { color: var(--color-primary-light); }
+
+.salah-overview-head .salah-day-picker .app-date-trigger .app-field-value {
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  line-height: inherit;
+  padding: 0;
+  text-align: inherit;
+}
+
+/* Keep the arrow inline at the end of the label instead of pinned to the
+   field edge. */
+.salah-overview-head .salah-day-picker .app-date-trigger .app-field-icon {
+  position: static;
+  width: auto;
+  height: auto;
+  align-self: center;
+  font-size: 1.3rem;
+  color: var(--color-text-muted);
+  opacity: 0.75;
+  transform: none;
+  pointer-events: none;
+}
+
+.salah-overview-head .salah-day-picker .app-date-trigger:hover,
+.salah-overview-head .salah-day-picker .app-date-trigger:hover .app-field-value {
+  color: var(--color-primary-dark);
+}
+.salah-overview-head .salah-day-picker .app-date-trigger:hover .app-field-icon {
+  color: var(--color-primary-dark);
+  opacity: 1;
+}
+.salah-overview-head .salah-day-picker .app-date-trigger[aria-expanded="true"] .app-field-icon {
+  color: var(--color-primary);
+}
+.salah-overview-head .salah-day-picker .app-date-trigger:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+[data-theme="dark"] .salah-overview-head .salah-day-picker .app-date-trigger:hover,
+[data-theme="dark"] .salah-overview-head .salah-day-picker .app-date-trigger:hover .app-field-value {
+  color: var(--color-primary-light);
+}
 
 .salah-overview-badge {
   flex-shrink: 0;
@@ -7502,13 +7552,7 @@ input[type="datetime-local"] { color-scheme: light; }
 .salah-form-grid .form-floating { max-width: none; width: 100%; }
 
 @media (max-width: 768px) {
-  /* Day heading on its own line, with the drop arrow beside the badge below
-     it - the arrow stays near the date without squeezing the h2. */
-  .salah-overview-head {
-    flex-wrap: wrap;
-    align-items: center;
-  }
-  .salah-overview-day { flex: 1 0 100%; }
+  .salah-overview-head { flex-direction: column; }
   .salah-overview-body { grid-template-columns: 1fr; gap: 1.25rem; }
   .salah-ring { width: 156px; height: 156px; }
   .salah-form-grid { grid-template-columns: 1fr; }
