@@ -79,6 +79,13 @@ export function AudioProvider({ children }) {
     else audio.pause();
   }, [audio, track]);
 
+  // Pause only. The sleep timer needs it: when a countdown elapses the player
+  // should stop where the listener dozed off, not close and discard the saved
+  // resume position the way close() would.
+  const pause = useCallback(() => {
+    if (audio && !audio.paused) audio.pause();
+  }, [audio]);
+
   // Load a track into the bar WITHOUT starting it. Separate from play() because
   // conflating them meant restoring a saved position auto-played, which browsers
   // refuse anyway and which is intrusive when it does not.
@@ -205,11 +212,11 @@ export function AudioProvider({ children }) {
 
   const value = useMemo(() => ({
     track, playing, position, duration,
-    play, load, toggle, seek, close, savePosition, skip,
+    play, load, toggle, pause, seek, close, savePosition, skip,
     hasTrack: Boolean(track),
     canSkipBack: Boolean(track) && Number(track.surahNo) > 1,
     canSkipForward: Boolean(track) && Number(track.surahNo) < 114,
-  }), [track, playing, position, duration, play, load, toggle, seek, close, savePosition, skip]);
+  }), [track, playing, position, duration, play, load, toggle, pause, seek, close, savePosition, skip]);
 
   return <AudioContext.Provider value={value}>{children}</AudioContext.Provider>;
 }

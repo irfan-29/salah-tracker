@@ -1056,7 +1056,7 @@ app.post("/api/quran/progress", async function(req, res){
     if (!isFinite(time) || time < 0) return res.status(400).json({ error: "invalid-time" });
 
     try {
-        await userData.recordSurahReadAndProgress(req, {
+        await userData.recordAudioProgress(req, {
             surahNo,
             surahName: String(req.body.surahName || ""),
             time
@@ -1095,7 +1095,8 @@ app.get("/api/quran/progress", async function(req, res){
     if (!progress || !progress.surahNo) return res.json({ track: null });
 
     const surah = await cachedJsonOrNull(`https://quranapi.pages.dev/api/${progress.surahNo}.json`).catch(() => null);
-    const track = surah && surah.audio ? (surah.audio[settings.favoriteReciter] || surah.audio[1]) : null;
+    const reciterId = String(settings.favoriteReciter || "1");
+    const track = surah && surah.audio ? (surah.audio[reciterId] || surah.audio[1]) : null;
     if (!track) return res.json({ track: null });
 
     res.json({
@@ -1104,6 +1105,11 @@ app.get("/api/quran/progress", async function(req, res){
             surahNo: Number(progress.surahNo),
             surahName: progress.surahName || surah.surahName,
             reciterName: track.reciter,
+            // Carried for the same reason as /api/quran/audio's reciterId: the
+            // player's skip buttons resolve the next surah through this id.
+            // Without it a restored track skipped with reciter 1 (Mishary),
+            // silently overriding the user's saved reciter after any reload.
+            reciterId: surah.audio[reciterId] ? reciterId : "1",
             startAt: Number(progress.time) || 0
         }
     });

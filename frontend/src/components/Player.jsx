@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useAudio } from './AudioProvider';
 import { quran } from '../services/api';
 
@@ -9,18 +10,131 @@ function formatTime(seconds) {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
-// Same class names and structure as the audio bar in views/footer.ejs, so the
-// existing stylesheet renders it identically. The difference is where it lives:
-// here it is mounted above the router, which is why playback survives
-// navigation.
+// Countdown shown inside the sleep-timer button while a timer runs. Hours flip
+// the label to h:mm:ss so even a 5h setting fits one line.
+function formatRemaining(ms) {
+  const total = Math.max(0, Math.ceil(ms / 1000));
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+const SLEEP_OPTIONS = [
+  { id: 'off', label: 'Timer off', ms: 0 },
+  { id: '15m', label: '15 minutes', ms: 15 * 60 * 1000 },
+  { id: '30m', label: '30 minutes', ms: 30 * 60 * 1000 },
+  { id: '1h', label: '1 hour', ms: 60 * 60 * 1000 },
+  { id: '2h', label: '2 hours', ms: 2 * 60 * 60 * 1000 },
+  { id: '3h', label: '3 hours', ms: 3 * 60 * 60 * 1000 },
+  { id: '5h', label: '5 hours', ms: 5 * 60 * 60 * 1000 },
+];
+const SLEEP_MENU_WIDTH = 200;
+// Seven rows at the app dropdown's row height, used for the flip-above check.
+const SLEEP_MENU_HEIGHT = 332;
+
+// Same class names and structure as the old audio bar, so the stylesheet
+// renders it identically. The difference is where it lives: here it is mounted
+// above the router, which is why playback survives navigation.
 export default function Player() {
-  const { track, playing, position, duration, toggle, seek, close, load, hasTrack,
+  const { track, playing, position, duration, toggle, pause, seek, close, load, hasTrack,
           skip, canSkipBack, canSkipForward } = useAudio();
   const [restored, setRestored] = useState(false);
   const [scrubPct, setScrubPct] = useState(null);
   const trackRef = useRef(null);
   const rangeRef = useRef(null);
   const dragging = useRef(false);
+
+  // --- Sleep timer ---------------------------------------------------------
+  // One absolute deadline rather than a paused "time left" counter, so the
+  // countdown keeps running whether playback pauses or moves to another surah.
+  // When it fires the audio pauses; the track stays loaded, so pressing play
+  // resumes and the timer simply reads "off" until it is set again. The
+  // countdown lives only in this component - close() clears it so the next
+  // session starts fresh.
+  const [sleepOpen, setSleepOpen] = useState(false);
+  const [sleepActiveMs, setSleepActiveMs] = useState(0);
+  const [sleepMenuPos, setSleepMenuPos] = useState(null);
+  const sleepEndsAt = useRef(0);
+  const sleepBtnRef = useRef(null);
+  const sleepMenuRef = useRef(null);
+
+  useEffect(() => {
+    if (!sleepActiveMs) return undefined;
+    const id = window.setInterval(() => {
+      const remaining = sleepEndsAt.current - Date.now();
+      if (remaining <= 0) {
+        sleepEndsAt.current = 0;
+        setSleepActiveMs(0);
+        pause();
+        return;
+      }
+      setSleepActiveMs(remaining);
+    }, 500);
+    return () => window.clearInterval(id);
+  }, [sleepActiveMs, pause]);
+
+  const chooseSleep = (option) => {
+    if (!option.ms) {
+      sleepEndsAt.current = 0;
+      setSleepActiveMs(0);
+    } else {
+      sleepEndsAt.current = Date.now() + option.ms;
+      setSleepActiveMs(option.ms);
+    }
+    setSleepOpen(false);
+    sleepBtnRef.current?.focus();
+  };
+
+  // Outside pointer (or Escape) closes the sleep menu: the same contract the
+  // app-wide FormSelect listbox follows.
+  useEffect(() => {
+    if (!sleepOpen) return undefined;
+    const closeOnOutside = (event) => {
+      if (!sleepBtnRef.current?.contains(event.target) && !sleepMenuRef.current?.contains(event.target)) {
+        setSleepOpen(false);
+      }
+    };
+    const closeOnKey = (event) => {
+      if (event.key === 'Escape') setSleepOpen(false);
+    };
+    document.addEventListener('pointerdown', closeOnOutside);
+    document.addEventListener('keydown', closeOnKey);
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutside);
+      document.removeEventListener('keydown', closeOnKey);
+    };
+  }, [sleepOpen]);
+
+  // Positioned from the button's rect, right-aligned to it (the button sits at
+  // the right end of the bar) and flipped above the bar when there is not
+  // enough room underneath - the dock sits low, so the usual case is up.
+  useEffect(() => {
+    if (!sleepOpen) return undefined;
+    const place = () => {
+      const rect = sleepBtnRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const gap = 8;
+      const width = Math.min(SLEEP_MENU_WIDTH, window.innerWidth - 16);
+      const right = Math.min(rect.right, window.innerWidth - 8);
+      const left = Math.max(8, right - width);
+      const below = window.innerHeight - rect.bottom - gap;
+      const openUp = below < SLEEP_MENU_HEIGHT && rect.top > SLEEP_MENU_HEIGHT;
+      setSleepMenuPos({
+        top: openUp ? Math.max(8, rect.top - SLEEP_MENU_HEIGHT - gap) : rect.bottom + gap,
+        left,
+        width,
+      });
+    };
+    place();
+    window.addEventListener('resize', place);
+    window.addEventListener('scroll', place, true);
+    return () => {
+      window.removeEventListener('resize', place);
+      window.removeEventListener('scroll', place, true);
+    };
+  }, [sleepOpen]);
 
   useEffect(() => {
     let cancelled = false;
@@ -35,6 +149,15 @@ export default function Player() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!restored || !hasTrack) return null;
+
+  const sleepLabel = sleepActiveMs
+    ? `Sleep timer: about ${Math.ceil(sleepActiveMs / 60000)} minutes remaining`
+    : 'Sleep timer';
+  const isActiveSleepOption = (option) => (
+    option.ms === 0
+      ? sleepActiveMs === 0
+      : sleepActiveMs > 0 && Math.round(sleepActiveMs / 60000) === Math.round(option.ms / 60000)
+  );
 
   const pct = duration > 0
     ? (scrubPct !== null ? scrubPct : Math.min(100, Math.max(0, (position / duration) * 100)))
@@ -108,7 +231,6 @@ export default function Player() {
           </span>
           <div className="audio-track-meta">
             <div className="surah-title" title={`${track.surahNo}. ${track.surahName}`}>
-              <span className="audio-track-dot" aria-hidden="true" />
               <span className="audio-track-title-text">{track.surahNo}. {track.surahName}</span>
             </div>
             <div className="reciter-name" title={track.reciterName || 'Qur’an recitation'}>
@@ -118,9 +240,8 @@ export default function Player() {
         </div>
 
         <div className="audio-bar-actions">
-          {/* Same three controls as views/footer.ejs: previous, play/pause,
-              next. The port kept only the middle one. Disabled at the ends of
-              the Quran rather than silently doing nothing. */}
+          {/* Transport: previous, play/pause, next. Disabled at the ends of the
+              Quran rather than silently doing nothing. */}
           <div className="audio-transport">
             <button type="button" className="audio-btn" onClick={() => skip(-1)}
                     disabled={!canSkipBack} aria-label="Previous surah">
@@ -135,7 +256,22 @@ export default function Player() {
             </button>
           </div>
 
-          <button type="button" className="audio-close-btn" onClick={close} aria-label="Close audio">
+          <button
+            ref={sleepBtnRef}
+            type="button"
+            className={`audio-btn audio-sleep-btn${sleepActiveMs ? ' is-on' : ''}`}
+            aria-label={sleepLabel}
+            aria-haspopup="menu"
+            aria-expanded={sleepOpen}
+            title={sleepLabel}
+            onClick={() => setSleepOpen((open) => !open)}
+          >
+            {sleepActiveMs
+              ? <span className="audio-sleep-count">{formatRemaining(sleepActiveMs)}</span>
+              : <span className="material-symbols-rounded" aria-hidden="true">bedtime</span>}
+          </button>
+
+          <button type="button" className="audio-btn audio-close-btn" onClick={close} aria-label="Close audio">
             <span className="material-symbols-rounded">close</span>
           </button>
         </div>
@@ -175,6 +311,38 @@ export default function Player() {
           <span className="audio-time">{formatTime(duration)}</span>
         </div>
       </div>
+
+      {sleepOpen && createPortal(
+        <div
+          ref={sleepMenuRef}
+          className="app-select-menu is-portal audio-sleep-menu"
+          role="menu"
+          aria-label="Sleep timer"
+          style={{
+            top: sleepMenuPos ? `${sleepMenuPos.top}px` : undefined,
+            left: sleepMenuPos ? `${sleepMenuPos.left}px` : undefined,
+            width: sleepMenuPos ? `${sleepMenuPos.width}px` : undefined,
+            visibility: sleepMenuPos ? 'visible' : 'hidden',
+          }}
+        >
+          {SLEEP_OPTIONS.map((option) => (
+            <button
+              key={option.id}
+              type="button"
+              role="menuitem"
+              className={`app-select-option audio-sleep-option${isActiveSleepOption(option) ? ' is-selected' : ''}`}
+              onPointerEnter={(event) => event.currentTarget.classList.add('is-active')}
+              onPointerLeave={(event) => event.currentTarget.classList.remove('is-active')}
+              onClick={() => chooseSleep(option)}
+            >
+              <span>{option.label}</span>
+              {isActiveSleepOption(option)
+                && <span className="material-symbols-rounded" aria-hidden="true">check</span>}
+            </button>
+          ))}
+        </div>,
+        document.body,
+      )}
     </div>
   );
 }

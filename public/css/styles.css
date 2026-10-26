@@ -121,11 +121,6 @@
   background: #263348;
 }
 
-[data-theme="dark"] .global-audio-bar {
-  background: rgba(15, 23, 42, 0.95);
-  border-top-color: var(--color-border);
-}
-
 [data-theme="dark"] .dropdown-search-custom {
   background: #0f172a;
   color: var(--color-text);
@@ -2036,18 +2031,28 @@ body:has(.global-audio-bar) .main-content {
   font-style: italic;
 }
 
-/* --- Audio Player --- */
+/* --- Audio Player ---
+   One design for light and dark themes: a floating deep-teal glass dock that
+   holds the track info, transport, and a click-through waveform. Sections
+   further down only layer the layout grid, the waveform seekbar, and
+   responsive tweaks on top of these base values. */
 .global-audio-bar {
   position: fixed;
-  bottom: 0;
+  bottom: 1rem;
   left: var(--sidebar-width);
   right: 0;
-  background: var(--color-surface-elevated);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-top: 1px solid var(--color-border);
-  box-shadow: 0 -4px 24px rgba(15, 23, 42, 0.1);
-  padding: 0.625rem 1.25rem;
+  margin: 0 1.25rem;
+  max-width: 800px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 6% 0%, rgba(45, 212, 191, 0.12), transparent 42%),
+    linear-gradient(155deg, #0c302b 0%, #082320 55%, #04100f 100%);
+  color: #f2fffb;
+  box-shadow:
+    0 24px 52px -24px rgba(3, 22, 20, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  padding: 0.62rem 0.9rem 0.7rem;
   z-index: 900;
   transition: left var(--transition);
 }
@@ -2425,22 +2430,12 @@ hr {
 }
 
 @media (max-width: 768px) {
-  .audio-bar-inner {
-    flex-wrap: wrap;
-    gap: 0.75rem;
-  }
-
-  .audio-bar-track-info {
-    flex: 1 1 auto;
-  }
-
   .audio-progress-row {
     max-width: 100%;
   }
 
   .global-audio-bar {
     left: 0;
-    padding: 0.625rem 1rem;
   }
 }
 
@@ -6370,26 +6365,10 @@ body {
   background: linear-gradient(135deg, rgba(45, 212, 191, 0.13), rgba(230, 189, 116, 0.05));
 }
 
-/* ---- Floating audio player ---- */
-
-.global-audio-bar {
-  left: calc(var(--sidebar-width) + 1.25rem);
-  right: 1.25rem;
-  bottom: 1rem;
-  padding: 0.7rem 1.1rem;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 24px;
-  background:
-    radial-gradient(circle at 0% 0%, rgba(45, 212, 191, 0.14), transparent 36%),
-    linear-gradient(135deg, rgba(9, 43, 39, 0.97), rgba(5, 20, 18, 0.97));
-  color: #f2fffb;
-  box-shadow: 0 26px 60px -28px rgba(0, 0, 0, 0.6);
-}
-
-.sidebar.collapsed ~ .main-content ~ .global-audio-bar,
-body:has(.sidebar.collapsed) .global-audio-bar {
-  left: calc(var(--sidebar-collapsed) + 1.25rem);
-}
+/* ---- Floating audio player ----
+   Geometry lives in the base ".global-audio-bar" rule near the top of this
+   file; this section only carries the on-pill colours, so light and dark
+   themes share one dock instead of agreeing to disagree. */
 
 .audio-bar-track-info .surah-title { color: #f2fffb; }
 .audio-bar-track-info .reciter-name { color: rgba(167, 191, 185, 0.8); }
@@ -6402,10 +6381,7 @@ body:has(.sidebar.collapsed) .global-audio-bar {
 }
 .audio-btn-play:hover:not(:disabled) { background: linear-gradient(135deg, #5eead4, #14b8a6); color: #062a26; }
 .audio-time { color: rgba(237, 247, 243, 0.58); }
-.audio-progress-track { background: transparent; }
-.audio-progress-track::before { background: rgba(255, 255, 255, 0.16); }
-.audio-progress-fill { background: linear-gradient(90deg, #5eead4, #e6bd74); }
-.audio-close-btn { color: rgba(237, 247, 243, 0.6); }
+.audio-close-btn { color: rgba(237, 247, 243, 0.62); }
 .audio-close-btn:hover { background: rgba(239, 68, 68, 0.16); color: #fca5a5; }
 
 /* ---- Misc surfaces ---- */
@@ -6935,13 +6911,6 @@ body:has(.sidebar.collapsed) .global-audio-bar {
 }
 
 [data-theme="dark"] .surah-audio-card { background: var(--color-surface); }
-
-[data-theme="dark"] .global-audio-bar {
-  background:
-    radial-gradient(circle at 0% 0%, rgba(45, 212, 191, 0.14), transparent 36%),
-    linear-gradient(135deg, rgba(9, 43, 39, 0.98), rgba(5, 20, 18, 0.98));
-  border-color: rgba(255, 255, 255, 0.1);
-}
 
 input[type="date"],
 input[type="time"],
@@ -8058,10 +8027,11 @@ select.form-control option,
 }
 
 /* ==========================================================================
-   Compact audio bar
-   The old rotating artwork is gone. A small animated equalizer carries the
-   "playing" signal without the fragile rotation, and the transport + close
-   controls sit together on the right. The seek row spans the whole bar.
+   Audio dock
+   The player is one floating glass pill shared by light and dark themes.
+   The signature detail is the seek bar: a row of tick marks that light up teal
+   as the recitation plays, cut out of the same layout with pure CSS. The
+   equalizer chip is the only other motion on the bar.
    ========================================================================== */
 
 .audio-bar-inner {
@@ -8071,8 +8041,8 @@ select.form-control option,
     "info actions"
     "progress progress";
   align-items: center;
-  gap: 0.15rem 1rem;
-  max-width: 980px;
+  gap: 0.05rem 0.9rem;
+  max-width: 780px;
 }
 
 .audio-bar-track-info {
@@ -8087,16 +8057,21 @@ select.form-control option,
   overflow: hidden;
 }
 
+/* The surah title element also carries a badge-less plain span; resting the
+   ellipsis on the span itself keeps the clip where React re-renders it. */
+.audio-track-title-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .audio-bar-actions {
   grid-area: actions;
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.3rem;
   flex-shrink: 0;
-}
-
-.audio-bar-actions .audio-close-btn {
-  margin-left: 0.15rem;
 }
 
 .audio-equalizer {
@@ -8105,27 +8080,26 @@ select.form-control option,
   justify-content: center;
   gap: 3px;
   flex: 0 0 auto;
-  width: 34px;
-  height: 34px;
-  padding: 8px 7px;
+  width: 36px;
+  height: 36px;
+  padding: 9px 8px;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 11px;
-  background: rgba(255, 255, 255, 0.055);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .audio-equalizer span {
   width: 3px;
-  height: 42%;
+  height: 52%;
   border-radius: 999px;
   background: linear-gradient(180deg, #99f6e4, #2dd4bf 60%, #0d9488);
-  opacity: 0.72;
+  opacity: 0.6;
   transform-origin: bottom;
 }
 
-.audio-equalizer span:nth-child(2) { height: 70%; }
-.audio-equalizer span:nth-child(3) { height: 55%; }
-.audio-equalizer span:nth-child(4) { height: 88%; }
+.audio-equalizer span:nth-child(2) { height: 78%; }
+.audio-equalizer span:nth-child(3) { height: 44%; }
+.audio-equalizer span:nth-child(4) { height: 90%; }
 
 .audio-equalizer.is-playing span {
   animation: audio-equalize 0.85s ease-in-out infinite alternate;
@@ -8138,171 +8112,158 @@ select.form-control option,
 
 @keyframes audio-equalize {
   from { transform: scaleY(0.45); }
-  to { transform: scaleY(1.15); }
+  to { transform: scaleY(1.1); }
 }
 
+/* --- Waveform seek bar -----------------------------------------------------
+   The track draws faint tick marks with a repeating gradient; the played fill
+   draws the same marks in teal on top of them, so progress reads as the
+   waveform "lighting up" instead of a flat bar travelling a rail. */
 .audio-progress-row {
   grid-area: progress;
   max-width: none;
-  gap: 0.55rem;
-  padding-top: 0.05rem;
+  gap: 0.6rem;
+  padding: 0.2rem 0 0.15rem;
 }
 
-.audio-progress-track:focus-within {
-  outline: none;
+.audio-progress-track {
+  height: 22px;
+}
+
+.audio-progress-track::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: 0;
+  left: 0;
+  height: 14px;
+  border-radius: 2px;
+  background: repeating-linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.16) 0 2px,
+    transparent 2px 6px
+  );
+  transform: translateY(-50%);
+}
+
+.audio-progress-fill {
+  top: 50%;
+  height: 14px;
+  border-radius: 0;
+  background: repeating-linear-gradient(
+    90deg,
+    rgba(94, 234, 212, 0.55) 0 2px,
+    transparent 2px 6px
+  );
+  transform: translateY(-50%);
+}
+
+.global-audio-bar.is-playing .audio-progress-fill {
+  background: repeating-linear-gradient(
+    90deg,
+    #5eead4 0 2px,
+    transparent 2px 6px
+  );
+}
+
+.audio-progress-thumb {
+  width: 9px;
+  height: 9px;
+  border: none;
+  background: #f0fdfa;
+  transform: translate(-50%, -50%) scale(0.75);
+  opacity: 0;
+  transition: left 0.1s linear, transform var(--transition), opacity var(--transition);
+}
+
+.audio-progress-track:hover .audio-progress-thumb,
+.audio-progress-track.is-scrubbing .audio-progress-thumb,
+.audio-progress-track:focus-within .audio-progress-thumb {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.audio-progress-track:hover .audio-progress-thumb,
+.audio-progress-track.is-scrubbing .audio-progress-thumb,
+.audio-progress-track:focus-within .audio-progress-thumb {
+  box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.45), 0 2px 8px rgba(2, 20, 18, 0.5);
 }
 
 .audio-progress-input:focus-visible {
   outline: none;
 }
 
-.audio-progress-track:has(.audio-progress-input:focus-visible) .audio-progress-thumb {
-  box-shadow:
-    0 0 0 4px rgba(45, 212, 191, 0.22),
-    0 2px 10px rgba(13, 148, 136, 0.4);
+/* --- Sleep timer -----------------------------------------------------------
+   A ghost button sits between the transport and close. With a timer running it
+   swaps its moon icon for a live countdown and takes the warm gold accent,
+   which reads as "armed" against the teal player without extra chrome. */
+
+/* Fixed 36px peers suit icon buttons; the countdown needs width, so this one
+   grows with its label and keeps a circular icon state when idle. */
+.audio-sleep-btn {
+  width: auto;
+  min-width: 36px;
+  padding: 0 0.5rem;
+  font-variant-numeric: tabular-nums;
 }
 
-/* A quiet moving accent along the top edge, a glowing equalizer, and a state
-   dot beside the surah name. The bar stays a player first: these are motion
-   cues, not decoration that competes with the controls. */
-.global-audio-bar {
-  overflow: hidden;
+.audio-sleep-btn.is-on {
+  color: #fcd34d;
+  background: rgba(251, 191, 36, 0.14);
+  padding: 0 0.6rem;
 }
 
-.global-audio-bar::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: 0;
-  left: 0;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, rgba(45, 212, 191, 0.75), rgba(192, 138, 53, 0.55), transparent);
-  background-size: 200% 100%;
-  opacity: 0.5;
-  pointer-events: none;
-  animation: audio-aurora 8s linear infinite;
+.audio-sleep-btn.is-on:hover:not(:disabled) {
+  background: rgba(251, 191, 36, 0.24);
+  color: #fde68a;
 }
 
-.global-audio-bar.is-playing::before { opacity: 1; }
-
-@keyframes audio-aurora {
-  to { background-position: -200% 0; }
-}
-
-.audio-bar-track-info .surah-title {
-  display: flex;
-  align-items: center;
-  gap: 0.38rem;
-}
-
-.audio-track-dot {
-  flex: 0 0 auto;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: rgba(148, 163, 184, 0.65);
-  transition: background var(--transition), box-shadow var(--transition);
-}
-
-.global-audio-bar.is-playing .audio-track-dot {
-  background: #2dd4bf;
-  box-shadow: 0 0 0 0 rgba(45, 212, 191, 0.45);
-  animation: audio-state-pulse 1.9s ease-out infinite;
-}
-
-@keyframes audio-state-pulse {
-  60% { box-shadow: 0 0 0 5px rgba(45, 212, 191, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(45, 212, 191, 0); }
-}
-
-.audio-track-title-text {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.audio-sleep-count {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1;
   white-space: nowrap;
 }
 
-.audio-equalizer {
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    0 0 20px -9px rgba(45, 212, 191, 0.65);
+.audio-sleep-menu {
+  z-index: 1250;
+  padding: 0.35rem;
+  animation: app-rise 0.18s ease-out both;
 }
 
-.audio-equalizer.is-playing {
-  border-color: rgba(45, 212, 191, 0.22);
-  background: rgba(45, 212, 191, 0.08);
-}
-
-.audio-equalizer.is-playing span {
-  box-shadow: 0 0 6px rgba(45, 212, 191, 0.5);
-}
-
-.audio-btn-play {
-  background: linear-gradient(135deg, #14b8a6, #0f766e);
-  box-shadow:
-    0 7px 20px -8px rgba(13, 148, 136, 0.9),
-    inset 0 1px 0 rgba(255, 255, 255, 0.25);
-}
-
-.global-audio-bar.is-playing .audio-btn-play {
-  animation: audio-play-glow 2.8s ease-in-out infinite;
-}
-
-@keyframes audio-play-glow {
-  50% {
-    box-shadow:
-      0 8px 26px -5px rgba(45, 212, 191, 0.85),
-      inset 0 1px 0 rgba(255, 255, 255, 0.3);
-  }
-}
-
-.audio-progress-fill {
-  background: linear-gradient(90deg, #0d9488, #2dd4bf 68%, #99f6e4);
-  box-shadow: 0 0 12px -2px rgba(45, 212, 191, 0.45);
-}
-
-.audio-progress-thumb {
-  background: linear-gradient(135deg, #5eead4, #0d9488);
-  border-color: rgba(240, 253, 250, 0.95);
+.audio-sleep-menu .app-select-option {
+  min-height: 40px;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .global-audio-bar::before,
-  .global-audio-bar.is-playing .audio-track-dot,
-  .global-audio-bar.is-playing .audio-btn-play {
-    animation: none;
-  }
+  .audio-sleep-menu { animation: none; }
 }
 
 body:has(.global-audio-bar) .main-content {
-  padding-bottom: 7.25rem;
+  padding-bottom: 7.5rem;
 }
 
 @media (max-width: 768px) {
   .audio-bar-inner {
-    gap: 0.1rem 0.55rem;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.05rem 0.55rem;
   }
 
   .global-audio-bar {
-    padding: 0.55rem 0.75rem 0.5rem;
+    margin: 0 0.75rem;
+    padding: 0.55rem 0.7rem 0.6rem;
+    border-radius: 18px;
   }
 
   .audio-bar-track-info {
-    gap: 0.55rem;
-  }
-
-  .audio-bar-track-info .surah-title {
-    font-size: 0.82rem;
-  }
-
-  .audio-bar-track-info .reciter-name {
-    font-size: 0.7rem;
+    gap: 0.5rem;
   }
 
   .audio-equalizer {
-    width: 31px;
-    height: 31px;
-    padding: 7px 6px;
+    width: 32px;
+    height: 32px;
+    padding: 8px 7px;
     border-radius: 10px;
   }
 
@@ -8316,23 +8277,14 @@ body:has(.global-audio-bar) .main-content {
     height: 38px;
   }
 
-  .audio-close-btn {
-    width: 32px;
-    height: 32px;
-  }
-
   body:has(.global-audio-bar) .main-content {
-    padding-bottom: 6.5rem;
+    padding-bottom: 6.75rem;
   }
 }
 
 @media (max-width: 480px) {
   .audio-bar-actions {
-    gap: 0.1rem;
-  }
-
-  .audio-bar-actions .audio-close-btn {
-    margin-left: 0;
+    gap: 0.15rem;
   }
 
   .audio-time {
@@ -8341,24 +8293,24 @@ body:has(.global-audio-bar) .main-content {
   }
 }
 
-/* At 360px the info column and four controls are sharing ~312px. Trimming the
-   equalizer and transport by a few pixels keeps the reciter name visible
-   without dropping a control or wrapping the bar onto a second row. */
+/* At 360px the info column, transport and two ghost buttons share ~330px. The
+   countdown text shrinks with the controls, so the reciter name keeps its
+   ellipsis instead of the pill wrapping onto extra rows. */
 @media (max-width: 380px) {
-  .audio-bar-inner { gap: 0.1rem 0.42rem; }
-  .audio-bar-track-info { gap: 0.42rem; }
+  .audio-bar-inner { gap: 0.05rem 0.4rem; }
+  .audio-bar-track-info { gap: 0.4rem; }
   .audio-equalizer {
     width: 28px;
     height: 28px;
-    padding: 6px 5px;
+    padding: 7px 6px;
     border-radius: 9px;
   }
-  .audio-transport { gap: 0.35rem; }
+  .audio-transport { gap: 0.3rem; }
   .audio-btn { width: 30px; height: 30px; }
   .audio-btn-play { width: 36px; height: 36px; }
-  .audio-close-btn { width: 30px; height: 30px; }
-  .audio-bar-track-info .surah-title { font-size: 0.78rem; }
-  .audio-bar-track-info .reciter-name { font-size: 0.66rem; }
+  .audio-sleep-btn { min-width: 30px; padding: 0 0.4rem; }
+  .audio-sleep-btn.is-on { padding: 0 0.5rem; }
+  .audio-sleep-count { font-size: 0.56rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {

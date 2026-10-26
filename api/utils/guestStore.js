@@ -73,7 +73,7 @@ function sanitize(raw) {
       // Absent from this whitelist until now, which silently discarded the field
       // on every cookie write: writeGuest -> withinBudget -> sanitize rebuilds
       // settings key by key, so a key not named here is dropped no matter what
-      // recordSurahReadAndProgress put in it. Guests could therefore never
+      // recordAudioProgress put in it. Guests could therefore never
       // resume a recitation, while signed-in users always could - and the
       // failure was invisible, because the write still returned { ok: true }.
       //
