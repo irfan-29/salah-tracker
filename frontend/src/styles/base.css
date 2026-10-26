@@ -6788,6 +6788,35 @@ body {
 }
 
 .stats-prayer-grid { display: grid; gap: 0.55rem; }
+
+/* Legend for the segmented per-prayer bars: the same colours repeat on every
+   row, so the meaning is stated once directly above the grid. */
+.stats-bar-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.15rem;
+  margin: -0.35rem 0 0.9rem;
+}
+
+.stats-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.stats-legend-swatch {
+  display: inline-block;
+  width: 15px;
+  height: 9px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+[data-theme="dark"] .stats-legend-item { color: var(--color-text-muted); }
 .stats-prayer-row {
   display: grid;
   grid-template-columns: minmax(80px, 0.7fr) 1fr minmax(90px, 0.55fr);

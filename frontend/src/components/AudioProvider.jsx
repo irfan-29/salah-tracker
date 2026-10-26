@@ -189,27 +189,26 @@ export function AudioProvider({ children }) {
     const onPlay = () => setPlaying(true);
     const onPause = () => { setPlaying(false); savePosition(true); };
     const onEnded = () => {
-      // Loop first: while repeats remain, drain one and restart the same
-      // recitation from the top without touching the saved position. When the
-      // count drains to 0 the badge resets and this ending stops normally, so
-      // "repeat 3 times" plays three replays and then pauses at the end.
+      // Replay first, drain second: picking a count must always replay the
+      // recitation. The previous decrement-first order consumed the last
+      // repeat before starting it, so a fresh count of 1 ended exactly like
+      // loop off - the reader's complaint. Now the replay starts on this
+      // 'ended' and the choice spends itself as each replay begins, so a
+      // count of 1 plays one replay and then stops; 2 plays two, 3 three.
       const info = loopState.current;
       if (info && info.left > 0) {
-        info.left -= 1;
-        setLoopsLeft(info.left);
-        if (info.left === 0) {
-          // Exhausted: the last repeat has been consumed, so the badge resets
-          // to off and this ending stops as it always did.
-          info.mode = 0;
-          setLoop(0);
-          setPlaying(false);
-          savePosition(true);
-          return;
-        }
         audio.currentTime = 0;
         const replay = audio.play();
         if (replay && typeof replay.catch === 'function') replay.catch(() => {});
         setPlaying(true);
+        info.left -= 1;
+        setLoopsLeft(info.left);
+        if (info.left === 0) {
+          // Spent: the badge resets to off while this last replay runs, and
+          // its own 'ended' falls through to the normal stop below.
+          info.mode = 0;
+          setLoop(0);
+        }
         return;
       }
       setPlaying(false);

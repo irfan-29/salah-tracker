@@ -20,15 +20,24 @@ function StatTile({ label, value, meta }) {
 // Segmented bar showing the proportion of each status inside one prayer's
 // history. Widths are percentages of the prayer's own total, so "2 good out of
 // 4 entries" and "20 out of 40" both fill the same bar correctly.
+const SEGMENTS = [
+  { key: 'good', label: 'On time / Jamah' },
+  { key: 'late', label: 'Late' },
+  { key: 'missed', label: 'Not prayed' },
+  { key: 'other', label: 'Other' },
+];
+
 function PrayerBar({ prayer }) {
   const total = prayer.entries || 0;
   const safe = Math.max(total, 1);
   const cells = [
-    { key: 'good', value: prayer.good, label: 'On time / Jamah' },
-    { key: 'late', value: prayer.late, label: 'Late' },
-    { key: 'missed', value: prayer.missed, label: 'Not prayed' },
-    { key: 'other', value: prayer.other, label: 'Other' }
-  ].filter((cell) => cell.value > 0);
+    { key: 'good', value: prayer.good },
+    { key: 'late', value: prayer.late },
+    { key: 'missed', value: prayer.missed },
+    { key: 'other', value: prayer.other }
+  ]
+    .map((cell) => ({ ...cell, label: SEGMENTS.find((s) => s.key === cell.key)?.label }))
+    .filter((cell) => cell.value > 0);
 
   return (
     <div className="stats-prayer-row">
@@ -275,6 +284,16 @@ export default function StatsPage() {
             </div>
 
             <div className="stats-chart-title">Per-prayer breakdown</div>
+            {/* The segment colours repeat across every row, so what each one
+                means is stated once, right above the bars. */}
+            <div className="stats-bar-legend">
+              {SEGMENTS.map((segment) => (
+                <span className="stats-legend-item" key={segment.key}>
+                  <span className={`stats-legend-swatch stats-bar-${segment.key}`} aria-hidden="true" />
+                  {segment.label}
+                </span>
+              ))}
+            </div>
             <div className="stats-prayer-grid">
               {(salah?.prayers || []).map((prayer) => <PrayerBar key={prayer.prayer} prayer={prayer} />)}
             </div>
