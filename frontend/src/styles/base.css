@@ -94,7 +94,7 @@ html {
 
   --sidebar-width: 280px;
   --sidebar-collapsed: 80px;
-  --header-height: 76px;
+  --header-height: 4.75rem;
   --transition: 0.26s cubic-bezier(0.22, 1, 0.36, 1);
 
   --secondary-color: var(--color-primary);
@@ -252,7 +252,7 @@ a {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1.25rem 1rem;
+  padding: 1.05rem 1rem;
   border-bottom: 1px solid var(--color-sidebar-border);
   min-height: var(--header-height);
   flex-shrink: 0;
@@ -311,8 +311,8 @@ a {
 
 .sidebar-toggler,
 .menu-toggler {
-  width: 36px;
-  height: 36px;
+  width: 2.25rem;
+  height: 2.25rem;
   border: none;
   border-radius: var(--radius-sm);
   background: var(--color-sidebar-hover);
@@ -2673,8 +2673,8 @@ hr {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
+  width: 1.625rem;
+  height: 1.625rem;
   border-radius: 50%;
   background: var(--color-primary);
   color: #fff;
@@ -5647,14 +5647,16 @@ body {
 }
 
 .sidebar-header {
-  padding: 1.3rem 1.15rem;
+  /* Vertical padding rides the smaller baseline too (was 1.3rem): the bar
+     keeps its look with the brand, icon and actions all still centred. */
+  padding: 1.05rem 1.15rem;
   border-bottom-color: var(--color-sidebar-border);
 }
 
 .logo-icon {
-  width: 42px;
-  height: 42px;
-  border-radius: 14px;
+  width: 2.625rem;
+  height: 2.625rem;
+  border-radius: 0.875rem;
   background: linear-gradient(135deg, #12a99b, #0b7c72);
   box-shadow: 0 14px 30px -14px rgba(13, 148, 136, 0.8);
 }
@@ -5745,8 +5747,8 @@ body {
 }
 
 .nav-avatar {
-  width: 28px;
-  height: 28px;
+  width: 1.75rem;
+  height: 1.75rem;
   background: linear-gradient(135deg, #12a99b, #0b7c72);
   box-shadow: 0 8px 18px -10px rgba(13, 148, 136, 0.8);
 }
@@ -8894,8 +8896,8 @@ body:has(.global-audio-bar) .main-content {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 34px;
-  height: 34px;
+  width: 2.125rem;
+  height: 2.125rem;
   border: none;
   border-radius: 50%;
   background: transparent;
