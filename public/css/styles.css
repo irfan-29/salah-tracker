@@ -8875,40 +8875,24 @@ body:has(.global-audio-bar) .main-content {
   color: var(--color-text-inverse);
 }
 
+/* Just the profile photo: a round button so a long username can never
+   stretch the phone header. The name lives in the menu that opens. */
 .header-account { display: flex; }
 
 .header-account-btn {
   display: flex;
   align-items: center;
-  gap: 0.45rem;
-  padding: 0.26rem 0.6rem 0.26rem 0.28rem;
+  justify-content: center;
+  padding: 3px;
   border: none;
-  border-radius: 999px;
+  border-radius: 50%;
   background: var(--color-sidebar-hover);
-  color: var(--color-text-inverse);
   font-family: inherit;
   cursor: pointer;
   transition: background var(--transition);
 }
 
 .header-account-btn:hover { background: rgba(255, 255, 255, 0.12); }
-
-/* The account button wears the reader's name (their profile photo chip in
-   front); the emoji marks it as theirs, not a generic page. */
-.header-account-name {
-  max-width: 10ch;
-  overflow: hidden;
-  color: var(--color-text-inverse);
-  font-size: 0.8rem;
-  font-weight: 700;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.header-account-caret {
-  color: var(--color-text-muted);
-  font-size: 1.05rem;
-}
 
 .header-account-menu {
   position: fixed;
@@ -9173,5 +9157,4 @@ body:has(.global-audio-bar) .main-content {
 
 @media (max-width: 380px) {
   .tabbar-sheet-grid { grid-template-columns: repeat(2, 1fr); }
-  .header-account-name { max-width: 8ch; }
 }

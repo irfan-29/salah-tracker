@@ -127,13 +127,12 @@ export default function Navbar({ session }) {
               <button
                 type="button"
                 className="header-account-btn"
+                aria-label={`Account menu for ${handle}`}
                 aria-expanded={accountOpen}
                 aria-haspopup="dialog"
                 onClick={() => setAccountOpen((open) => !open)}
               >
                 <span className="nav-avatar" aria-hidden="true">{(handle || '?').charAt(0).toUpperCase()}</span>
-                <span className="header-account-name">{handle}</span>
-                <span className="material-symbols-rounded header-account-caret" aria-hidden="true">expand_more</span>
               </button>
 
               {accountOpen && createPortal(
