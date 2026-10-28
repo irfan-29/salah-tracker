@@ -17,7 +17,12 @@
      (type and rhythm together) follows the App Text Size setting.
    - --quran-font-scale multiplies only the Arabic mushaf text sizes below the
      tokens, so QURAN TEXT SIZE sets how large the Arabic text displays
-     without touching Latin type at all. */
+     without touching Latin type at all.
+
+   --app-base-scale is the shipped baseline: the app renders 5% smaller than
+   the raw 16px root. The App Text Size setting still shows and stores 100%
+   as its default - this factor is what its "100%" renders at, and every
+   slider position sits 5% below where it used to. */
 html[data-app-font="inter"]   { --font-sans: 'Inter', system-ui, -apple-system, sans-serif; }
 html[data-app-font="roboto"]  { --font-sans: 'Roboto', system-ui, -apple-system, sans-serif; }
 html[data-app-font="poppins"] { --font-sans: 'Poppins', system-ui, -apple-system, sans-serif; }
@@ -25,11 +30,12 @@ html[data-app-font="nunito"]  { --font-sans: 'Nunito', system-ui, -apple-system,
 html[data-app-font="lora"]    { --font-sans: 'Lora', Georgia, serif; }
 
 :root {
+  --app-base-scale: 0.95;
   --quran-font-scale: 1;
 }
 
 html {
-  font-size: calc(16px * var(--app-font-scale, 1));
+  font-size: calc(16px * var(--app-base-scale, 1) * var(--app-font-scale, 1));
 }
 
 /* --- Design Tokens --- */

@@ -162,7 +162,8 @@
       #boot-loader .logo {
         color: #0d9488;
         font-family: 'Material Symbols Rounded';
-        font-size: 34px;
+        /* rem, not px: the splash rides the same root baseline as the app. */
+        font-size: 2.125rem;
         animation: boot-pulse 1.8s ease-in-out infinite;
       }
       #boot-loader .label {
