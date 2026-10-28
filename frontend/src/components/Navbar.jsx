@@ -34,6 +34,7 @@ export default function Navbar({ session }) {
   const sidebarRef = useRef(null);
   const [accountOpen, setAccountOpen] = useState(false);
   const accountBtnRef = useRef(null);
+  const accountMenuRef = useRef(null);
 
   const handle = session.username || '';
 
@@ -59,7 +60,12 @@ export default function Navbar({ session }) {
   useEffect(() => {
     if (!accountOpen) return undefined;
     const closeOnOutside = (event) => {
-      if (!accountBtnRef.current?.contains(event.target)) setAccountOpen(false);
+      // The menu is portaled to <body>, so without the second check a tap on
+      // Account/Sign out closed the menu on pointerdown and the click never
+      // landed - both items looked dead on a real phone.
+      if (!accountBtnRef.current?.contains(event.target) && !accountMenuRef.current?.contains(event.target)) {
+        setAccountOpen(false);
+      }
     };
     const closeOnEscape = (event) => {
       if (event.key === 'Escape') setAccountOpen(false);
@@ -136,9 +142,9 @@ export default function Navbar({ session }) {
               </button>
 
               {accountOpen && createPortal(
-                <div className="header-account-menu" role="dialog" aria-label="Account menu">
+                <div className="header-account-menu" ref={accountMenuRef} role="dialog" aria-label="Account menu">
                   <div className="header-account-head">
-                    <span className="header-account-emoji" aria-hidden="true">🌙</span>
+                    <span className="nav-avatar" aria-hidden="true">{(handle || '?').charAt(0).toUpperCase()}</span>
                     <span className="header-account-title">{handle}</span>
                   </div>
                   <Link to="/account" className="header-account-item">
@@ -156,7 +162,6 @@ export default function Navbar({ session }) {
           ) : (
             <div className="header-guest">
               <a href="/login" className="header-guest-btn is-primary">Sign in</a>
-              <a href="/register" className="header-guest-btn">Create account</a>
             </div>
           )}
         </div>

@@ -32,6 +32,7 @@ export default function TabBar() {
   const { pathname } = useLocation();
   const [sheetOpen, setSheetOpen] = useState(false);
   const sheetRef = useRef(null);
+  const moreBtnRef = useRef(null);
 
   // A route change closes the sheet, the same contract the drawer had.
   useEffect(() => {
@@ -41,7 +42,12 @@ export default function TabBar() {
   useEffect(() => {
     if (!sheetOpen) return undefined;
     const closeOnOutside = (event) => {
-      if (!sheetRef.current?.contains(event.target)) setSheetOpen(false);
+      // The sheet is portaled to <body>; the More button must count as inside,
+      // or the pointerdown that closes the sheet is followed by the button's
+      // own click and immediately re-opens it.
+      if (!sheetRef.current?.contains(event.target) && !moreBtnRef.current?.contains(event.target)) {
+        setSheetOpen(false);
+      }
     };
     const closeOnEscape = (event) => {
       if (event.key === 'Escape') setSheetOpen(false);
@@ -86,6 +92,7 @@ export default function TabBar() {
         ))}
         <button
           type="button"
+          ref={moreBtnRef}
           className={`tabbar-item${sheetOpen ? ' is-open' : ''}`}
           aria-expanded={sheetOpen}
           aria-haspopup="dialog"
