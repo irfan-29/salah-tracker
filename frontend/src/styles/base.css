@@ -2402,26 +2402,25 @@ hr {
     margin-left: 0;
   }
 
-  /* The dock wears the same floating glass as the footer and parks just
-     above it - one chrome system: mini-player over tab bar. */
+  /* The dock is a full-width strip of the same glass, sitting directly on
+     the footer - one continuous chrome column from the player to the bottom
+     edge, nothing floating over the page. */
   .global-audio-bar {
-    left: 10px;
-    right: 10px;
-    bottom: var(--tabbar-space, calc(4.8rem + env(safe-area-inset-bottom, 0px)));
+    left: 0;
+    right: 0;
+    bottom: var(--tabbar-space, calc(4.2rem + env(safe-area-inset-bottom, 0px)));
     margin: 0;
     max-width: none;
-    border: 1px solid var(--chrome-border);
-    border-radius: 22px;
+    border: none;
+    border-bottom: 1px solid var(--chrome-border);
+    border-radius: 0;
     background: var(--chrome-glass);
     backdrop-filter: var(--chrome-blur);
     -webkit-backdrop-filter: var(--chrome-blur);
-    box-shadow:
-      0 22px 44px -20px rgba(3, 22, 20, 0.75),
-      inset 0 1px 0 rgba(255, 255, 255, 0.06);
   }
 
   body:has(.global-audio-bar) .main-content {
-    padding-bottom: calc(var(--tabbar-space, calc(4.8rem + env(safe-area-inset-bottom, 0px))) + 5.75rem);
+    padding-bottom: calc(var(--tabbar-space, calc(4.2rem + env(safe-area-inset-bottom, 0px))) + 5.75rem);
   }
 
   .nav-tooltip {
@@ -8627,23 +8626,21 @@ body:has(.global-audio-bar) .main-content {
     justify-self: center;
   }
 
-  /* The dock becomes the same floating glass card as the footer: same
-     gradient, border, blur and radius, so dock + footer read as one chrome
-     system instead of a dark square sitting on a rounded bar. */
+  /* The dock keeps the footer's exact material, full-width and square: the
+     two stack into one flush glass column instead of a card hovering over
+     a bar. */
   .global-audio-bar {
-    bottom: var(--tabbar-space, calc(4.8rem + env(safe-area-inset-bottom, 0px)));
-    left: 10px;
-    right: 10px;
+    bottom: var(--tabbar-space, calc(4.2rem + env(safe-area-inset-bottom, 0px)));
+    left: 0;
+    right: 0;
     margin: 0;
     padding: 0.6rem 0.7rem 0.7rem;
-    border: 1px solid var(--chrome-border);
-    border-radius: 22px;
+    border: none;
+    border-bottom: 1px solid var(--chrome-border);
+    border-radius: 0;
     background: var(--chrome-glass);
     backdrop-filter: var(--chrome-blur);
     -webkit-backdrop-filter: var(--chrome-blur);
-    box-shadow:
-      0 22px 44px -20px rgba(3, 22, 20, 0.75),
-      inset 0 1px 0 rgba(255, 255, 255, 0.06);
   }
 
   .audio-bar-track-info {
@@ -8750,7 +8747,7 @@ body:has(.global-audio-bar) .main-content {
   }
 
   body:has(.global-audio-bar) .main-content {
-    padding-bottom: calc(var(--tabbar-space, calc(4.8rem + env(safe-area-inset-bottom, 0px))) + 9.75rem);
+    padding-bottom: calc(var(--tabbar-space, calc(4.2rem + env(safe-area-inset-bottom, 0px))) + 9.75rem);
   }
 }
 
@@ -9004,33 +9001,30 @@ body:has(.global-audio-bar) .main-content {
   color: #fff;
 }
 
-/* The footer: a floating glass bar with Quran's emblem fused into it by a
-   glow, not floating apart. Hidden on desktop - the sidebar owns it there. */
+/* The footer: a full-bleed chrome bar pinned to the bottom edge - no side
+   margins, no float, no rounded card. Hidden on desktop; the sidebar owns
+   it there. */
 @media (max-width: 1024px) {
   /* Space the dock, sheet and page content keep below themselves: the bar's
-     height plus its float offset plus the home-indicator safe area. */
-  :root { --tabbar-space: calc(4.8rem + env(safe-area-inset-bottom, 0px)); }
+     height, which already carries the home-indicator safe area inside. */
+  :root { --tabbar-space: calc(4.2rem + env(safe-area-inset-bottom, 0px)); }
 }
 
 .tabbar {
   display: none;
   position: fixed;
-  left: 10px;
-  right: 10px;
-  bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+  left: 0;
+  right: 0;
+  bottom: 0;
   z-index: 899;
   grid-template-columns: 1fr 1fr 4.3rem 1fr 1fr;
   align-items: stretch;
-  height: 4.1rem;
-  padding: 0.3rem 0.35rem 0.34rem;
-  border: 1px solid var(--chrome-border);
-  border-radius: 22px;
+  height: calc(4.2rem + env(safe-area-inset-bottom, 0px));
+  padding: 0.3rem 0.5rem env(safe-area-inset-bottom, 0px);
+  border-top: 1px solid var(--chrome-border);
   background: var(--chrome-glass);
   backdrop-filter: var(--chrome-blur);
   -webkit-backdrop-filter: var(--chrome-blur);
-  box-shadow:
-    0 22px 44px -20px rgba(3, 22, 20, 0.75),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
 @media (max-width: 1024px) {
@@ -9077,61 +9071,47 @@ body:has(.global-audio-bar) .main-content {
 
 .tabbar-item:active { transform: translateY(1px); }
 
-/* Quran's center slot: the signature teal-to-gold emblem rises out of the
-   bar, and the glow underneath ties it to the glass so it reads as one
-   object, not a floating circle. */
+/* Quran's slot: styled exactly like the other four - icon pill and label on
+   the same baseline, nothing raised for the dock to cover. The only
+   signature left is the teal-to-gold gradient the pill wears while
+   Quran is the active tab. */
 .tabbar-center {
-  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.05rem;
-}
-
-.tabbar-center::before {
-  content: "";
-  position: absolute;
-  top: -1.95rem;
-  width: 5.2rem;
-  height: 5.2rem;
-  border-radius: 50%;
-  background: radial-gradient(closest-side, rgba(18, 169, 155, 0.42), rgba(230, 189, 116, 0.14) 62%, transparent);
-  filter: blur(4px);
+  justify-content: center;
+  gap: 0.18rem;
 }
 
 .tabbar-center-btn {
-  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 3.35rem;
-  height: 3.35rem;
-  margin-top: -1.5rem;
+  padding: 0.06rem 0.8rem;
   border: none;
-  border-radius: 1.15rem;
-  background: linear-gradient(135deg, #12a99b 0%, #0f9f8a 55%, #e6bd74 130%);
-  color: #fff;
-  box-shadow:
-    0 14px 30px -12px rgba(18, 169, 155, 0.7),
-    inset 0 1px 0 rgba(255, 255, 255, 0.35);
-  transition: box-shadow var(--transition), transform var(--transition);
+  border-radius: 999px;
+  background: none;
+  color: rgba(237, 247, 243, 0.62);
+  font-size: 1.38rem;
+  text-decoration: none;
+  transition: background var(--transition), color var(--transition);
 }
 
-.tabbar-center-btn .material-symbols-rounded { font-size: 1.5rem; }
+.tabbar-center-btn .material-symbols-rounded { font-size: 1.38rem; }
 
-.tabbar-center-btn:active { transform: scale(0.96); }
+.tabbar-center-btn:active { transform: translateY(1px); }
 
 .tabbar-center-btn.is-active {
-  box-shadow:
-    0 0 0 2px rgba(230, 189, 116, 0.85),
-    0 14px 30px -12px rgba(18, 169, 155, 0.7),
-    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  background: linear-gradient(135deg, #12a99b, #0f9f8a 55%, #e6bd74 130%);
+  color: #fff;
 }
 
 .tabbar-center .tabbar-label { color: rgba(237, 247, 243, 0.62); }
 .tabbar-center .tabbar-label.is-active { color: #2dd4bf; }
 
-/* The More sheet: every module that did not earn a footer slot. */
+/* The More sheet: every module that did not earn a footer slot. Full-width
+   and attached to the footer's top edge, so it opens as the next layer of
+   the same chrome column. */
 .tabbar-sheet-scrim {
   position: fixed;
   inset: 0;
@@ -9141,19 +9121,17 @@ body:has(.global-audio-bar) .main-content {
 
 .tabbar-sheet {
   position: fixed;
-  left: 12px;
-  right: 12px;
-  bottom: var(--tabbar-space, calc(4.8rem + env(safe-area-inset-bottom, 0px)));
+  left: 0;
+  right: 0;
+  bottom: var(--tabbar-space, calc(4.2rem + env(safe-area-inset-bottom, 0px)));
   z-index: 1199;
-  padding: 0.5rem 0.9rem 1rem;
-  border: 1px solid var(--chrome-border);
-  border-radius: 20px;
+  padding: 0.5rem 1rem 1rem;
+  border: none;
+  border-top: 1px solid var(--chrome-border);
+  border-radius: 18px 18px 0 0;
   background: var(--chrome-glass);
   backdrop-filter: var(--chrome-blur);
   -webkit-backdrop-filter: var(--chrome-blur);
-  box-shadow:
-    0 24px 52px -24px rgba(3, 22, 20, 0.6),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
   color: rgba(237, 247, 243, 0.86);
 }
 
@@ -9232,16 +9210,16 @@ body:has(.global-audio-bar) .main-content {
    safe area all live inside --tabbar-space. */
 @media (max-width: 1024px) {
   .main-content {
-    padding-bottom: calc(var(--tabbar-space, calc(4.8rem + env(safe-area-inset-bottom, 0px))) + 1.25rem);
+    padding-bottom: calc(var(--tabbar-space, calc(4.2rem + env(safe-area-inset-bottom, 0px))) + 1.25rem);
   }
 
   body:has(.global-audio-bar) .main-content {
-    padding-bottom: calc(var(--tabbar-space, calc(4.8rem + env(safe-area-inset-bottom, 0px))) + 6.25rem);
+    padding-bottom: calc(var(--tabbar-space, calc(4.2rem + env(safe-area-inset-bottom, 0px))) + 6.75rem);
   }
 }
 
 @media (max-width: 768px) {
   body:has(.global-audio-bar) .main-content {
-    padding-bottom: calc(var(--tabbar-space, calc(4.8rem + env(safe-area-inset-bottom, 0px))) + 9.75rem);
+    padding-bottom: calc(var(--tabbar-space, calc(4.2rem + env(safe-area-inset-bottom, 0px))) + 10.25rem);
   }
 }
