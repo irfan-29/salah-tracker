@@ -2369,37 +2369,28 @@ hr {
     border-bottom: 1px solid var(--color-sidebar-border);
   }
 
-  .sidebar.menu-active {
-    max-height: 100vh;
-    flex-direction: column;
-    overflow-y: auto;
-  }
-
   .sidebar-header {
     width: 100%;
     border-bottom: none;
   }
 
+  /* The drawer is retired: the fixed footer (TabBar) carries the modules, and
+     the account + settings wear the top-right corner. */
   .sidebar-toggler {
     display: none;
   }
 
   .menu-toggler {
-    display: flex;
+    display: none !important;
   }
 
   .sidebar-nav {
-    display: none;
-    padding: 0.5rem;
-  }
-
-  .sidebar.menu-active .sidebar-nav {
-    display: block;
+    display: none !important;
   }
 
   .main-content {
     margin-left: 0;
-    padding: 1.5rem 1rem 5rem;
+    padding: 1.5rem 1rem calc(5.6rem + env(safe-area-inset-bottom, 0px));
     padding-top: calc(var(--header-height) + 1.5rem);
   }
 
@@ -2407,8 +2398,15 @@ hr {
     margin-left: 0;
   }
 
+  /* The audio dock parks on top of the footer, like a mini-player above a
+     native tab bar. */
   .global-audio-bar {
     left: 0;
+    bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  body:has(.global-audio-bar) .main-content {
+    padding-bottom: calc(10.25rem + env(safe-area-inset-bottom, 0px));
   }
 
   .nav-tooltip {
@@ -8614,15 +8612,15 @@ body:has(.global-audio-bar) .main-content {
     justify-self: center;
   }
 
-  /* The dock anchors flush to the bottom edge, mirroring the header at the
-     top: full-bleed width, no margin, square corners, and clearance for the
-     phone's home-indicator safe area. */
+  /* The dock anchors above the fixed footer (the phone tab bar), mirroring a
+     native mini-player: full-bleed width, no margin, square corners. The
+     footer itself owns the home-indicator safe area. */
   .global-audio-bar {
-    bottom: 0;
+    bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
     left: 0;
     right: 0;
     margin: 0;
-    padding: 0.6rem 0.7rem calc(0.65rem + env(safe-area-inset-bottom, 0px));
+    padding: 0.6rem 0.7rem 0.75rem;
     border-radius: 0;
     border-bottom: none;
   }
@@ -8731,7 +8729,7 @@ body:has(.global-audio-bar) .main-content {
   }
 
   body:has(.global-audio-bar) .main-content {
-    padding-bottom: calc(9.25rem + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(13.75rem + env(safe-area-inset-bottom, 0px));
   }
 }
 
@@ -8835,4 +8833,345 @@ body:has(.global-audio-bar) .main-content {
   }
 
   .surah-pager-direction .material-symbols-rounded { font-size: 0.86rem; }
+}
+
+/* --- Phone app chrome -------------------------------------------------------
+   Two pieces of native-app furniture replace the old drawer: a fixed
+   five-slot footer (TabBar) and a top bar that carries settings plus the
+   reader's account instead of a hamburger. Everything here is phone-only;
+   the desktop sidebar keeps its own markup and rules. */
+
+.header-actions {
+  display: none;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+/* Declared after the base rule so the media query wins the cascade - the
+   phone header carries settings + account where the hamburger used to be. */
+@media (max-width: 1024px) {
+  .header-actions { display: flex; }
+}
+
+.header-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--color-sidebar-hover);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  text-decoration: none;
+  transition: background var(--transition), color var(--transition);
+}
+
+.header-action-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--color-text-inverse);
+}
+
+.header-account { display: flex; }
+
+.header-account-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.26rem 0.6rem 0.26rem 0.28rem;
+  border: none;
+  border-radius: 999px;
+  background: var(--color-sidebar-hover);
+  color: var(--color-text-inverse);
+  font-family: inherit;
+  cursor: pointer;
+  transition: background var(--transition);
+}
+
+.header-account-btn:hover { background: rgba(255, 255, 255, 0.12); }
+
+/* The account button wears the reader's name (their profile photo chip in
+   front); the emoji marks it as theirs, not a generic page. */
+.header-account-name {
+  max-width: 10ch;
+  overflow: hidden;
+  color: var(--color-text-inverse);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.header-account-caret {
+  color: var(--color-text-muted);
+  font-size: 1.05rem;
+}
+
+.header-account-menu {
+  position: fixed;
+  top: calc(var(--header-height) + 6px);
+  right: 8px;
+  z-index: 1200;
+  min-width: 216px;
+  padding: 0.4rem;
+  border: 1px solid var(--color-border-light);
+  border-radius: 14px;
+  background: var(--color-surface-elevated);
+  box-shadow: 0 24px 52px -24px rgba(3, 22, 20, 0.55);
+}
+
+.header-account-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.6rem 0.55rem;
+  border-bottom: 1px solid var(--color-border-light);
+  margin-bottom: 0.3rem;
+}
+
+.header-account-emoji { font-size: 1.05rem; line-height: 1; }
+
+.header-account-title {
+  overflow: hidden;
+  color: var(--color-text);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.header-account-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.6rem;
+  border: none;
+  border-radius: 10px;
+  background: none;
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: 0.86rem;
+  font-weight: 600;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background var(--transition);
+}
+
+.header-account-item:hover { background: var(--color-primary-glow); }
+
+.header-account-item .material-symbols-rounded {
+  color: var(--color-primary);
+  font-size: 1.2rem;
+}
+
+.header-guest { display: flex; align-items: center; gap: 0.45rem; }
+
+.header-guest-btn {
+  padding: 0.42rem 0.8rem;
+  border: 1px solid var(--color-border-light);
+  border-radius: 999px;
+  color: var(--color-text-inverse);
+  font-size: 0.74rem;
+  font-weight: 800;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.header-guest-btn.is-primary {
+  border-color: transparent;
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-light));
+  color: #fff;
+}
+
+/* The footer: five slots, Quran in the middle wearing the raised emblem the
+   center of a native tab bar gets. Hidden on desktop - the sidebar owns it
+   there. */
+.tabbar {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 899;
+  grid-template-columns: repeat(5, 1fr);
+  align-items: stretch;
+  height: calc(4.5rem + env(safe-area-inset-bottom, 0px));
+  padding: 0.4rem 0.4rem env(safe-area-inset-bottom, 0px);
+  background: var(--color-sidebar);
+  border-top: 1px solid var(--color-sidebar-border);
+}
+
+@media (max-width: 1024px) {
+  .tabbar { display: grid; }
+}
+
+.tabbar-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  border: none;
+  border-radius: 12px;
+  background: none;
+  color: var(--color-text-muted);
+  font-family: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  transition: color var(--transition);
+}
+
+.tabbar-item .tabbar-icon {
+  padding: 0.08rem 0.85rem;
+  border-radius: 999px;
+  font-size: 1.4rem;
+  transition: background var(--transition), color var(--transition);
+}
+
+.tabbar-label {
+  color: inherit;
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.tabbar-item.is-active { color: var(--color-primary-light); }
+
+.tabbar-item.is-active .tabbar-icon {
+  background: rgba(45, 212, 191, 0.16);
+  color: var(--color-primary-light);
+}
+
+.tabbar-item:active { transform: translateY(1px); }
+
+/* Quran's center slot: the raised gradient emblem. */
+.tabbar-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.16rem;
+}
+
+.tabbar-center-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.2rem;
+  height: 3.2rem;
+  margin-top: -1.3rem;
+  border: 3px solid var(--color-sidebar);
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-light));
+  color: #fff;
+  box-shadow: var(--shadow-glow), 0 12px 26px -12px rgba(13, 148, 136, 0.75);
+  transition: box-shadow var(--transition), transform var(--transition);
+}
+
+.tabbar-center-btn .material-symbols-rounded { font-size: 1.5rem; }
+
+.tabbar-center-btn.is-active {
+  box-shadow: 0 0 0 3px rgba(230, 189, 116, 0.55), var(--shadow-glow);
+}
+
+.tabbar-center .tabbar-label { color: var(--color-text-muted); }
+.tabbar-center .tabbar-label.is-active { color: var(--color-primary-light); }
+
+/* The More sheet: every module that did not earn a footer slot. */
+.tabbar-sheet-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 1198;
+  background: rgba(4, 16, 15, 0.55);
+}
+
+.tabbar-sheet {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: calc(4.6rem + env(safe-area-inset-bottom, 0px));
+  z-index: 1199;
+  padding: 0.5rem 0.9rem 1rem;
+  border: 1px solid var(--color-border-light);
+  border-radius: 20px;
+  background: var(--color-surface-elevated);
+  box-shadow: 0 24px 52px -24px rgba(3, 22, 20, 0.6);
+}
+
+.tabbar-sheet-grip {
+  width: 2.4rem;
+  height: 4px;
+  margin: 0.25rem auto 0.6rem;
+  border-radius: 999px;
+  background: var(--color-border);
+}
+
+.tabbar-sheet-title {
+  margin-bottom: 0.7rem;
+  color: var(--color-text-secondary);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.tabbar-sheet-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+}
+
+.tabbar-sheet-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.55rem 0.3rem;
+  border: none;
+  border-radius: 14px;
+  background: none;
+  color: var(--color-text);
+  font-family: inherit;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background var(--transition);
+}
+
+.tabbar-sheet-item:active { background: var(--color-primary-glow); }
+
+.tabbar-sheet-tile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 14px;
+  background: var(--color-primary-glow);
+  color: var(--color-primary-dark);
+}
+
+[data-theme="dark"] .tabbar-sheet-tile { color: var(--color-primary-light); }
+
+.tabbar-sheet-item .material-symbols-rounded { font-size: 1.35rem; }
+
+.tabbar-sheet-item.is-active .tabbar-sheet-tile {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-light));
+  color: #fff;
+}
+
+.tabbar-sheet-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+@media (max-width: 380px) {
+  .tabbar-sheet-grid { grid-template-columns: repeat(2, 1fr); }
+  .header-account-name { max-width: 8ch; }
 }

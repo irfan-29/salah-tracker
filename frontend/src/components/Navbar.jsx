@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { createPortal } from 'react-dom';
 import { api } from '../services/api';
 
 // Emits the same markup and class names as views/navbar.ejs, so the shared
@@ -31,7 +32,8 @@ function isActive(pathname, linkPath) {
 export default function Navbar({ session }) {
   const { pathname } = useLocation();
   const sidebarRef = useRef(null);
-  const menuTogglerRef = useRef(null);
+  const [accountOpen, setAccountOpen] = useState(false);
+  const accountBtnRef = useRef(null);
 
   const handle = session.username || '';
 
@@ -48,46 +50,38 @@ export default function Navbar({ session }) {
     window.location.href = '/';
   }, []);
 
-  // On phones the nav is a full-height drawer. A route change should leave it
-  // closed; otherwise every tap on a page leaves the drawer covering the page
-  // the visitor just asked for.
+  // A route change closes the phone account menu, the same contract the drawer
+  // had: tap a destination and the chrome gets out of the way.
   useEffect(() => {
-    const sidebar = sidebarRef.current;
-    if (!sidebar) return;
-    sidebar.classList.remove('menu-active');
-    const icon = sidebar.querySelector('.menu-toggler span');
-    if (icon) icon.textContent = 'menu';
+    setAccountOpen(false);
   }, [pathname]);
+
+  useEffect(() => {
+    if (!accountOpen) return undefined;
+    const closeOnOutside = (event) => {
+      if (!accountBtnRef.current?.contains(event.target)) setAccountOpen(false);
+    };
+    const closeOnEscape = (event) => {
+      if (event.key === 'Escape') setAccountOpen(false);
+    };
+    document.addEventListener('pointerdown', closeOnOutside);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutside);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [accountOpen]);
 
   useEffect(() => {
     const sidebar = sidebarRef.current;
     if (!sidebar) return undefined;
 
     const sidebarToggler = sidebar.querySelector('.sidebar-toggler');
-    const menuToggler = sidebar.querySelector('.menu-toggler');
-
     const onCollapse = () => sidebar.classList.toggle('collapsed');
-    const onMenu = () => {
-      sidebar.classList.toggle('menu-active');
-      const icon = menuToggler && menuToggler.querySelector('span');
-      if (icon) icon.textContent = sidebar.classList.contains('menu-active') ? 'close' : 'menu';
-    };
-    const onResize = () => {
-      if (window.innerWidth >= 1024) {
-        sidebar.classList.remove('menu-active');
-        const icon = menuToggler && menuToggler.querySelector('span');
-        if (icon) icon.textContent = 'menu';
-      }
-    };
 
     if (sidebarToggler) sidebarToggler.addEventListener('click', onCollapse);
-    if (menuToggler) menuToggler.addEventListener('click', onMenu);
-    window.addEventListener('resize', onResize);
-
     return () => {
       if (sidebarToggler) sidebarToggler.removeEventListener('click', onCollapse);
-      if (menuToggler) menuToggler.removeEventListener('click', onMenu);
-      window.removeEventListener('resize', onResize);
     };
   }, []);
 
@@ -119,9 +113,54 @@ export default function Navbar({ session }) {
         <button type="button" className="sidebar-toggler" aria-label="Toggle sidebar">
           <span className="material-symbols-rounded">chevron_left</span>
         </button>
-        <button type="button" className="menu-toggler" ref={menuTogglerRef} aria-label="Toggle menu">
-          <span className="material-symbols-rounded">menu</span>
-        </button>
+
+        {/* Phone chrome: settings and the account wear the top-right corner the
+            hamburger used to hold. The drawer itself is gone - the fixed
+            footer (TabBar) carries the modules now. */}
+        <div className="header-actions">
+          <Link to="/settings" className="header-action-btn" aria-label="Settings">
+            <span className="material-symbols-rounded" aria-hidden="true">settings</span>
+          </Link>
+
+          {session.isLoggedIn ? (
+            <div className="header-account" ref={accountBtnRef}>
+              <button
+                type="button"
+                className="header-account-btn"
+                aria-expanded={accountOpen}
+                aria-haspopup="dialog"
+                onClick={() => setAccountOpen((open) => !open)}
+              >
+                <span className="nav-avatar" aria-hidden="true">{(handle || '?').charAt(0).toUpperCase()}</span>
+                <span className="header-account-name">{handle}</span>
+                <span className="material-symbols-rounded header-account-caret" aria-hidden="true">expand_more</span>
+              </button>
+
+              {accountOpen && createPortal(
+                <div className="header-account-menu" role="dialog" aria-label="Account menu">
+                  <div className="header-account-head">
+                    <span className="header-account-emoji" aria-hidden="true">🌙</span>
+                    <span className="header-account-title">{handle}</span>
+                  </div>
+                  <Link to="/account" className="header-account-item">
+                    <span className="material-symbols-rounded" aria-hidden="true">account_circle</span>
+                    Account
+                  </Link>
+                  <button type="button" className="header-account-item" onClick={signOut}>
+                    <span className="material-symbols-rounded" aria-hidden="true">logout</span>
+                    Sign out
+                  </button>
+                </div>,
+                document.body,
+              )}
+            </div>
+          ) : (
+            <div className="header-guest">
+              <a href="/login" className="header-guest-btn is-primary">Sign in</a>
+              <a href="/register" className="header-guest-btn">Create account</a>
+            </div>
+          )}
+        </div>
       </header>
 
       <nav className="sidebar-nav">

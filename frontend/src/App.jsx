@@ -4,6 +4,7 @@ import { AudioProvider } from './components/AudioProvider';
 import Loader from './components/Loader';
 import Navbar from './components/Navbar';
 import Player from './components/Player';
+import TabBar from './components/TabBar';
 import { SessionProvider, THEME_STORAGE_KEY } from './hooks/useSession';
 import useShareHandler from './hooks/useShareHandler';
 import { api } from './services/api';
@@ -215,6 +216,9 @@ function Shell() {
         </Routes>
       </div>
       <Player />
+      {/* The phone footer: fixed five-slot navigation. Lives beside the player
+          so the dock can stack on top of it, exactly like a native app. */}
+      <TabBar />
     </SessionProvider>
   );
 }
