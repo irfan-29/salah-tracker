@@ -8893,10 +8893,10 @@ body:has(.global-audio-bar) .main-content {
    material (--chrome-glass / --chrome-border), so stacked they read as one
    chrome system rather than mismatched boxes. */
 :root {
-  /* True frosted chrome: a flat, translucent dark teal - no gradient. The
-     0.8 alpha: one step darker than the 0.76 midpoint the reader asked past,
-     still short of the original 0.88-0.97 that hid the page. */
-  --chrome-glass: rgba(6, 31, 28, 0.8);
+  /* The solid chrome colour the app started with (#092b27), kept translucent:
+     a high alpha so the bars read solid and hold their weight, with the blur
+     letting a hint of the page through. No gradient. */
+  --chrome-glass: rgba(9, 43, 39, 0.92);
   --chrome-border: rgba(255, 255, 255, 0.09);
   --chrome-blur: blur(18px) saturate(1.25);
 }
@@ -9161,11 +9161,19 @@ body:has(.global-audio-bar) .main-content {
   padding: 0.5rem 1rem 1rem;
   border: none;
   border-top: 1px solid var(--chrome-border);
-  border-radius: 18px 18px 0 0;
+  /* Full-bleed and square like the footer it stacks on: rounded corners made
+     it read as a floating card instead of the chrome extending upward. */
+  border-radius: 0;
   background: var(--chrome-glass);
   backdrop-filter: var(--chrome-blur);
   -webkit-backdrop-filter: var(--chrome-blur);
   color: rgba(237, 247, 243, 0.86);
+}
+
+/* While the sheet is open it sits directly on the footer; the footer's own
+   top border drew a seam line between two surfaces of the same material. */
+body:has(.tabbar-sheet) .tabbar {
+  border-top-color: transparent;
 }
 
 .tabbar-sheet-grip {

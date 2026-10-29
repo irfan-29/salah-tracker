@@ -159,7 +159,7 @@ export default function QiblaPage() {
                 <span
                   key={c.label}
                   className={`qibla-cardinal${c.label === 'N' ? ' is-north' : ''}`}
-                  style={{ transform: `rotate(${c.deg}deg) translateY(-38%)` }}
+                  style={{ transform: `rotate(${c.deg}deg) translateY(-29%)` }}
                   aria-hidden="true"
                 >
                   {c.label}
