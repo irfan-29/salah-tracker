@@ -8900,7 +8900,7 @@ body:has(.global-audio-bar) .main-content {
   /* The solid chrome colour the app started with (#092b27), kept translucent:
      a high alpha so the bars read solid and hold their weight, with the blur
      letting a hint of the page through. No gradient. */
-  --chrome-glass: rgba(9, 43, 39, 0.92);
+  --chrome-glass: rgba(9, 43, 39, 0.88);
   --chrome-border: rgba(255, 255, 255, 0.09);
   --chrome-blur: blur(18px) saturate(1.25);
 }
@@ -9293,9 +9293,9 @@ body:has(.tabbar-sheet) .tabbar {
 /* The whole dial glows when the phone is pointed straight at the Kaaba. */
 .qibla-dial.is-aligned {
   box-shadow:
-    0 0 0 3px rgba(45, 212, 191, 0.55),
+    0 0 0 3px rgba(45, 212, 191, 0.7),
     0 22px 44px -20px rgba(3, 22, 20, 0.75),
-    0 0 34px rgba(45, 212, 191, 0.45);
+    0 0 44px rgba(45, 212, 191, 0.6);
 }
 
 /* Ticks are full-dial layers rotated around the centre; the visible line
@@ -9439,6 +9439,16 @@ body:has(.tabbar-sheet) .tabbar {
 
 .qibla-compass-btn {
   margin-top: 0.25rem;
+  /* The bare .btn base reads as plain text on this card - outline it as the
+     action it is: teal border, light teal fill, clear press state. */
+  border: 1.5px solid rgba(13, 148, 136, 0.55);
+  background: rgba(13, 148, 136, 0.1);
+  color: var(--color-primary);
+}
+
+.qibla-compass-btn:hover {
+  border-color: var(--color-primary);
+  background: rgba(13, 148, 136, 0.18);
 }
 
 .qibla-note {
