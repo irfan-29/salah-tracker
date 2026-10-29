@@ -94,7 +94,7 @@ html {
 
   --sidebar-width: 280px;
   --sidebar-collapsed: 80px;
-  --header-height: 4.75rem;
+  --header-height: 4.3rem;
   --transition: 0.26s cubic-bezier(0.22, 1, 0.36, 1);
 
   --secondary-color: var(--color-primary);
@@ -252,7 +252,7 @@ a {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1.05rem 1rem;
+  padding: 0.9rem 1rem;
   border-bottom: 1px solid var(--color-sidebar-border);
   min-height: var(--header-height);
   flex-shrink: 0;
@@ -5647,25 +5647,25 @@ body {
 }
 
 .sidebar-header {
-  /* Vertical padding rides the smaller baseline too (was 1.3rem): the bar
-     keeps its look with the brand, icon and actions all still centred. */
-  padding: 1.05rem 1.15rem;
+  /* Compact bar: the branding and actions were still reading oversized on a
+     phone, so the bar, the tile and the type all step down together. */
+  padding: 0.9rem 1.15rem;
   border-bottom-color: var(--color-sidebar-border);
 }
 
 .logo-icon {
-  width: 2.625rem;
-  height: 2.625rem;
-  border-radius: 0.875rem;
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 0.8rem;
   background: linear-gradient(135deg, #12a99b, #0b7c72);
   box-shadow: 0 14px 30px -14px rgba(13, 148, 136, 0.8);
 }
 
-.logo-icon .material-symbols-rounded { font-size: 1.35rem; }
+.logo-icon .material-symbols-rounded { font-size: 1.25rem; }
 
 .logo-text h5 {
   color: #f2fffb;
-  font-size: 1.08rem;
+  font-size: 1rem;
   font-weight: 800;
   letter-spacing: -0.035em;
 }
@@ -5747,8 +5747,8 @@ body {
 }
 
 .nav-avatar {
-  width: 1.75rem;
-  height: 1.75rem;
+  width: 1.65rem;
+  height: 1.65rem;
   background: linear-gradient(135deg, #12a99b, #0b7c72);
   box-shadow: 0 8px 18px -10px rgba(13, 148, 136, 0.8);
 }
@@ -8896,8 +8896,8 @@ body:has(.global-audio-bar) .main-content {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 2.125rem;
-  height: 2.125rem;
+  width: 2rem;
+  height: 2rem;
   border: none;
   border-radius: 50%;
   background: transparent;
@@ -8907,7 +8907,7 @@ body:has(.global-audio-bar) .main-content {
   transition: background var(--transition), color var(--transition);
 }
 
-.header-action-btn .material-symbols-rounded { font-size: 1.3rem; }
+.header-action-btn .material-symbols-rounded { font-size: 1.2rem; }
 
 .header-action-btn:hover {
   background: rgba(255, 255, 255, 0.1);
@@ -9044,7 +9044,7 @@ body:has(.global-audio-bar) .main-content {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.18rem;
+  gap: 0.1rem;
   border: none;
   border-radius: 14px;
   background: none;
@@ -9058,7 +9058,7 @@ body:has(.global-audio-bar) .main-content {
 .tabbar-item .tabbar-icon {
   padding: 0.06rem 0.8rem;
   border-radius: 999px;
-  font-size: 1.38rem;
+  font-size: 1.45rem;
   transition: background var(--transition), color var(--transition);
 }
 
@@ -9088,7 +9088,7 @@ body:has(.global-audio-bar) .main-content {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.18rem;
+  gap: 0.1rem;
 }
 
 .tabbar-center-btn {
@@ -9100,12 +9100,12 @@ body:has(.global-audio-bar) .main-content {
   border-radius: 999px;
   background: none;
   color: rgba(237, 247, 243, 0.62);
-  font-size: 1.38rem;
+  font-size: 1.45rem;
   text-decoration: none;
   transition: background var(--transition), color var(--transition);
 }
 
-.tabbar-center-btn .material-symbols-rounded { font-size: 1.38rem; }
+.tabbar-center-btn .material-symbols-rounded { font-size: 1.45rem; }
 
 .tabbar-center-btn:active { transform: translateY(1px); }
 
