@@ -291,7 +291,7 @@ a {
   font-weight: 700;
   letter-spacing: -0.02em;
   line-height: 1.2;
-  margin-bottom: 0;
+  margin-bottom: 0.25rem;
   white-space: nowrap;
 }
 
@@ -8893,9 +8893,9 @@ body:has(.global-audio-bar) .main-content {
    material (--chrome-glass / --chrome-border), so stacked they read as one
    chrome system rather than mismatched boxes. */
 :root {
-  /* Milder glass than the original chrome: more of the page shows through
-     the header, footer, dock and sheet. */
-  --chrome-glass: linear-gradient(180deg, rgba(9, 42, 38, 0.8), rgba(5, 24, 22, 0.88));
+  /* True frosted chrome: a flat, translucent dark teal - no gradient - so
+     the page genuinely shows through the header, footer, dock and sheet. */
+  --chrome-glass: rgba(6, 32, 29, 0.68);
   --chrome-border: rgba(255, 255, 255, 0.09);
   --chrome-blur: blur(18px) saturate(1.25);
 }
