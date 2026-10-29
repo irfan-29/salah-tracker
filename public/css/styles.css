@@ -290,6 +290,8 @@ a {
   font-size: 1rem;
   font-weight: 700;
   letter-spacing: -0.02em;
+  line-height: 1.2;
+  margin-bottom: 0;
   white-space: nowrap;
 }
 
@@ -297,6 +299,7 @@ a {
   color: var(--color-text-muted);
   font-size: 0.7rem;
   font-weight: 500;
+  line-height: 1.2;
   white-space: nowrap;
 }
 
@@ -8890,7 +8893,9 @@ body:has(.global-audio-bar) .main-content {
    material (--chrome-glass / --chrome-border), so stacked they read as one
    chrome system rather than mismatched boxes. */
 :root {
-  --chrome-glass: linear-gradient(180deg, rgba(9, 42, 38, 0.92), rgba(5, 24, 22, 0.97));
+  /* Milder glass than the original chrome: more of the page shows through
+     the header, footer, dock and sheet. */
+  --chrome-glass: linear-gradient(180deg, rgba(9, 42, 38, 0.8), rgba(5, 24, 22, 0.88));
   --chrome-border: rgba(255, 255, 255, 0.09);
   --chrome-blur: blur(18px) saturate(1.25);
 }
@@ -9451,5 +9456,17 @@ body:has(.global-audio-bar) .main-content {
 @media (max-width: 768px) {
   body:has(.global-audio-bar) .main-content {
     padding-bottom: calc(var(--tabbar-space, calc(4.2rem + env(safe-area-inset-bottom, 0px))) + 10.25rem);
+  }
+}
+
+/* The phone header joins the chrome family: the same mild glass the footer,
+   dock and sheet wear, so the bar picks up a soft translucency as content
+   scrolls behind it. Declared last - it must out-cascade the sidebar's
+   solid themed background above. */
+@media (max-width: 1024px) {
+  .sidebar {
+    background: var(--chrome-glass);
+    backdrop-filter: var(--chrome-blur);
+    -webkit-backdrop-filter: var(--chrome-blur);
   }
 }
