@@ -2453,8 +2453,31 @@ hr {
     grid-template-columns: repeat(2, 1fr);
   }
 
+  .calendar-table {
+    /* The weekday headers' desktop padding forces ~45px columns; on a phone
+       card that min-content width pushed the grid past the card edge and the
+       whole page scrolled sideways. Compact cells keep seven columns inside. */
+    border-spacing: 3px;
+  }
+
+  .calendar-table th {
+    padding: 0.35rem 0.15rem;
+    font-size: 0.62rem;
+  }
+
   .calendar-table td {
     height: 60px;
+    padding: 0.25rem;
+  }
+
+  /* The year input keeps its desktop auto-width (~200px) otherwise, which
+     wraps the Go and next-month buttons onto a second, off-centre row. */
+  .calendar-controls {
+    gap: 0.4rem;
+  }
+
+  .calendar-controls input[type="number"] {
+    width: 5.2rem;
   }
 
   .date-box .greg {
