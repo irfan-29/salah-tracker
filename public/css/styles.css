@@ -9209,6 +9209,207 @@ body:has(.global-audio-bar) .main-content {
   .tabbar-sheet-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
+/* --- Qibla direction ---------------------------------------------------------
+   A compass card: a rotating rose that carries the Kaaba marker at the true
+   great-circle bearing from the reader's coordinates. With the device
+   compass enabled the whole dial turns as the phone turns; without it the
+   dial keeps north up and the bearing readout does the job. */
+.qibla-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.15rem;
+  max-width: 420px;
+  margin: 0 auto 1.5rem;
+  padding: 2rem 1.5rem;
+  border: 1px solid var(--color-border-light);
+  border-radius: 26px;
+  background: var(--color-surface-elevated);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+  box-shadow: 0 22px 55px -44px rgba(16, 42, 40, 0.35);
+}
+
+.qibla-compass {
+  position: relative;
+  width: min(270px, 72vw);
+  aspect-ratio: 1;
+}
+
+.qibla-dial {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--chrome-glass, linear-gradient(180deg, rgba(9, 42, 38, 0.92), rgba(5, 24, 22, 0.97)));
+  border: 1px solid var(--chrome-border, rgba(255, 255, 255, 0.09));
+  box-shadow:
+    0 22px 44px -20px rgba(3, 22, 20, 0.75),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  transition: transform 0.25s ease-out, box-shadow var(--transition);
+}
+
+/* The whole dial glows when the phone is pointed straight at the Kaaba. */
+.qibla-dial.is-aligned {
+  box-shadow:
+    0 0 0 3px rgba(45, 212, 191, 0.55),
+    0 22px 44px -20px rgba(3, 22, 20, 0.75),
+    0 0 34px rgba(45, 212, 191, 0.45);
+}
+
+/* Ticks are full-dial layers rotated around the centre; the visible line
+   lives on the pseudo element at the top of each layer. */
+.qibla-tick {
+  position: absolute;
+  inset: 0;
+}
+
+.qibla-tick::before {
+  content: "";
+  position: absolute;
+  top: 3.5%;
+  left: calc(50% - 1px);
+  width: 2px;
+  height: 7%;
+  border-radius: 1px;
+  background: rgba(237, 247, 243, 0.2);
+}
+
+.qibla-tick.is-major::before {
+  top: 3%;
+  left: calc(50% - 1.5px);
+  width: 3px;
+  height: 9.5%;
+  background: rgba(237, 247, 243, 0.48);
+}
+
+.qibla-cardinal {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(237, 247, 243, 0.55);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  line-height: 1;
+}
+
+/* The letters re-level themselves in JSX so they always read upright while
+   still riding the dial - except north, which stays the accent. */
+.qibla-cardinal.is-north { color: #e6bd74; }
+
+/* The Qibla pointer: a full-dial layer rotated to the bearing, drawing the
+   needle from the hub to the Kaaba mark at its tip. */
+.qibla-needle {
+  position: absolute;
+  inset: 0;
+}
+
+.qibla-needle::before {
+  content: "";
+  position: absolute;
+  top: 9%;
+  left: calc(50% - 3px);
+  width: 6px;
+  height: 41%;
+  border-radius: 3px;
+  background: linear-gradient(180deg, rgba(45, 212, 191, 0.95), rgba(45, 212, 191, 0.25));
+  box-shadow: 0 0 14px rgba(45, 212, 191, 0.45);
+  transition: box-shadow var(--transition);
+}
+
+.qibla-needle.is-aligned::before {
+  background: linear-gradient(180deg, #e6bd74, rgba(230, 189, 116, 0.3));
+  box-shadow: 0 0 22px rgba(230, 189, 116, 0.75);
+}
+
+/* The Kaaba mark: the black cube with its gold band, riding the needle tip. */
+.qibla-kaaba {
+  position: absolute;
+  top: -1.05rem;
+  left: 50%;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 3px;
+  transform: translateX(-50%);
+  background: #101010;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+}
+
+.qibla-kaaba::before {
+  content: "";
+  position: absolute;
+  left: -1px;
+  right: -1px;
+  top: 38%;
+  height: 5px;
+  background: linear-gradient(90deg, #b98a2e, #e6bd74 45%, #b98a2e);
+}
+
+.qibla-hub {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0.8rem;
+  height: 0.8rem;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle at 35% 30%, #f4d898, #c08a35);
+  box-shadow: 0 0 0 3px rgba(230, 189, 116, 0.25), 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+.qibla-readout {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  text-align: center;
+}
+
+.qibla-bearing {
+  color: var(--color-text);
+  font-size: 2.3rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.qibla-degree {
+  margin-left: 0.15rem;
+  color: var(--color-primary);
+  font-size: 1.4rem;
+}
+
+.qibla-meta {
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.qibla-source {
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+}
+
+.qibla-compass-btn {
+  margin-top: 0.25rem;
+}
+
+.qibla-note {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+  text-align: center;
+}
+
+.qibla-note.is-aligned {
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
 /* Phone chrome paddings - declared last so no desktop rule (however far up
    the file) out-specifies them. The footer, the dock above it, and the
    safe area all live inside --tabbar-space. */

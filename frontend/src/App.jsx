@@ -16,6 +16,7 @@ import StatsPage from './pages/StatsPage';
 import SalahPage from './pages/SalahPage';
 import SettingsPage from './pages/SettingsPage';
 import SalahTimingsPage from './pages/SalahTimingsPage';
+import QiblaPage from './pages/QiblaPage';
 import CalendarPage from './pages/CalendarPage';
 import { LoginPage, RegisterPage, VerifyPage } from './pages/AuthPage';
 import LandingPage from './pages/LandingPage';
@@ -207,6 +208,7 @@ function Shell() {
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/account" element={<AccountPage />} />
           <Route path="/salah-timings" element={<SalahTimingsPage />} />
+          <Route path="/qibla" element={<QiblaPage />} />
           <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/post/:id" element={<PostPage />} />
           <Route path="/u/:username" element={<ProfilePage />} />

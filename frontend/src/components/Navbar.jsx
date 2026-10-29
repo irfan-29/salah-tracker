@@ -11,6 +11,7 @@ const PRIMARY = [
   { to: '/quran', path: '/quran', icon: 'auto_stories', label: 'Quran' },
   { to: '/salah', path: '/salah', icon: 'checklist_rtl', label: 'Salah Tracker' },
   { to: '/salah-timings', path: '/salah-timings', icon: 'schedule', label: 'Salah Timings' },
+  { to: '/qibla', path: '/qibla', icon: 'explore', label: 'Qibla' },
   { to: '/calendar', path: '/calendar', icon: 'calendar_month', label: 'Islamic Calendar' },
   { to: '/challenges', path: '/challenges', icon: 'emoji_events', label: 'Challenges' },
   { to: '/charity', path: '/charity', icon: 'volunteer_activism', label: 'Charity' },
@@ -120,16 +121,21 @@ export default function Navbar({ session }) {
           <span className="material-symbols-rounded">chevron_left</span>
         </button>
 
-        {/* Phone chrome: settings and the account wear the top-right corner the
-            hamburger used to hold. The drawer itself is gone - the fixed
-            footer (TabBar) carries the modules now. */}
+        {/* Phone chrome: qibla and prayer timings sit beside the account in the
+            top-right corner the hamburger used to hold; settings lives inside
+            the account menu. The drawer itself is gone - the fixed footer
+            (TabBar) carries the modules now. */}
         <div className="header-actions">
-          <Link to="/settings" className="header-action-btn" aria-label="Settings">
-            <span className="material-symbols-rounded" aria-hidden="true">settings</span>
-          </Link>
-
           {session.isLoggedIn ? (
-            <div className="header-account" ref={accountBtnRef}>
+            <>
+              <Link to="/qibla" className="header-action-btn" aria-label="Qibla direction">
+                <span className="material-symbols-rounded" aria-hidden="true">explore</span>
+              </Link>
+              <Link to="/salah-timings" className="header-action-btn" aria-label="Salah timings">
+                <span className="material-symbols-rounded" aria-hidden="true">schedule</span>
+              </Link>
+
+              <div className="header-account" ref={accountBtnRef}>
               <button
                 type="button"
                 className="header-account-btn"
@@ -151,6 +157,10 @@ export default function Navbar({ session }) {
                     <span className="material-symbols-rounded" aria-hidden="true">account_circle</span>
                     Account
                   </Link>
+                  <Link to="/settings" className="header-account-item">
+                    <span className="material-symbols-rounded" aria-hidden="true">settings</span>
+                    Settings
+                  </Link>
                   <button type="button" className="header-account-item" onClick={signOut}>
                     <span className="material-symbols-rounded" aria-hidden="true">logout</span>
                     Sign out
@@ -158,7 +168,8 @@ export default function Navbar({ session }) {
                 </div>,
                 document.body,
               )}
-            </div>
+              </div>
+              </>
           ) : (
             <div className="header-guest">
               <a href="/login" className="header-guest-btn is-primary">Sign in</a>
