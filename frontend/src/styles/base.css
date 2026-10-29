@@ -8897,9 +8897,11 @@ body:has(.global-audio-bar) .main-content {
    material (--chrome-glass / --chrome-border), so stacked they read as one
    chrome system rather than mismatched boxes. */
 :root {
-  /* True frosted chrome: a flat, translucent dark teal - no gradient - so
-     the page genuinely shows through the header, footer, dock and sheet. */
-  --chrome-glass: rgba(6, 32, 29, 0.68);
+  /* True frosted chrome: a flat, translucent dark teal - no gradient. The
+     0.76 alpha is the midpoint of the reader-tested range: darker than the
+     first frost (0.68) which washed out, lighter than the 0.8-0.88 that
+     hid the page. */
+  --chrome-glass: rgba(6, 31, 28, 0.76);
   --chrome-border: rgba(255, 255, 255, 0.09);
   --chrome-blur: blur(18px) saturate(1.25);
 }
