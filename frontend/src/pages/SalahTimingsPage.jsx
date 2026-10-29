@@ -3,7 +3,6 @@ import { api } from '../services/api';
 import Loader from '../components/Loader';
 import FormSelect from '../components/FormSelect';
 
-// Markup mirrors views/salah-timings.ejs.
 const LOCATIONS = ['Coimbatore', 'Hosur', 'Salem', 'Ramanathapuram', 'Bengaluru'];
 
 export default function SalahTimingsPage() {
@@ -64,17 +63,14 @@ export default function SalahTimingsPage() {
 
       <div className="container1">
         <div className="card-header"><h3>Change Location</h3></div>
-        <div className="form-row">
-          <FormSelect
-            id="timings-location"
-            label="Location"
-            value={state.location || ''}
-            disabled={state.loading}
-            onChange={changeLocation}
-            options={LOCATIONS.map((location) => ({ value: location, label: location }))}
-          />
-          <button type="button" className="btn btn-primary" disabled>Update</button>
-        </div>
+        <FormSelect
+          id="timings-location"
+          label="Location"
+          value={state.location || ''}
+          disabled={state.loading}
+          onChange={changeLocation}
+          options={LOCATIONS.map((location) => ({ value: location, label: location }))}
+        />
       </div>
     </>
   );
