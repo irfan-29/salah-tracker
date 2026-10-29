@@ -9237,6 +9237,10 @@ body:has(.global-audio-bar) .main-content {
   position: absolute;
   inset: 0;
   border-radius: 50%;
+  /* The tick and cardinal layers are dial-sized squares that rotate; without
+     this clip their swept corners add phantom width to the page and the
+     whole screen scrolls sideways (the "misaligned" report). */
+  overflow: hidden;
   background: var(--chrome-glass, linear-gradient(180deg, rgba(9, 42, 38, 0.92), rgba(5, 24, 22, 0.97)));
   border: 1px solid var(--chrome-border, rgba(255, 255, 255, 0.09));
   box-shadow:
@@ -9306,10 +9310,10 @@ body:has(.global-audio-bar) .main-content {
 .qibla-needle::before {
   content: "";
   position: absolute;
-  top: 9%;
+  top: 12%;
   left: calc(50% - 3px);
   width: 6px;
-  height: 41%;
+  height: 38%;
   border-radius: 3px;
   background: linear-gradient(180deg, rgba(45, 212, 191, 0.95), rgba(45, 212, 191, 0.25));
   box-shadow: 0 0 14px rgba(45, 212, 191, 0.45);
@@ -9321,10 +9325,11 @@ body:has(.global-audio-bar) .main-content {
   box-shadow: 0 0 22px rgba(230, 189, 116, 0.75);
 }
 
-/* The Kaaba mark: the black cube with its gold band, riding the needle tip. */
+/* The Kaaba mark: the black cube with its gold band, riding the needle tip -
+   centred ON the tip so it stays inside the clipped dial at every bearing. */
 .qibla-kaaba {
   position: absolute;
-  top: -1.05rem;
+  top: calc(12% - 0.675rem);
   left: 50%;
   width: 1.35rem;
   height: 1.35rem;

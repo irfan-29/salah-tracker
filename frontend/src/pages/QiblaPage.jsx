@@ -111,7 +111,7 @@ export default function QiblaPage() {
       if (window.DeviceOrientationEvent?.requestPermission) {
         const res = await window.DeviceOrientationEvent.requestPermission();
         if (res !== 'granted') {
-          setNote('Compass permission was declined - the dial keeps north up.');
+          setNote('Compass permission was declined. Allow motion access for this site in your browser settings - until then the dial keeps north up.');
           return;
         }
       }
@@ -146,7 +146,7 @@ export default function QiblaPage() {
       {ready && (
         <div className="qibla-card">
           <div className="qibla-compass">
-            <div className="qibla-dial" style={{ transform: `rotate(${-heading}deg)` }}>
+            <div className={`qibla-dial${aligned ? ' is-aligned' : ''}`} style={{ transform: `rotate(${-heading}deg)` }}>
               {TICKS.map((deg) => (
                 <span
                   key={deg}
