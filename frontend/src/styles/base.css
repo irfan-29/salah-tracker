@@ -9162,7 +9162,8 @@ body:has(.global-audio-bar) .main-content {
 
 .tabbar-sheet-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  /* Three modules, one line - the row the footer did not have room for. */
+  grid-template-columns: repeat(3, 1fr);
   gap: 0.5rem;
 }
 
@@ -9207,10 +9208,6 @@ body:has(.global-audio-bar) .main-content {
   font-size: 0.68rem;
   font-weight: 700;
   line-height: 1.2;
-}
-
-@media (max-width: 380px) {
-  .tabbar-sheet-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
 /* --- Qibla direction ---------------------------------------------------------

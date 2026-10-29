@@ -8,17 +8,17 @@ import { createPortal } from 'react-dom';
 // screen is more than one tap away and nothing depends on a hamburger.
 
 const TABS = [
-  { to: '/salah-timings', path: '/salah-timings', icon: 'schedule', label: 'Timings' },
+  { to: '/challenges', path: '/challenges', icon: 'emoji_events', label: 'Challenges' },
   { to: '/salah', path: '/salah', icon: 'checklist_rtl', label: 'Salah' },
   { to: '/quran', path: '/quran', icon: 'auto_stories', label: 'Quran', center: true },
   { to: '/posts', path: '/posts', icon: 'favorite', label: 'Posts' },
 ];
 
-// Everything that did not earn a footer slot lives in the More sheet - the
-// same modules the drawer used to list.
+// Everything that did not earn a footer slot lives in the More sheet - one
+// single-line row of three. Timings is not here because it wears the clock
+// icon in the top bar beside the account.
 const MORE = [
   { to: '/calendar', path: '/calendar', icon: 'calendar_month', label: 'Islamic Calendar' },
-  { to: '/challenges', path: '/challenges', icon: 'emoji_events', label: 'Challenges' },
   { to: '/charity', path: '/charity', icon: 'volunteer_activism', label: 'Charity' },
   { to: '/stats', path: '/stats', icon: 'insights', label: 'Stats' },
 ];
