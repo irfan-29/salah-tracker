@@ -9285,6 +9285,33 @@ body:has(.tabbar-sheet) .tabbar {
   color: var(--color-primary-dark);
 }
 
+/* The translation rail sits above the section chips: same chips, tighter,
+   with a small leading label. Only rendered when a collection has more than
+   one language. */
+.hadith-langs {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  max-width: 860px;
+  margin: 0 auto 0.4rem;
+  padding: 0 1.35rem;
+}
+
+.hadith-langs-label {
+  flex: 0 0 auto;
+  margin-right: 0.15rem;
+  color: var(--color-text-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.hadith-lang-chip {
+  padding: 0.3rem 0.7rem;
+  font-size: 0.74rem;
+}
+
 .hadith-section-title {
   max-width: 860px;
   margin: 0 auto 1.25rem;
@@ -9307,6 +9334,69 @@ body:has(.tabbar-sheet) .tabbar {
   color: var(--color-text-muted);
   font-size: 0.75rem;
   font-weight: 600;
+}
+
+/* A mild rule between consecutive blocks - without it both readers read as
+   one continuous packed column. Applies to the surah page's ayahs too. */
+.ayah-block + .ayah-block {
+  margin-top: 2.25rem;
+  padding-top: 2.25rem;
+  border-top: 1px solid var(--color-border-light);
+}
+
+/* The hadith a number-jump landed on: a brief accent edge, mirroring the
+   today highlight on the calendar grid. */
+.hadith-target {
+  border-left: 3px solid var(--color-primary);
+  padding-left: 0.9rem;
+  border-radius: 2px;
+}
+
+/* Jump-to-number row, styled after the surah page's ayah navigator. */
+.hadith-jump {
+  max-width: 860px;
+  margin: 0 auto 1.25rem;
+  padding: 0 1.35rem;
+}
+
+.hadith-jump-label {
+  display: block;
+  margin-bottom: 0.35rem;
+  color: var(--color-text-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.hadith-jump-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.hadith-jump-input {
+  width: 7.5rem;
+  min-height: 42px;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  background-color: var(--color-surface);
+  color: var(--color-text);
+}
+
+.hadith-jump-input:focus {
+  border-color: var(--color-primary);
+  outline: none;
+  box-shadow: 0 0 0 4px var(--color-primary-glow);
+}
+
+.hadith-jump-notice {
+  margin: 0.5rem 0 0;
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
 }
 
 /* --- Qibla direction ---------------------------------------------------------

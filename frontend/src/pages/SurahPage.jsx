@@ -189,7 +189,7 @@ export default function SurahPage() {
               ? 'Could not share ayah'
               : `Share ${data.surahName} ${data.surahNo}:${ayahNo}`;
         return (
-          <article key={ayahNo} id={String(ayahNo)} className="ayah-block" style={{ marginBottom: '2.5rem' }}>
+          <article key={ayahNo} id={String(ayahNo)} className="ayah-block">
             <div className="ayah-head">
               <p className="ayah-number">Ayah {ayahNo}</p>
               <div className="ayah-actions">

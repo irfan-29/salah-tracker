@@ -1944,8 +1944,37 @@ app.get("/api/editions", async function(req, res){
 
 const hadithStore = require("./utils/hadithStore.js");
 
-app.get("/api/hadiths/collections", function(req, res){
-    res.json({ collections: hadithStore.COLLECTIONS });
+app.get("/api/hadiths/collections", async function(req, res){
+    try {
+        // Languages come from each collection's seeded manifest, so the cards
+        // advertise only what is really offered (Tamil, for instance, exists
+        // for Bukhari and Muslim only). Unseeded collections still list.
+        const collections = await Promise.all(hadithStore.COLLECTIONS.map(async (c) => {
+            const manifest = await hadithStore.getManifest(c.id);
+            return {
+                ...c,
+                languages: manifest?.languages || [{ code: "eng", label: "English", dir: "ltr" }]
+            };
+        }));
+        res.json({ collections });
+    } catch (err) {
+        console.error("api/hadiths/collections:", err.message);
+        res.status(500).json({ error: "failed" });
+    }
+});
+
+// Where is hadith № N? Resolves to the section and page that hold it, so the
+// reader can deep-link straight to it.
+app.get("/api/hadiths/:collection/find", async function(req, res){
+    try {
+        const per = Math.min(50, Math.max(5, parseInt(req.query.per, 10) || 25));
+        const hit = await hadithStore.findByNumber(req.params.collection, req.query.no, { per });
+        if (!hit) return res.status(404).json({ error: "hadith-not-found" });
+        res.json(hit);
+    } catch (err) {
+        console.error("api/hadiths/find:", err.message);
+        res.status(500).json({ error: "failed" });
+    }
 });
 
 // One collection's manifest: its sections, with the hadith-number range each
@@ -1961,12 +1990,14 @@ app.get("/api/hadiths/:collection", async function(req, res){
     }
 });
 
-// One page of one section, Arabic + English merged and ordered by number.
+// One page of one section, Arabic + the requested translation merged and
+// ordered by number. lang falls back to English server-side.
 app.get("/api/hadiths/:collection/section/:sectionId", async function(req, res){
     try {
         const page = Math.max(1, parseInt(req.query.page, 10) || 1);
         const per = Math.min(50, Math.max(5, parseInt(req.query.per, 10) || 25));
-        const section = await hadithStore.getSection(req.params.collection, req.params.sectionId, { page, per });
+        const lang = String(req.query.lang || "eng");
+        const section = await hadithStore.getSection(req.params.collection, req.params.sectionId, { page, per, lang });
         if (!section) return res.status(404).json({ error: "unknown-section" });
         res.json(section);
     } catch (err) {

@@ -81,8 +81,10 @@ export const quran = {
 export const hadiths = {
   collections: () => api.get('/hadiths/collections'),
   collection: (id) => api.get(`/hadiths/${encodeURIComponent(id)}`),
-  section: (id, sectionId, { page = 1, per = 25 } = {}) =>
-    api.get(`/hadiths/${encodeURIComponent(id)}/section/${encodeURIComponent(sectionId)}?page=${page}&per=${per}`),
+  section: (id, sectionId, { page = 1, per = 25, lang = 'eng' } = {}) =>
+    api.get(`/hadiths/${encodeURIComponent(id)}/section/${encodeURIComponent(sectionId)}?page=${page}&per=${per}&lang=${encodeURIComponent(lang)}`),
+  find: (id, no, per = 25) =>
+    api.get(`/hadiths/${encodeURIComponent(id)}/find?no=${encodeURIComponent(no)}&per=${per}`),
 };
 
 // ---- Challenges, salah, posts, profile, account, settings ----

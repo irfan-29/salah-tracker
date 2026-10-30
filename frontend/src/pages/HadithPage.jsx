@@ -39,7 +39,7 @@ export default function HadithPage() {
               <div className="surah-card-content">
                 <p className="surah-name">{c.name}</p>
                 <p className="surah-translation">{c.translator}</p>
-                <p className="surah-meta">Arabic · English</p>
+                <p className="surah-meta">{c.languages.map((l) => l.label).join(' · ')}</p>
               </div>
               <span className="material-symbols-rounded surah-card-arrow">chevron_right</span>
             </Link>
