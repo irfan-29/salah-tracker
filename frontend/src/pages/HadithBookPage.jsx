@@ -80,11 +80,12 @@ export default function HadithBookPage() {
   useEffect(() => () => window.clearTimeout(shareTimer.current), []);
 
   // Shares Arabic + the translation the reader is currently showing, in one
-  // message. The URL ends the text deliberately: native share sheets keep text
-  // order, while a separate `url` field is often appended somewhere
-  // unpredictable.
+  // message. The URL is the hadith itself (?no=), not the page, so whoever
+  // opens it lands on this exact hadith with it highlighted. The URL ends the
+  // text deliberately: native share sheets keep text order, while a separate
+  // `url` field is often appended somewhere unpredictable.
   async function shareHadith(h) {
-    const appUrl = `${window.location.origin}/hadith/${id}?section=${sectionId}&page=${page}`;
+    const appUrl = `${window.location.origin}/hadith/${id}?no=${h.number}`;
     const text = [
       'Hasanath — Hadith',
       `${manifest.name} · Hadith № ${h.number}`,
@@ -149,6 +150,23 @@ export default function HadithBookPage() {
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }, [section, target]);
 
+  // A shared link arrives as ?no=<hadith number>. Resolve it to its section
+  // and page exactly like the jump form does, then drop `no` from the URL -
+  // the highlight stays until the reader navigates somewhere else.
+  const sharedNo = params.get('no');
+  useEffect(() => {
+    if (!manifest || !sharedNo) return;
+    let cancelled = false;
+    hadiths.find(id, sharedNo)
+      .then((hit) => {
+        if (cancelled) return;
+        setTarget(hit.number);
+        setParams({ section: hit.sectionId, page: String(hit.page) });
+      })
+      .catch(() => { /* unknown number - the reader stays where it is */ });
+    return () => { cancelled = true; };
+  }, [manifest, sharedNo, id, setParams]);
+
   if (error && !manifest) return <><div className="page-header"><h1>Hadith</h1></div><div className="container1"><p className="post-empty">{error}</p></div></>;
   if (!manifest) return <Loader variant="page" label="Loading collection" />;
 
@@ -202,6 +220,11 @@ export default function HadithBookPage() {
 
   return (
     <>
+      <Link to="/hadith" className="reader-back">
+        <span className="material-symbols-rounded" aria-hidden="true">arrow_back</span>
+        Hadith
+      </Link>
+
       <header className="page-header">
         <p className="surah-page-kicker">Hadith collection</p>
         <h1>{manifest.name}</h1>
@@ -244,7 +267,7 @@ export default function HadithBookPage() {
       )}
 
       {sections.length > 1 && (
-        <div className="hadith-sections" role="tablist" aria-label="Sections">
+        <div className="hadith-sections" role="tablist" aria-label="Categories">
           {sections.map((s) => (
             <button
               key={s.id}
@@ -267,7 +290,10 @@ export default function HadithBookPage() {
       {section && (
         <>
           {current && sections.length > 1 && (
-            <p className="hadith-section-title">{current.title}</p>
+            <p className="hadith-section-title">
+              <span className="hadith-section-kicker">Category</span>
+              {current.title}
+            </p>
           )}
 
           {section.hadiths.map((h) => {
@@ -302,7 +328,7 @@ export default function HadithBookPage() {
                     </button>
                     <button
                       type="button"
-                      className={`fav-btn${on ? ' is-active' : ''}`}
+                      className={`fav-btn bookmark-btn${on ? ' is-active' : ''}`}
                       aria-pressed={on}
                       aria-label={on ? 'Remove bookmark' : 'Bookmark this hadith'}
                       onClick={() => toggleBookmark(id, h.number)}

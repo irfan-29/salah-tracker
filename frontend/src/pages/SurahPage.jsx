@@ -144,6 +144,11 @@ export default function SurahPage() {
 
   return (
     <>
+      <Link to="/quran" className="reader-back">
+        <span className="material-symbols-rounded" aria-hidden="true">arrow_back</span>
+        Quran
+      </Link>
+
       <header className="page-header">
         <p className="surah-page-kicker">Surah {data.surahNo} of 114</p>
         <h1>{data.surahName}</h1>
@@ -206,7 +211,7 @@ export default function SurahPage() {
                 </button>
                 <button
                   type="button"
-                  className={`fav-btn${on ? ' is-active' : ''}`}
+                  className={`fav-btn bookmark-btn${on ? ' is-active' : ''}`}
                   aria-pressed={on}
                   aria-label={on ? 'Remove bookmark' : 'Bookmark this ayah'}
                   onClick={() => toggleFavourite(data.surahNo, ayahNo)}

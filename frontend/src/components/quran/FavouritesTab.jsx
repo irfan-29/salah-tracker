@@ -50,7 +50,7 @@ export default function FavouritesTab({ entries, isLoggedIn, onToggle, favoriteF
                     outlined. */}
                 <button
                   type="button"
-                  className="fav-btn is-active"
+                  className="fav-btn bookmark-btn is-active"
                   onClick={() => onToggle(entry.surahNo, entry.ayahNo)}
                   title="Remove bookmark"
                   aria-label={`Remove ${entry.surahName} ayah ${entry.ayahNo} from bookmarks`}

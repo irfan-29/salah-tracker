@@ -118,7 +118,7 @@ export default function HadithPage() {
                           the bookmark is the same size and fills when active. */}
                       <button
                         type="button"
-                        className="fav-btn is-active"
+                        className="fav-btn bookmark-btn is-active"
                         onClick={() => toggleBookmark(entry.collection, entry.number)}
                         title="Remove bookmark"
                         aria-label={`Remove hadith ${entry.number} of ${entry.collectionName} from bookmarks`}

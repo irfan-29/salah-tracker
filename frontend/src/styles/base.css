@@ -3723,7 +3723,7 @@ hr {
   background: var(--color-primary-glow);
 }
 
-.fav-btn.is-active { color: #e6bd74; }
+.fav-btn.is-active { color: #e11d48; }
 
 .fav-btn:focus-visible {
   outline: 2px solid var(--color-primary);
@@ -7250,10 +7250,17 @@ input[type="datetime-local"] { color-scheme: light; }
 }
 
 /* The variable Material Symbols font used to be pinned to FILL 0, so the
-   glyph only ever drew its outline. Give an active bookmark a real filled
-   icon in the app's gold - the same accent the ding/attar highlights use -
-   instead of the red the old hearts wore. */
+   glyph only ever drew its outline. Give an active favourite a real filled
+   heart instead of a red outline. */
 .fav-btn.is-active {
+  color: #e5484d;
+  background: rgba(229, 72, 77, 0.09);
+}
+
+/* Bookmarks (ayah and hadith) share the same button but wear the app's gold
+   instead of the heart's red, so the two actions read differently at a
+   glance. */
+.fav-btn.bookmark-btn.is-active {
   color: #e6bd74;
   background: rgba(230, 189, 116, 0.12);
 }
@@ -9316,10 +9323,21 @@ body:has(.tabbar-sheet) .tabbar {
 .hadith-section-title {
   max-width: 860px;
   margin: 0 auto 1.25rem;
+  padding-top: 1.1rem;
+  border-top: 1px solid var(--color-border-light);
+  color: var(--color-text);
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+/* The small "Category" kicker above the topic name. */
+.hadith-section-kicker {
+  display: block;
+  margin-bottom: 0.15rem;
   color: var(--color-text-muted);
-  font-size: 0.8rem;
+  font-size: 0.65rem;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
@@ -9399,6 +9417,26 @@ body:has(.tabbar-sheet) .tabbar {
   color: var(--color-text-muted);
   font-size: 0.8rem;
 }
+
+/* Back link at the top of the readers ("‹ Quran" on a surah, "‹ Hadith" on a
+   collection). The in-app back gesture exists, but a visible way up the
+   hierarchy saves the swipe on long reads. */
+.reader-back {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  width: 100%;
+  max-width: 860px;
+  margin: 0 auto 0.25rem;
+  padding: 0 1.35rem;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.reader-back .material-symbols-rounded { font-size: 1.15rem; }
+
+.reader-back:hover { color: var(--color-primary); }
 
 /* --- Qibla direction ---------------------------------------------------------
    A compass card: a rotating rose that carries the Kaaba marker at the true
