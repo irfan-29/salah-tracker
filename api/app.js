@@ -1934,6 +1934,48 @@ app.get("/api/editions", async function(req, res){
 });
 
 // ============================================================================
+// Hadith module.
+//
+// The ten collections (six canonical books + three forties) are read from the
+// same immutable cache the Quran module uses, split per section by
+// scripts/seed-hadiths.js. Reading is public - like the Quran reader, only the
+// per-user features (favourites, progress) would ever sit behind requireLogin.
+// ============================================================================
+
+const hadithStore = require("./utils/hadithStore.js");
+
+app.get("/api/hadiths/collections", function(req, res){
+    res.json({ collections: hadithStore.COLLECTIONS });
+});
+
+// One collection's manifest: its sections, with the hadith-number range each
+// covers - the client renders the section chips and pager from this.
+app.get("/api/hadiths/:collection", async function(req, res){
+    try {
+        const collection = await hadithStore.getCollection(req.params.collection);
+        if (!collection) return res.status(404).json({ error: "unknown-collection" });
+        res.json(collection);
+    } catch (err) {
+        console.error("api/hadiths/collection:", err.message);
+        res.status(500).json({ error: "failed" });
+    }
+});
+
+// One page of one section, Arabic + English merged and ordered by number.
+app.get("/api/hadiths/:collection/section/:sectionId", async function(req, res){
+    try {
+        const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+        const per = Math.min(50, Math.max(5, parseInt(req.query.per, 10) || 25));
+        const section = await hadithStore.getSection(req.params.collection, req.params.sectionId, { page, per });
+        if (!section) return res.status(404).json({ error: "unknown-section" });
+        res.json(section);
+    } catch (err) {
+        console.error("api/hadiths/section:", err.message);
+        res.status(500).json({ error: "failed" });
+    }
+});
+
+// ============================================================================
 // JSON auth for the React login / register / verify screens.
 //
 // The EJS routes render pages on every outcome. These return status codes and a

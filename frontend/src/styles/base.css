@@ -9199,8 +9199,8 @@ body:has(.tabbar-sheet) .tabbar {
 
 .tabbar-sheet-grid {
   display: grid;
-  /* Three modules, one line - the row the footer did not have room for. */
-  grid-template-columns: repeat(3, 1fr);
+  /* Four modules, one line - the row the footer did not have room for. */
+  grid-template-columns: repeat(4, 1fr);
   gap: 0.5rem;
 }
 
@@ -9245,6 +9245,68 @@ body:has(.tabbar-sheet) .tabbar {
   font-size: 0.68rem;
   font-weight: 700;
   line-height: 1.2;
+}
+
+/* ---- Hadith module ----------------------------------------------------------
+   The reader reuses the Quran reader's blocks (ayah-block, ayah-head,
+   ayah-number, ayah-arabic-text, ayah-translation) so both modules read
+   identically; only what the hadith reader adds on top lives here - the
+   section chip rail, the section kicker and the grade line. */
+
+.hadith-sections {
+  display: flex;
+  gap: 0.4rem;
+  max-width: 860px;
+  margin: 0 auto 1rem;
+  padding: 0.25rem 1.35rem 0.6rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.hadith-sections::-webkit-scrollbar { display: none; }
+
+.hadith-chip {
+  flex: 0 0 auto;
+  padding: 0.4rem 0.85rem;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-family: var(--font-sans);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color var(--transition), background var(--transition), color var(--transition);
+}
+
+.hadith-chip.is-active {
+  border-color: var(--color-primary);
+  background: rgba(13, 148, 136, 0.12);
+  color: var(--color-primary-dark);
+}
+
+.hadith-section-title {
+  max-width: 860px;
+  margin: 0 auto 1.25rem;
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* Plain Arabic prose rather than an ayah: same size and column as the reader
+   (the ayah-arabic-text rules carry it), but the app's own Arabic face
+   instead of the per-surah reader font. */
+.hadith-arabic-text {
+  font-family: 'QPC-Hafs', serif;
+}
+
+.hadith-grades {
+  margin: 0.4rem 0 0;
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
 }
 
 /* --- Qibla direction ---------------------------------------------------------

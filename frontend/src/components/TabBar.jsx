@@ -15,17 +15,21 @@ const TABS = [
 ];
 
 // Everything that did not earn a footer slot lives in the More sheet - one
-// single-line row of three. Timings is not here because it wears the clock
+// single-line row of four. Timings is not here because it wears the clock
 // icon in the top bar beside the account.
 const MORE = [
+  { to: '/hadith', path: '/hadith', icon: 'format_quote', label: 'Hadith' },
   { to: '/calendar', path: '/calendar', icon: 'calendar_month', label: 'Islamic Calendar' },
   { to: '/charity', path: '/charity', icon: 'volunteer_activism', label: 'Charity' },
   { to: '/stats', path: '/stats', icon: 'insights', label: 'Stats' },
 ];
 
-// Same rule as the sidebar: exact match, and reading a surah keeps Quran lit.
+// Same rule as the sidebar: exact match, and reading a surah or a hadith
+// collection keeps its module lit.
 function isActive(pathname, linkPath) {
-  return pathname === linkPath || (linkPath === '/quran' && pathname.startsWith('/surah'));
+  return pathname === linkPath
+    || (linkPath === '/quran' && pathname.startsWith('/surah'))
+    || (linkPath === '/hadith' && pathname.startsWith('/hadith'));
 }
 
 export default function TabBar() {

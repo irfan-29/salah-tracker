@@ -76,6 +76,15 @@ export const quran = {
   toggleFavourite: (surahNo, ayahNo) => api.post('/quran/favourites/toggle', { surahNo, ayahNo }),
 };
 
+// ---- Hadith module --------------------------------------------------------
+
+export const hadiths = {
+  collections: () => api.get('/hadiths/collections'),
+  collection: (id) => api.get(`/hadiths/${encodeURIComponent(id)}`),
+  section: (id, sectionId, { page = 1, per = 25 } = {}) =>
+    api.get(`/hadiths/${encodeURIComponent(id)}/section/${encodeURIComponent(sectionId)}?page=${page}&per=${per}`),
+};
+
 // ---- Challenges, salah, posts, profile, account, settings ----
 
 export const challenges = {

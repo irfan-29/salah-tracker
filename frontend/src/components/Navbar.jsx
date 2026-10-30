@@ -9,6 +9,7 @@ import { api } from '../services/api';
 
 const PRIMARY = [
   { to: '/quran', path: '/quran', icon: 'auto_stories', label: 'Quran' },
+  { to: '/hadith', path: '/hadith', icon: 'format_quote', label: 'Hadith' },
   { to: '/salah', path: '/salah', icon: 'checklist_rtl', label: 'Salah Tracker' },
   { to: '/salah-timings', path: '/salah-timings', icon: 'schedule', label: 'Salah Timings' },
   { to: '/qibla', path: '/qibla', icon: 'explore', label: 'Qibla' },
@@ -27,7 +28,9 @@ const ACCOUNT = [
 // Same rule as the EJS script: exact match, plus the reader counting as part of
 // Quran so the section stays highlighted while reading an ayah.
 function isActive(pathname, linkPath) {
-  return pathname === linkPath || (linkPath === '/quran' && pathname.startsWith('/surah'));
+  return pathname === linkPath
+    || (linkPath === '/quran' && pathname.startsWith('/surah'))
+    || (linkPath === '/hadith' && pathname.startsWith('/hadith'));
 }
 
 export default function Navbar({ session }) {

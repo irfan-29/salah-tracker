@@ -10,6 +10,8 @@ import useShareHandler from './hooks/useShareHandler';
 import { api } from './services/api';
 import * as typography from './services/typography';
 import QuranPage from './pages/QuranPage';
+import HadithPage from './pages/HadithPage';
+import HadithBookPage from './pages/HadithBookPage';
 import ChallengesPage from './pages/ChallengesPage';
 import CharityPage from './pages/CharityPage';
 import StatsPage from './pages/StatsPage';
@@ -199,6 +201,8 @@ function Shell() {
       <div className="main-content">
         <Routes>
           <Route path="/quran" element={<QuranPage />} />
+          <Route path="/hadith" element={<HadithPage />} />
+          <Route path="/hadith/:collection" element={<HadithBookPage />} />
           <Route path="/surah/:surahNo" element={<SurahPage />} />
           <Route path="/challenges" element={<ChallengesPage />} />
           <Route path="/charity" element={<CharityPage />} />
