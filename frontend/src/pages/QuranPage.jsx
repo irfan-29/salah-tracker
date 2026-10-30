@@ -10,7 +10,7 @@ import FavouritesTab from '../components/quran/FavouritesTab';
 const TABS = [
   { id: 'audio', label: 'Audio', icon: 'headphones' },
   { id: 'read', label: 'Read', icon: 'menu_book' },
-  { id: 'favourites', label: 'Favourites', icon: 'favorite' },
+  { id: 'favourites', label: 'Bookmarks', icon: 'bookmark' },
 ];
 
 export default function QuranPage() {

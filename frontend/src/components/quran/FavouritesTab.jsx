@@ -1,8 +1,9 @@
 import { Link } from 'react-router-dom';
 
-// This list intentionally uses the same ayah typography and heart treatment as
-// the reader. It used to have its own smaller Arabic face, outlined heart and
-// separately styled translation box, which made the two screens feel unrelated.
+// This list intentionally uses the same ayah typography and bookmark treatment
+// as the reader. It used to have its own smaller Arabic face, outlined heart
+// and separately styled translation box, which made the two screens feel
+// unrelated.
 export default function FavouritesTab({ entries, isLoggedIn, onToggle, favoriteFont = 'QPC-Hafs' }) {
   if (!isLoggedIn) {
     return (
@@ -13,7 +14,7 @@ export default function FavouritesTab({ entries, isLoggedIn, onToggle, favoriteF
             <div>
               <p className="gate-title">Sign in to save ayahs</p>
               <p className="gate-text">
-                Favourites are tied to your account, so they follow you across devices.{' '}
+                Bookmarks are tied to your account, so they follow you across devices.{' '}
                 <a href="/login">Sign in</a> or <a href="/register">create an account</a> to start saving.
               </p>
             </div>
@@ -27,12 +28,12 @@ export default function FavouritesTab({ entries, isLoggedIn, onToggle, favoriteF
     <div className="quran-tab-panel" data-tab-panel="favourites">
       <div className="container1">
         <div className="card-header">
-          <h3>Saved Ayahs</h3>
+          <h3>Bookmarked Ayahs</h3>
           <span className="badge badge-primary">{entries.length}</span>
         </div>
 
         {entries.length === 0 ? (
-          <p className="post-empty">No saved ayahs yet. Tap the heart beside any ayah while reading.</p>
+          <p className="post-empty">No bookmarks yet. Tap the bookmark beside any ayah while reading.</p>
         ) : (
           entries.map((entry) => (
             <article className="favourite-card" key={`${entry.surahNo}:${entry.ayahNo}`}>
@@ -45,15 +46,16 @@ export default function FavouritesTab({ entries, isLoggedIn, onToggle, favoriteF
                   <span className="favourite-num">Ayah {entry.ayahNo}</span>
                 </div>
                 {/* Same .fav-btn/is-active treatment as the reader, so the
-                    heart is the same size and fills instead of staying outlined. */}
+                    bookmark is the same size and fills instead of staying
+                    outlined. */}
                 <button
                   type="button"
                   className="fav-btn is-active"
                   onClick={() => onToggle(entry.surahNo, entry.ayahNo)}
-                  title="Remove from favourites"
-                  aria-label={`Remove ${entry.surahName} ayah ${entry.ayahNo} from favourites`}
+                  title="Remove bookmark"
+                  aria-label={`Remove ${entry.surahName} ayah ${entry.ayahNo} from bookmarks`}
                 >
-                  <span className="material-symbols-rounded">favorite</span>
+                  <span className="material-symbols-rounded">bookmark</span>
                 </button>
               </header>
 

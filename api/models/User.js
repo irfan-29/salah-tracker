@@ -91,6 +91,11 @@ const userSchema = new mongoose.Schema({
         ayahNo: { type: Number, required: true },
         addedAt: { type: Date, default: Date.now }
     }],
+    bookmarkHadiths: [{
+        collection: { type: String, required: true },
+        number: { type: Number, required: true },
+        addedAt: { type: Date, default: Date.now }
+    }],
     challenges: [challengeSchema],
     charities: [charitySchema],
     salahLog: [salahEntrySchema],
@@ -183,6 +188,32 @@ userSchema.methods.isFavoriteAyah = function (surahNo, ayahNo) {
     const s = Number(surahNo);
     const a = Number(ayahNo);
     return Array.from(this.favoriteAyahs || []).some((f) => Number(f.surahNo) === s && Number(f.ayahNo) === a);
+};
+
+// Hadith bookmarks follow the same pattern: coordinates only ({ collection,
+// number }), capped, newest first.
+const MAX_BOOKMARK_HADITHS = 300;
+
+userSchema.methods.toggleHadithBookmark = function (collection, number) {
+    const c = String(collection);
+    const n = Number(number);
+    const list = Array.from(this.bookmarkHadiths || []);
+    const index = list.findIndex((f) => f.collection === c && Number(f.number) === n);
+
+    if (index !== -1) {
+        list.splice(index, 1);
+        this.bookmarkHadiths = list;
+        return false;
+    }
+
+    this.bookmarkHadiths = [{ collection: c, number: n, addedAt: new Date() }, ...list].slice(0, MAX_BOOKMARK_HADITHS);
+    return true;
+};
+
+userSchema.methods.isHadithBookmarked = function (collection, number) {
+    const c = String(collection);
+    const n = Number(number);
+    return Array.from(this.bookmarkHadiths || []).some((f) => f.collection === c && Number(f.number) === n);
 };
 
 module.exports = mongoose.model("User", userSchema);

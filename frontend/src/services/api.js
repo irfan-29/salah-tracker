@@ -85,6 +85,8 @@ export const hadiths = {
     api.get(`/hadiths/${encodeURIComponent(id)}/section/${encodeURIComponent(sectionId)}?page=${page}&per=${per}&lang=${encodeURIComponent(lang)}`),
   find: (id, no, per = 25) =>
     api.get(`/hadiths/${encodeURIComponent(id)}/find?no=${encodeURIComponent(no)}&per=${per}`),
+  bookmarks: () => api.get('/hadiths/bookmarks'),
+  toggleBookmark: (collection, number) => api.post('/hadiths/bookmarks/toggle', { collection, number }),
 };
 
 // ---- Challenges, salah, posts, profile, account, settings ----

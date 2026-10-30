@@ -208,10 +208,10 @@ export default function SurahPage() {
                   type="button"
                   className={`fav-btn${on ? ' is-active' : ''}`}
                   aria-pressed={on}
-                  aria-label={on ? 'Remove from favourites' : 'Add to favourites'}
+                  aria-label={on ? 'Remove bookmark' : 'Bookmark this ayah'}
                   onClick={() => toggleFavourite(data.surahNo, ayahNo)}
                 >
-                  <span className="material-symbols-rounded">{on ? 'favorite' : 'favorite_border'}</span>
+                  <span className="material-symbols-rounded">{on ? 'bookmark' : 'bookmark_border'}</span>
                 </button>
               </div>
             </div>

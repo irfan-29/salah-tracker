@@ -629,6 +629,16 @@ async function toggleFavourite(req, { surahNo, ayahNo }) {
     return { ok: true, favorited: nowFavorited };
 }
 
+// Hadith bookmarks: same contract as toggleFavourite.
+async function toggleHadithBookmark(req, { collection, number }) {
+    if (!req.isAuthenticated || !req.isAuthenticated()) {
+        return { ok: false, reason: "login-required", bookmarked: false };
+    }
+    const nowBookmarked = req.user.toggleHadithBookmark(collection, number);
+    await req.user.save();
+    return { ok: true, bookmarked: nowBookmarked };
+}
+
 module.exports = {
   attachResponse,
   getSettings,
@@ -658,6 +668,7 @@ module.exports = {
   setTelegramChatId,
   listFavourites,
   toggleFavourite,
+  toggleHadithBookmark,
   clearGuestCookie,
   defaults
 };

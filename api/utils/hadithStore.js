@@ -283,6 +283,58 @@ async function getSection(id, sectionId, { page = 1, per = 25, lang = "eng" } = 
     };
 }
 
+// Bookmarked hadiths resolved to displayable entries. Coordinates only are
+// stored on the user; the text comes from the same cached section documents
+// the reader uses. Pairs whose text cannot be resolved (unseeded collection)
+// are skipped rather than breaking the whole list.
+async function resolveBookmarks(req, pairs) {
+    const byCollection = {};
+    for (const p of (pairs || [])) {
+        (byCollection[p.collection] = byCollection[p.collection] || []).push(Number(p.number));
+    }
+
+    const entries = [];
+    for (const [collection, numbers] of Object.entries(byCollection)) {
+        const meta = COLLECTIONS.find((c) => c.id === collection);
+        const manifest = await getManifest(collection);
+        if (!meta || !manifest) continue;
+
+        // Group the numbers by the section that holds each one, so each
+        // section document is read once regardless of how many bookmarks
+        // live inside it.
+        const sections = manifest.sections || [];
+        const needed = {};
+        for (const n of numbers) {
+            const s = sections.find((x) => n >= x.first && n <= x.last);
+            if (s) (needed[s.id] = needed[s.id] || []).push(n);
+        }
+
+        for (const [sectionId, nos] of Object.entries(needed)) {
+            const sectionMeta = sections.find((s) => String(s.id) === String(sectionId));
+            const hadiths = (await getCache(sectionKey(collection, "eng", sectionId))) || [];
+            const byNumber = new Map(hadiths.map((h) => [String(h.number), h]));
+            for (const n of nos) {
+                const h = byNumber.get(String(n));
+                if (!h) continue;
+                entries.push({
+                    collection,
+                    collectionName: meta.name,
+                    sectionId: String(sectionId),
+                    sectionTitle: sectionMeta ? sectionMeta.title : "",
+                    number: h.number,
+                    arabic: h.arabic || "",
+                    text: h.text || ""
+                });
+            }
+        }
+    }
+
+    // Back to the stored order (newest first), losing the grouping above.
+    const rank = new Map((pairs || []).map((p, i) => [`${p.collection}:${Number(p.number)}`, i]));
+    entries.sort((a, b) => (rank.get(`${a.collection}:${a.number}`) ?? 0) - (rank.get(`${b.collection}:${b.number}`) ?? 0));
+    return entries;
+}
+
 module.exports = {
     COLLECTIONS,
     LANGUAGES,
@@ -292,5 +344,6 @@ module.exports = {
     getCollection,
     getSection,
     getManifest,
-    findByNumber
+    findByNumber,
+    resolveBookmarks
 };

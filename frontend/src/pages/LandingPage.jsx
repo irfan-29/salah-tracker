@@ -41,7 +41,7 @@ const FEATURES = [
     label: 'Qur’an',
     title: 'The Qur’an, without the noise.',
     body: 'Read all 114 surahs, switch translations, follow along with reciters, and pick up exactly where you left off.',
-    points: ['114 surahs', 'Multiple translations', 'Reciter audio and favourites'],
+    points: ['114 surahs', 'Multiple translations', 'Reciter audio and bookmarks'],
     to: '/quran',
   },
   {
@@ -743,7 +743,7 @@ export default function LandingPage() {
                 </li>
                 <li>
                   <span className="material-symbols-rounded" aria-hidden="true">check</span>
-                  Favourites and last-read position
+                  Bookmarks and last-read position
                 </li>
               </ul>
               <Link to="/quran" className="btn btn-primary">

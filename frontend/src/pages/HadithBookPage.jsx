@@ -1,7 +1,25 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { hadiths } from '../services/api';
+import { useHadithBookmarks } from '../hooks/useHadithBookmarks';
 import Loader from '../components/Loader';
+
+// navigator.clipboard needs a secure context. The fallback matters on a plain
+// http:// dev host, where the share button would otherwise do nothing.
+async function copyText(text) {
+  if (navigator.clipboard && window.isSecureContext) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+  const area = document.createElement('textarea');
+  area.value = text;
+  area.style.position = 'fixed';
+  area.style.opacity = '0';
+  document.body.appendChild(area);
+  area.select();
+  document.execCommand('copy');
+  document.body.removeChild(area);
+}
 
 // One collection's reader: a row of section chips, then the hadiths of the
 // selected section as Arabic + translation blocks. The section, page and
@@ -18,6 +36,10 @@ export default function HadithBookPage() {
   const [manifest, setManifest] = useState(null);
   const [section, setSection] = useState(null);
   const [error, setError] = useState('');
+  const { isBookmarked, toggleBookmark } = useHadithBookmarks();
+  // Share feedback per block, mirroring the surah reader's pattern.
+  const [shareNotice, setShareNotice] = useState({ number: 0, status: '' });
+  const shareTimer = useRef(null);
   // The chosen translation starts from localStorage but is validated against
   // what the collection actually seeds once the manifest arrives.
   const [lang, setLang] = useState(() => localStorage.getItem(LANG_KEY) || 'eng');
@@ -53,6 +75,49 @@ export default function HadithBookPage() {
   function chooseLanguage(code) {
     setLang(code);
     try { localStorage.setItem(LANG_KEY, code); } catch { /* private mode */ }
+  }
+
+  useEffect(() => () => window.clearTimeout(shareTimer.current), []);
+
+  // Shares Arabic + the translation the reader is currently showing, in one
+  // message. The URL ends the text deliberately: native share sheets keep text
+  // order, while a separate `url` field is often appended somewhere
+  // unpredictable.
+  async function shareHadith(h) {
+    const appUrl = `${window.location.origin}/hadith/${id}?section=${sectionId}&page=${page}`;
+    const text = [
+      'Hasanath — Hadith',
+      `${manifest.name} · Hadith № ${h.number}`,
+      h.arabic || '',
+      h.text || '',
+      appUrl,
+    ].filter(Boolean).join('\n\n');
+
+    const note = (status) => {
+      setShareNotice({ number: h.number, status });
+      window.clearTimeout(shareTimer.current);
+      shareTimer.current = window.setTimeout(() => {
+        setShareNotice({ number: 0, status: '' });
+      }, 1800);
+    };
+
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: `${manifest.name} · Hadith № ${h.number}`, text });
+        note('shared');
+        return;
+      } catch (err) {
+        if (err && err.name === 'AbortError') return;
+        // A share sheet can fail for reasons the clipboard can still handle.
+      }
+    }
+
+    try {
+      await copyText(text);
+      note('copied');
+    } catch {
+      note('failed');
+    }
   }
 
   // Jump-to-number: the server resolves the section + page that hold the
@@ -205,31 +270,64 @@ export default function HadithBookPage() {
             <p className="hadith-section-title">{current.title}</p>
           )}
 
-          {section.hadiths.map((h) => (
-            <article
-              key={h.number}
-              id={`hadith-${h.number}`}
-              className={`ayah-block${target != null && String(target) === String(h.number) ? ' hadith-target' : ''}`}
-            >
-              <div className="ayah-head">
-                <p className="ayah-number">Hadith № {h.number}</p>
-              </div>
+          {section.hadiths.map((h) => {
+            const on = isBookmarked(id, h.number);
+            const shared = shareNotice.number === h.number ? shareNotice.status : '';
+            const shareLabel = shared === 'copied'
+              ? 'Hadith text copied'
+              : shared === 'shared'
+                ? 'Hadith shared'
+                : shared === 'failed'
+                  ? 'Could not share hadith'
+                  : `Share ${manifest.name} hadith ${h.number}`;
+            return (
+              <article
+                key={h.number}
+                id={`hadith-${h.number}`}
+                className={`ayah-block${target != null && String(target) === String(h.number) ? ' hadith-target' : ''}`}
+              >
+                <div className="ayah-head">
+                  <p className="ayah-number">Hadith № {h.number}</p>
+                  <div className="ayah-actions">
+                    <button
+                      type="button"
+                      className={`fav-btn ayah-share-btn${shared ? ` is-${shared}` : ''}`}
+                      aria-label={shareLabel}
+                      title={shared === 'copied' ? 'Copied' : 'Share hadith'}
+                      onClick={() => shareHadith(h)}
+                    >
+                      <span className="material-symbols-rounded">
+                        {shared === 'copied' || shared === 'shared' ? 'check' : shared === 'failed' ? 'error' : 'share'}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`fav-btn${on ? ' is-active' : ''}`}
+                      aria-pressed={on}
+                      aria-label={on ? 'Remove bookmark' : 'Bookmark this hadith'}
+                      onClick={() => toggleBookmark(id, h.number)}
+                    >
+                      <span className="material-symbols-rounded">{on ? 'bookmark' : 'bookmark_border'}</span>
+                    </button>
+                  </div>
+                </div>
 
-              {h.arabic && (
-                <p className="ayah-arabic-text hadith-arabic-text" dir="rtl" lang="ar">{h.arabic}</p>
-              )}
+                {h.arabic && (
+                  <p className="ayah-arabic-text hadith-arabic-text" dir="rtl" lang="ar">{h.arabic}</p>
+                )}
 
-              <div className="ayah-translation">
-                {/* Urdu reads right-to-left; the paragraph itself carries the
-                    direction so punctuation sits on the correct side. */}
-                <p className="ayah-translation-text" dir={section.language.dir}>{h.text}</p>
-              </div>
+                <div className="ayah-translation">
+                  {/* Urdu reads right-to-left; the paragraph itself carries the
+                      direction so punctuation sits on the correct side. */}
+                  <p className="ayah-translation-text" dir={section.language.dir}>{h.text}</p>
+                </div>
 
-              {h.grades && h.grades.length > 0 && (
-                <p className="hadith-grades">{h.grades.map((g) => [g.name, g.grade].filter(Boolean).join(' — ')).join(' · ')}</p>
-              )}
-            </article>
-          ))}
+                {h.grades && h.grades.length > 0 && (
+                  <p className="hadith-grades">{h.grades.map((g) => [g.name, g.grade].filter(Boolean).join(' — ')).join(' · ')}</p>
+                )}
+              </article>
+            );
+          })}
 
           {section.hadiths.length === 0 && (
             <div className="container1"><p className="post-empty">No hadiths in this section.</p></div>

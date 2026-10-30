@@ -1944,6 +1944,37 @@ app.get("/api/editions", async function(req, res){
 
 const hadithStore = require("./utils/hadithStore.js");
 
+// Bookmarks: coordinates only on the user ({ collection, number }); the list
+// resolves texts from the same cached section documents the reader uses.
+// Declared before the /:collection wildcard, which would otherwise capture
+// the "bookmarks" segment.
+const handleHadithBookmarks = async(req, res) => {
+    try {
+        const entries = await hadithStore.resolveBookmarks(req, req.user.bookmarkHadiths || []);
+        res.json({ ok: true, entries });
+    } catch (err) {
+        console.error("hadiths/bookmarks:", err.message);
+        res.status(500).json({ error: "failed" });
+    }
+};
+
+app.get("/api/hadiths/bookmarks", requireLogin, handleHadithBookmarks);
+
+app.post("/api/hadiths/bookmarks/toggle", requireLogin, async function(req, res){
+    const collection = String(req.body.collection || "");
+    const number = parseInt(req.body.number, 10);
+    if (!hadithStore.COLLECTIONS.some((c) => c.id === collection) || !Number.isInteger(number) || number < 1 || number > 20000) {
+        return res.status(400).json({ error: "invalid-reference" });
+    }
+    try {
+        const result = await userData.toggleHadithBookmark(req, { collection, number });
+        res.json({ ok: true, bookmarked: result.bookmarked, collection, number });
+    } catch (err) {
+        console.error("hadiths/bookmarks/toggle:", err.message);
+        res.status(500).json({ error: "failed" });
+    }
+});
+
 app.get("/api/hadiths/collections", async function(req, res){
     try {
         // Languages come from each collection's seeded manifest, so the cards
