@@ -267,19 +267,22 @@ export default function HadithBookPage() {
       )}
 
       {sections.length > 1 && (
-        <div className="hadith-sections" role="tablist" aria-label="Categories">
-          {sections.map((s) => (
-            <button
-              key={s.id}
-              type="button"
-              role="tab"
-              className={`hadith-chip${String(s.id) === String(current?.id) ? ' is-active' : ''}`}
-              aria-selected={String(s.id) === String(current?.id)}
-              onClick={() => setQuery({ section: s.id, page: '1' })}
-            >
-              {s.title}
-            </button>
-          ))}
+        <div className="hadith-sections">
+          <span className="hadith-langs-label">Category</span>
+          <div className="hadith-sections-chips" role="tablist" aria-label="Categories">
+            {sections.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                role="tab"
+                className={`hadith-chip${String(s.id) === String(current?.id) ? ' is-active' : ''}`}
+                aria-selected={String(s.id) === String(current?.id)}
+                onClick={() => setQuery({ section: s.id, page: '1' })}
+              >
+                {s.title}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
@@ -289,13 +292,6 @@ export default function HadithBookPage() {
 
       {section && (
         <>
-          {current && sections.length > 1 && (
-            <p className="hadith-section-title">
-              <span className="hadith-section-kicker">Category</span>
-              {current.title}
-            </p>
-          )}
-
           {section.hadiths.map((h) => {
             const on = isBookmarked(id, h.number);
             const shared = shareNotice.number === h.number ? shareNotice.status : '';
