@@ -33,7 +33,7 @@ if (!MONGO_URI) {
             const t0 = Date.now();
             const result = await seedCollection(id);
             console.log(
-                `✓ ${name}: ${result.hadiths} hadiths in ${result.sections} sections (${((Date.now() - t0) / 1000).toFixed(1)}s)`
+                `✓ ${name}: ${result.hadiths} hadiths in ${result.sections} sections [${result.languages}] (${((Date.now() - t0) / 1000).toFixed(1)}s)`
             );
         } catch (err) {
             failed += 1;
