@@ -1,0 +1,28 @@
+{
+  "id": "/",
+  "name": "Hasanath — Qur'an, Salah & Good Deeds",
+  "short_name": "Hasanath",
+  "description": "Track your salah, read the Qur'an, build gentle streaks, and share reflections — in one quiet, ad-free place.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#092b27",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": ["lifestyle", "education", "productivity"],
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Log Salah", "short_name": "Salah", "url": "/salah",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }] },
+    { "name": "Read Qur'an", "short_name": "Qur'an", "url": "/quran",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }] },
+    { "name": "Salah Timings", "short_name": "Timings", "url": "/salah-timings",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }] }
+  ]
+}

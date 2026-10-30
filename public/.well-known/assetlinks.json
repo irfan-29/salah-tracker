@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "app.hasanath",
+      "sha256_cert_fingerprints": [
+        "07:CF:2A:43:BF:D9:F5:B6:FC:B3:46:47:29:9E:D8:17:59:F9:80:35:D3:81:D3:2F:75:1A:47:0F:0E:18:6E:53"
+      ]
+    }
+  }
+]

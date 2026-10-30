@@ -268,6 +268,119 @@ export function AudioProvider({ children }) {
     }
   }, [track, play]);
 
+  // System media controls: lock screen, notification shade, headphone and
+  // Bluetooth buttons, car displays.
+  //
+  // Two targets, same handlers:
+  // - navigator.mediaSession, which Chrome, the installed PWA and the Play
+  //   Store (TWA) build turn into the lock-screen player.
+  // - window.HasanathAndroid.media(), the native bridge in the Android APK.
+  //   Android WebView has no Media Session API, so the APK draws its own
+  //   notification and calls window.__hasanathMedia(action, value) back.
+  const mediaHandlers = useMemo(() => {
+    if (!audio || !track) return null;
+    const surahNo = Number(track.surahNo);
+    return {
+      play: () => { audio.play().catch(() => {}); },
+      pause: () => audio.pause(),
+      stop: () => audio.pause(),
+      previoustrack: surahNo > 1 ? () => skip(-1) : null,
+      nexttrack: surahNo < 114 ? () => skip(1) : null,
+      seekto: (details) => {
+        const t = Number(details && details.seekTime);
+        if (isFinite(t)) audio.currentTime = Math.max(0, t);
+      },
+      seekbackward: (details) => {
+        audio.currentTime = Math.max(0, audio.currentTime - ((details && details.seekOffset) || 10));
+      },
+      seekforward: (details) => {
+        const end = isFinite(audio.duration) ? audio.duration : Infinity;
+        audio.currentTime = Math.min(end, audio.currentTime + ((details && details.seekOffset) || 10));
+      },
+    };
+  }, [audio, track, skip]);
+
+  useEffect(() => {
+    const ms = typeof navigator !== 'undefined' && 'mediaSession' in navigator ? navigator.mediaSession : null;
+
+    window.__hasanathMedia = (action, value) => {
+      const handler = mediaHandlers && mediaHandlers[action];
+      if (handler) handler({ seekTime: Number(value) / 1000 });
+    };
+
+    if (!ms) return undefined;
+    if (!track || !mediaHandlers) {
+      ms.metadata = null;
+      ms.playbackState = 'none';
+      return undefined;
+    }
+
+    if (typeof window.MediaMetadata === 'function') {
+      ms.metadata = new window.MediaMetadata({
+        title: track.surahName ? `${track.surahNo}. ${track.surahName}` : "Qur'an recitation",
+        artist: track.reciterName || '',
+        album: 'Hasanath',
+        artwork: [
+          { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+          { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
+        ],
+      });
+    }
+    const actions = Object.keys(mediaHandlers);
+    actions.forEach((action) => {
+      try { ms.setActionHandler(action, mediaHandlers[action]); } catch (err) { /* unsupported action */ }
+    });
+    return () => {
+      actions.forEach((action) => {
+        try { ms.setActionHandler(action, null); } catch (err) { /* unsupported action */ }
+      });
+    };
+  }, [track, mediaHandlers]);
+
+  // Playback state and position. The system player interpolates the progress
+  // bar itself from position + playback rate, so this only needs to run when
+  // something changes (play, pause, seek, new duration), not on every tick.
+  useEffect(() => {
+    if (!audio) return undefined;
+    const ms = typeof navigator !== 'undefined' && 'mediaSession' in navigator ? navigator.mediaSession : null;
+    const bridge = typeof window !== 'undefined' && window.HasanathAndroid
+      && typeof window.HasanathAndroid.media === 'function' ? window.HasanathAndroid : null;
+
+    const sync = () => {
+      const dur = isFinite(audio.duration) ? audio.duration : 0;
+      if (ms) {
+        ms.playbackState = !track ? 'none' : (audio.paused ? 'paused' : 'playing');
+        if (track && dur > 0 && typeof ms.setPositionState === 'function') {
+          try {
+            ms.setPositionState({
+              duration: dur,
+              playbackRate: audio.playbackRate || 1,
+              position: Math.min(audio.currentTime, dur),
+            });
+          } catch (err) { /* position briefly past duration while seeking */ }
+        }
+      }
+      if (bridge) {
+        try {
+          bridge.media(JSON.stringify(!track ? { state: 'none' } : {
+            state: audio.paused ? 'paused' : 'playing',
+            title: track.surahName ? `${track.surahNo}. ${track.surahName}` : "Qur'an recitation",
+            artist: track.reciterName || '',
+            positionMs: Math.round(audio.currentTime * 1000),
+            durationMs: Math.round(dur * 1000),
+            canPrev: Number(track.surahNo) > 1,
+            canNext: Number(track.surahNo) < 114,
+          }));
+        } catch (err) { /* bridge unavailable */ }
+      }
+    };
+
+    sync();
+    const events = ['play', 'pause', 'seeked', 'loadedmetadata', 'ratechange', 'ended'];
+    events.forEach((e) => audio.addEventListener(e, sync));
+    return () => events.forEach((e) => audio.removeEventListener(e, sync));
+  }, [audio, track, playing, duration]);
+
   const value = useMemo(() => ({
     track, playing, position, duration,
     play, load, toggle, pause, seek, close, savePosition, skip,

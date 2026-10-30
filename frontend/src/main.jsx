@@ -37,3 +37,15 @@ createRoot(document.getElementById('root')).render(
 // requestAnimationFrame twice: once to let React commit, once to be sure the
 // browser has painted the result.
 requestAnimationFrame(() => requestAnimationFrame(dismissBootLoader));
+
+// Service worker: makes Hasanath installable and lets the Android app open on a
+// flaky connection. Production only, so `npm run dev` never serves a cached
+// shell over your live edits. Registered after load so it never competes with
+// the first paint.
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch((err) => {
+      console.warn('Service worker registration failed:', err);
+    });
+  });
+}

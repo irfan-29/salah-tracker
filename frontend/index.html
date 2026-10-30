@@ -11,7 +11,12 @@
     <!-- The app logo as the favicon so the browser tab wears the same teal
          mosque mark as the sidebar. SVG keeps it crisp at every size. -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="apple-touch-icon" href="/favicon.svg" />
+    <!-- Android/iOS home screens need PNGs; SVG apple-touch-icons are ignored. -->
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <!-- Installable app (PWA / Android). See public/manifest.webmanifest and public/sw.js. -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
     <link rel="canonical" href="https://hasanath.vercel.app/" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Hasanath" />

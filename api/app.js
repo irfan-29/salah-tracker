@@ -394,7 +394,18 @@ const SKIP_MIDDLEWARE_URLS = ["/hide-audio"];
 // a link to. Lookup is case-insensitive to match how usernames are stored.
 // Absolute origin for share links. `trust proxy` is configured, so req.protocol
 // and the host header reflect the public URL rather than an internal hop.
+// Base for share links (/post/:id, /u/:username).
+//
+// Requests arrive here through the frontend's /api rewrite, so the Host header
+// is this API's own domain (hasanath-api.vercel.app). Building links from it
+// handed people URLs on the API host, which only reach the app through a
+// redirect and which the Android app cannot claim cleanly. Share the
+// frontend's address instead; FRONTEND_URL is defined with the catch-all
+// redirect at the bottom of this file and is read here at request time.
 function originOf(req) {
+    if (process.env.FRONTEND_URL || process.env.NODE_ENV === "production") {
+        return FRONTEND_URL;
+    }
     const host = req.get("host");
     return host ? `${req.protocol || "https"}://${host}` : "";
 }
@@ -2221,6 +2232,29 @@ const FRONTEND_URL = (
         ? "https://hasanath.vercel.app"
         : "http://localhost:5173")
 ).replace(/\/+$/, "");
+
+// ---- Android App Links -----------------------------------------------------
+//
+// Share links that already went out point at this host (/post/..., /u/...).
+// Android only opens them in the Hasanath app if this host serves the app's
+// signing certificate here, and it does NOT follow redirects for this file,
+// so it is answered directly rather than by the catch-all below.
+// Add a second fingerprint when Google Play App Signing issues one.
+const ANDROID_APP_LINKS = [{
+    relation: ["delegate_permission/common.handle_all_urls"],
+    target: {
+        namespace: "android_app",
+        package_name: "app.hasanath",
+        sha256_cert_fingerprints: [
+            "07:CF:2A:43:BF:D9:F5:B6:FC:B3:46:47:29:9E:D8:17:59:F9:80:35:D3:81:D3:2F:75:1A:47:0F:0E:18:6E:53"
+        ]
+    }
+}];
+
+app.get("/.well-known/assetlinks.json", function(req, res){
+    res.set("Access-Control-Allow-Origin", "*");
+    res.json(ANDROID_APP_LINKS);
+});
 
 app.use(function(req, res){
     // Unknown API path: JSON 404, never a redirect. The client is expecting
