@@ -494,6 +494,41 @@ async function addDonation(req, id, { amount, date, note } = {}) {
   return presentCharity(charity, isoDate);
 }
 
+// Edit a donation in place. The index is the position in the stored array,
+// which is the order the client received it in; donations carry no ids of
+// their own, so the position is the handle.
+async function updateDonation(req, id, index, { amount, date, note } = {}) {
+  if (!req.isAuthenticated || !req.isAuthenticated()) return null;
+  const charity = req.user.charities.id(id);
+  if (!charity) return { notFound: true };
+
+  const i = Number(index);
+  if (!Number.isInteger(i) || i < 0 || i >= charity.donations.length) return { notFound: true };
+
+  const value = Number(amount);
+  const isoDate = normaliseSalahDate(date);
+  if (!Number.isFinite(value) || value <= 0 || !isoDate) return { invalid: true };
+
+  charity.donations[i].amount = value;
+  charity.donations[i].date = isoDate;
+  charity.donations[i].note = String(note || "").trim().slice(0, 180);
+  await req.user.save();
+  return presentCharity(charity, isoDate);
+}
+
+async function deleteDonation(req, id, index) {
+  if (!req.isAuthenticated || !req.isAuthenticated()) return null;
+  const charity = req.user.charities.id(id);
+  if (!charity) return { notFound: true };
+
+  const i = Number(index);
+  if (!Number.isInteger(i) || i < 0 || i >= charity.donations.length) return { notFound: true };
+
+  charity.donations.splice(i, 1);
+  await req.user.save();
+  return presentCharity(charity);
+}
+
 // --- Salah log --------------------------------------------------------------
 
 // Salah entries have been stored under two different date formats: the React
@@ -661,6 +696,8 @@ module.exports = {
   addCharity,
   updateCharity,
   deleteCharity,
+  updateDonation,
+  deleteDonation,
   addDonation,
   CHARITY_PERIODS,
   CHARITY_PERIOD_LABELS,

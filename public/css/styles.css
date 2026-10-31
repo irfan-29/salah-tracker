@@ -6659,6 +6659,19 @@ body {
 .charity-donation-amount { font-weight: 800; color: var(--color-primary-dark); }
 .charity-donation-note { color: var(--color-text-secondary); }
 
+/* Pencil / dustbin at the right end of each donation row. Same icon-button
+   treatment as the readers' share / bookmark pair. */
+.charity-donation-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+  margin-left: auto;
+  align-self: center;
+  flex: 0 0 auto;
+}
+
+.charity-donation-actions .fav-btn { width: 1.9rem; height: 1.9rem; }
+
 .charity-empty {
   text-align: center;
   padding-bottom: 2rem;
@@ -6956,6 +6969,10 @@ body {
 .stats-donation-amount { font-weight: 800; color: var(--color-primary-dark); }
 .stats-donation-date { color: var(--color-text-muted); font-size: 0.8rem; }
 
+/* The donation's reason, in brackets after the charity name - the same grey
+   the date wears, so the amount keeps its emphasis. */
+.stats-donation-reason { color: var(--color-text-muted); }
+
 /* Soft entrance for each route. The app shell does not remount, so this
    plays once per page instead of looping on data refreshes. */
 @keyframes app-rise {
@@ -7029,6 +7046,9 @@ body {
   .charity-card-actions { margin-top: 0.5rem; }
   .charity-stats-row { grid-template-columns: 1fr; gap: 0.5rem; }
   .charity-progress { flex-direction: column; align-items: stretch; }
+  /* Stacked, the track's flex-basis would govern its height and collapse the
+     bar to 0px - pin the height instead. */
+  .charity-progress-track { flex: none; }
   .charity-progress-value { text-align: left; }
   .stats-prayer-row { grid-template-columns: 1fr; gap: 0.35rem; }
   .stats-prayer-amount { justify-content: flex-start; }

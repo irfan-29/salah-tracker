@@ -1319,6 +1319,33 @@ app.post("/api/charity/:id/donate", requireLogin, async function(req, res){
     }
 });
 
+// Edit / remove one donation. The index is the row's position in the charity's
+// stored donation list - the order the client received it in.
+app.patch("/api/charity/:id/donation/:index", requireLogin, async function(req, res){
+    try {
+        const result = await userData.updateDonation(req, req.params.id, req.params.index, req.body || {});
+        if (result && result.notFound) return res.status(404).json({ error: "not-found" });
+        if (!result) return res.status(401).json({ error: "login-required" });
+        if (result.invalid) return res.status(400).json({ error: "invalid" });
+        res.json({ charity: result });
+    } catch (err) {
+        console.error("api/charity donation PATCH:", err.message);
+        res.status(500).json({ error: "failed" });
+    }
+});
+
+app.delete("/api/charity/:id/donation/:index", requireLogin, async function(req, res){
+    try {
+        const result = await userData.deleteDonation(req, req.params.id, req.params.index);
+        if (result && result.notFound) return res.status(404).json({ error: "not-found" });
+        if (!result) return res.status(401).json({ error: "login-required" });
+        res.json({ charity: result });
+    } catch (err) {
+        console.error("api/charity donation DELETE:", err.message);
+        res.status(500).json({ error: "failed" });
+    }
+});
+
 // ---- Salah log ----
 
 app.get("/api/salah", async function(req, res){

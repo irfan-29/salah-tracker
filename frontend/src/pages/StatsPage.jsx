@@ -71,7 +71,12 @@ function CharityChart({ monthly }) {
         <div className="stats-month-row" key={label}>
           <span className="stats-month-label">{label}</span>
           <div className="stats-bar">
-            <span className="stats-bar-cell stats-bar-charity" style={{ width: `${Math.max(amounts[i] / max, 0)}%` }} />
+            {/* Fraction of the largest month, as a percentage. A 2% floor
+                keeps small-but-nonzero months visible. */}
+            <span
+              className="stats-bar-cell stats-bar-charity"
+              style={{ width: `${amounts[i] > 0 ? Math.max((amounts[i] / max) * 100, 2) : 0}%` }}
+            />
           </div>
           <span className="stats-month-amount">{money(amounts[i])}</span>
         </div>
@@ -241,11 +246,15 @@ export default function StatsPage() {
   const charity = data?.charity;
 
   // Recent giving sorts client-side over the list the server already capped,
-  // so changing the sort never hits the API.
+  // so changing the sort never hits the API. Timestamps, not string compares,
+  // so a legacy long-form date still lands in the right place; the server's
+  // newest-added tie-break (same-day rows) survives this sort, which is
+  // stable.
+  const ts = (value) => { const t = Date.parse(String(value)); return Number.isNaN(t) ? 0 : t; };
   const recentRows = [...(charity?.recent || [])].sort((a, b) => {
     if (givingSort === 'highest') return (Number(b.amount) || 0) - (Number(a.amount) || 0);
-    if (givingSort === 'oldest') return String(a.date).localeCompare(String(b.date));
-    return String(b.date).localeCompare(String(a.date));
+    if (givingSort === 'oldest') return ts(a.date) - ts(b.date);
+    return ts(b.date) - ts(a.date);
   });
 
   return (
@@ -367,7 +376,12 @@ export default function StatsPage() {
               <ul className="stats-donation-list">
                 {recentRows.map((entry, i) => (
                   <li key={`${entry.date}-${i}`} className="stats-donation-row">
-                    <span className="stats-donation-charity">{entry.charity}</span>
+                    <span className="stats-donation-charity">
+                      {entry.charity}
+                      {/* The reason the user gave, in the same grey as the
+                          date, so the amount keeps its emphasis. */}
+                      {entry.note && <span className="stats-donation-reason"> ({entry.note})</span>}
+                    </span>
                     <span className="stats-donation-amount">{money(entry.amount)}</span>
                     <span className="stats-donation-date">{entry.date}</span>
                   </li>

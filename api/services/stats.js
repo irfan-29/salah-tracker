@@ -266,22 +266,28 @@ function buildCharityStats(charities, months = 6, today = new Date()) {
         monthTotals.push(Math.round(total * 100) / 100);
     }
 
-    // Recent donations bring a single list together across every charity. Sorted
-    // newest first and bounded so a one-off sweep of every goal doesn't return
-    // thousands of rows.
+    // Recent donations bring a single list together across every charity.
+    // Sorted newest first; donations sharing a date keep newest-ADDED first,
+    // matching the order the charity page shows. `seq` is the insertion
+    // position inside its charity and is stripped before serving.
     const recent = [];
     for (const charity of charities || []) {
-        for (const donation of charity.donations || []) {
+        const rows = charity.donations || [];
+        for (let i = 0; i < rows.length; i += 1) {
             recent.push({
                 id: String(charity._id || ""),
                 charity: charity.name,
-                amount: Number(donation.amount) || 0,
-                date: donation.date,
-                note: donation.note || ""
+                amount: Number(rows[i].amount) || 0,
+                date: rows[i].date,
+                note: rows[i].note || "",
+                seq: i
             });
         }
     }
-    recent.sort((a, b) => String(b.date).localeCompare(String(a.date)));
+    recent.sort((a, b) => {
+        const byDate = String(b.date || "").localeCompare(String(a.date || ""));
+        return byDate !== 0 ? byDate : b.seq - a.seq;
+    });
 
     const totalDonated = list.reduce((sum, charity) => sum + charity.donated, 0);
     const donationCount = list.reduce((sum, charity) => sum + charity.donationCount, 0);
@@ -290,7 +296,7 @@ function buildCharityStats(charities, months = 6, today = new Date()) {
         months,
         goals: list,
         monthly: { labels, amounts: monthTotals },
-        recent: recent.slice(0, 12),
+        recent: recent.slice(0, 12).map(({ seq, ...entry }) => entry),
         summary: {
             goals: list.length,
             amount: totalDonated,

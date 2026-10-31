@@ -130,6 +130,8 @@ export const charity = {
   update: (id, payload) => api.request(`/charity/${id}`, { method: 'PATCH', body: payload }),
   remove: (id) => api.request(`/charity/${id}`, { method: 'DELETE' }),
   donate: (id, payload) => api.post(`/charity/${id}/donate`, payload),
+  updateDonation: (id, index, payload) => api.request(`/charity/${id}/donation/${index}`, { method: 'PATCH', body: payload }),
+  removeDonation: (id, index) => api.request(`/charity/${id}/donation/${index}`, { method: 'DELETE' }),
 };
 
 export const stats = {

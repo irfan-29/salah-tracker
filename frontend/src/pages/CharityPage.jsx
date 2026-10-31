@@ -30,7 +30,7 @@ function CharityProgress({ value }) {
   );
 }
 
-function CharityCard({ charity, onDonate, onEdit, onDelete, donationOpen, donation, date, onDonationChange, onDonationSave, saving, canDelete }) {
+function CharityCard({ charity, onDonate, onEdit, onDelete, donationOpen, donation, date, onDonationChange, onDonationSave, saving, canDelete, donationIndex, onDonationEdit, onDonationDelete, onDonationClose }) {
   const reached = charity.progress.percent >= 100;
   return (
     <article className={`container1 charity-card${reached ? ' is-complete' : ''}`} aria-labelledby={`charity_${charity.id}`}>
@@ -97,9 +97,9 @@ function CharityCard({ charity, onDonate, onEdit, onDelete, donationOpen, donati
           </div>
           <div className="new-task">
             <button type="button" className="btn btn-primary" onClick={() => onDonationSave(charity.id)} disabled={saving}>
-              {saving ? 'Saving…' : 'Save donation'}
+              {donationIndex != null ? (saving ? 'Saving…' : 'Save changes') : (saving ? 'Saving…' : 'Save donation')}
             </button>
-            <button type="button" className="btn btn-outline" style={{ marginLeft: '0.5rem' }} onClick={() => onDonate(null)}>
+            <button type="button" className="btn btn-outline" style={{ marginLeft: '0.5rem' }} onClick={onDonationClose}>
               Cancel
             </button>
           </div>
@@ -113,11 +113,33 @@ function CharityCard({ charity, onDonate, onEdit, onDelete, donationOpen, donati
             <span className="charity-donations-total">Lifetime {money(charity.lifeTime.given)}</span>
           </div>
           <ul className="charity-donation-list">
-            {[...charity.donations].slice(-5).reverse().map((entry, i) => (
-              <li key={`${entry.date}-${i}`}>
+            {/* Each row keeps its position in the stored list (entry.idx) - the
+                edit / delete calls target that index. */}
+            {charity.donations.map((entry, idx) => ({ ...entry, idx })).slice(-5).reverse().map((entry) => (
+              <li key={`${entry.date}-${entry.idx}`}>
                 <span className="charity-donation-date">{entry.date}</span>
                 <span className="charity-donation-amount">{money(entry.amount)}</span>
                 {entry.note && <span className="charity-donation-note">{entry.note}</span>}
+                <span className="charity-donation-actions">
+                  <button
+                    type="button"
+                    className="fav-btn"
+                    aria-label={`Edit donation of ${money(entry.amount)} on ${entry.date}`}
+                    title="Edit donation"
+                    onClick={() => onDonationEdit(charity.id, entry.idx, entry)}
+                  >
+                    <span className="material-symbols-rounded">edit</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="fav-btn"
+                    aria-label={`Delete donation of ${money(entry.amount)} on ${entry.date}`}
+                    title="Delete donation"
+                    onClick={() => onDonationDelete(charity.id, entry.idx)}
+                  >
+                    <span className="material-symbols-rounded">delete</span>
+                  </button>
+                </span>
               </li>
             ))}
           </ul>
@@ -136,6 +158,9 @@ export default function CharityPage() {
   const [draft, setDraft] = useState({ name: '', targetAmount: '', period: 'monthly' });
   const [donationOpen, setDonationOpen] = useState(null);
   const [donation, setDonation] = useState({ amount: '', date: today(), note: '' });
+  // When set, the open donation panel edits that row (its index in the
+  // charity's stored list) instead of adding a new one.
+  const [donationIndex, setDonationIndex] = useState(null);
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
@@ -196,18 +221,43 @@ export default function CharityPage() {
     setSaving(true);
     setError('');
     try {
-      await api.donate(charityId, {
+      const payload = {
         amount: Number(donation.amount),
         date: donation.date,
         note: donation.note || ''
-      });
-      setDonationOpen(null);
-      setDonation({ amount: '', date: today(), note: '' });
+      };
+      if (donationIndex != null) await api.updateDonation(charityId, donationIndex, payload);
+      else await api.donate(charityId, payload);
+      closeDonation();
       await load();
     } catch (err) {
       setError('Could not save that donation.');
     } finally {
       setSaving(false);
+    }
+  }
+
+  const closeDonation = () => {
+    setDonationOpen(null);
+    setDonationIndex(null);
+    setDonation({ amount: '', date: today(), note: '' });
+  };
+
+  // Pencil on a donation row: open the same panel, prefilled with the row.
+  function editDonationRow(charityId, index, entry) {
+    setDonationOpen(charityId);
+    setDonationIndex(index);
+    setDonation({ amount: String(entry.amount), date: entry.date, note: entry.note || '' });
+  }
+
+  async function deleteDonationRow(charityId, index) {
+    if (!window.confirm('Delete this donation?')) return;
+    try {
+      await api.removeDonation(charityId, index);
+      if (donationOpen === charityId && donationIndex === index) closeDonation();
+      await load();
+    } catch (err) {
+      setError('Could not delete that donation.');
     }
   }
 
@@ -340,11 +390,19 @@ export default function CharityPage() {
               donation={donation}
               saving={saving}
               onDonate={(id) => {
-                setDonationOpen(id === donationOpen ? null : id);
-                setDonation({ amount: '', date: today(), note: '' });
+                if (id === donationOpen && donationIndex == null) closeDonation();
+                else {
+                  setDonationOpen(id);
+                  setDonationIndex(null);
+                  setDonation({ amount: '', date: today(), note: '' });
+                }
               }}
               onEdit={() => openEditor(charities.find((item) => item.id === charity.id))}
               onDelete={deleteCharity}
+              donationIndex={donationIndex}
+              onDonationEdit={editDonationRow}
+              onDonationDelete={deleteDonationRow}
+              onDonationClose={closeDonation}
               onDonationChange={(patch) => setDonation((next) => ({ ...next, ...patch }))}
               onDonationSave={saveDonation}
             />
