@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api, settings as settingsApi } from '../services/api';
 import { useSession } from '../hooks/useSession.jsx';
+import { useToast } from '../components/ToastProvider';
 import Loader from '../components/Loader';
 
 const TG_ERRORS = {
@@ -78,17 +79,21 @@ function SizeJump({ label, value, hint, saving, onCommit }) {
 // failed instead of "settings could not be saved".
 function useSection() {
   const [state, setState] = useState({ saving: false, error: '' });
+  const toast = useToast();
   const save = useCallback(async (patch) => {
     setState({ saving: true, error: '' });
     try {
       await api.post('/settings', patch);
       setState({ saving: false, error: '' });
+      // One funnel serves every setting row; the confirmation is the same
+      // whichever switch the visitor just threw.
+      toast('Settings updated');
       return true;
     } catch (err) {
       setState({ saving: false, error: err.message || 'Could not save.' });
       return false;
     }
-  }, []);
+  }, [toast]);
   return { ...state, save };
 }
 
@@ -138,6 +143,7 @@ export default function SettingsPage() {
   // the value the pre-paint script reads; refresh re-reads the rest of the meta
   // (default home) so a save does not need a page reload.
   const { isLoggedIn, setTheme, refresh } = useSession();
+  const toast = useToast();
   const [data, setData] = useState(null);
   const [loadError, setLoadError] = useState('');
   const theme = useSection();
@@ -233,6 +239,7 @@ export default function SettingsPage() {
     setTgError('');
     try {
       await api.post('/telegram/prefs', patch);
+      toast('Notification settings updated');
       return true;
     } catch (err) {
       setTgError(TG_ERRORS[err.body?.error] || err.message || 'Could not save.');
@@ -285,6 +292,7 @@ export default function SettingsPage() {
       const fresh = await settingsApi.get();
       setData(fresh);
       setTg({ enabled: fresh.telegram.prefs.enabled, events: { ...fresh.telegram.prefs.events }, times: { ...fresh.telegram.prefs.times } });
+      toast('Telegram connected');
     } catch (err) {
       setTgError(TG_ERRORS[err.body?.error] || 'Could not connect.');
     } finally {
@@ -297,6 +305,7 @@ export default function SettingsPage() {
     setTgError('');
     try {
       await api.post('/telegram/test', { module });
+      toast('Test message sent');
     } catch (err) {
       setTgError(TG_ERRORS[err.body?.error] || 'Could not send that message.');
     } finally {

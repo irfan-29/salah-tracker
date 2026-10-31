@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { salah as api } from '../services/api';
 import { useSession } from '../hooks/useSession.jsx';
+import { useToast } from '../components/ToastProvider';
 import Loader from '../components/Loader';
 import DateField from '../components/DateField';
 import FormSelect from '../components/FormSelect';
@@ -69,6 +70,7 @@ function SalahRing({ completed, total }) {
 // saving an entry reloads that report without a second request.
 export default function SalahPage() {
   const { isLoggedIn } = useSession();
+  const toast = useToast();
 
   const [date, setDate] = useState(today);
   const [findDate, setFindDate] = useState(today);
@@ -105,6 +107,7 @@ export default function SalahPage() {
       // case, so this never doubles up with the effect.
       if (findDate === date) await load(date);
       else setFindDate(date);
+      toast('Prayer logged');
     } catch (err) {
       setError('Could not save that entry.');
     } finally {

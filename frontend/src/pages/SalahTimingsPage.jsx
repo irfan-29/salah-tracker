@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../services/api';
+import { useToast } from '../components/ToastProvider';
 import Loader from '../components/Loader';
 import FormSelect from '../components/FormSelect';
 
 const LOCATIONS = ['Coimbatore', 'Hosur', 'Salem', 'Ramanathapuram', 'Bengaluru'];
 
 export default function SalahTimingsPage() {
+  const toast = useToast();
   const [state, setState] = useState({ loading: true, location: '', details: null });
   const [error, setError] = useState('');
 
@@ -29,6 +31,7 @@ export default function SalahTimingsPage() {
       // the next visit; the widget is re-fetched for the new location.
       await api.post('/settings', { location: value });
       await load(value);
+      toast('Location updated');
     } catch (err) {
       setError('Could not change location.');
     }

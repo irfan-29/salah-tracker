@@ -101,6 +101,7 @@ export default function ChallengesPage() {
       // Reload instead of trusting the short save response: it omits the
       // challenge name and last-updated label, which blanked the cards.
       await load();
+      toast('Streaks updated');
     } catch (err) {
       setError(err.status === 400 ? 'That date could not be read.' : 'Could not update streaks.');
     } finally {
