@@ -63,7 +63,11 @@ function PrayerBar({ prayer }) {
 function CharityChart({ monthly }) {
   const labels = monthly?.labels || [];
   const amounts = monthly?.amounts || [];
-  const max = Math.max(...amounts, 1);
+  // The bar fills against the total monthly giving target, so 100% means the
+  // targets were met - not "this was the biggest month". Without a target
+  // (none set, or an older cached response), fall back to the largest month.
+  const target = Number(monthly?.target) || 0;
+  const max = target > 0 ? target : Math.max(...amounts, 1);
 
   return (
     <div className="stats-month-chart">
@@ -71,11 +75,11 @@ function CharityChart({ monthly }) {
         <div className="stats-month-row" key={label}>
           <span className="stats-month-label">{label}</span>
           <div className="stats-bar">
-            {/* Fraction of the largest month, as a percentage. A 2% floor
-                keeps small-but-nonzero months visible. */}
+            {/* Share of the target, capped at 100%. A 2% floor keeps a
+                small-but-nonzero month visible. */}
             <span
               className="stats-bar-cell stats-bar-charity"
-              style={{ width: `${amounts[i] > 0 ? Math.max((amounts[i] / max) * 100, 2) : 0}%` }}
+              style={{ width: `${amounts[i] > 0 ? Math.min(Math.max((amounts[i] / max) * 100, 2), 100) : 0}%` }}
             />
           </div>
           <span className="stats-month-amount">{money(amounts[i])}</span>

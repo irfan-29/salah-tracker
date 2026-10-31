@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { charity as api, ApiError } from '../services/api';
+import { useConfirm } from '../components/ConfirmProvider';
 import { useSession } from '../hooks/useSession.jsx';
 import Loader from '../components/Loader';
 import DateField from '../components/DateField';
@@ -46,7 +47,7 @@ function CharityCard({ charity, onDonate, onEdit, onDelete, donationOpen, donati
           <button type="button" className="btn btn-outline" onClick={() => onDonate(charity.id)}>Add donation</button>
           <button type="button" className="btn btn-outline" onClick={() => onEdit(charity.id)}>Edit</button>
           {canDelete && (
-            <button type="button" className="btn btn-outline" onClick={() => onDelete(charity.id)}>Delete</button>
+            <button type="button" className="btn btn-danger-outline" onClick={() => onDelete(charity.id)}>Delete</button>
           )}
         </div>
       </div>
@@ -132,7 +133,7 @@ function CharityCard({ charity, onDonate, onEdit, onDelete, donationOpen, donati
                   </button>
                   <button
                     type="button"
-                    className="fav-btn"
+                    className="fav-btn is-danger"
                     aria-label={`Delete donation of ${money(entry.amount)} on ${entry.date}`}
                     title="Delete donation"
                     onClick={() => onDonationDelete(charity.id, entry.idx)}
@@ -151,6 +152,7 @@ function CharityCard({ charity, onDonate, onEdit, onDelete, donationOpen, donati
 
 export default function CharityPage() {
   const { isLoggedIn } = useSession();
+  const ask = useConfirm();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -251,7 +253,13 @@ export default function CharityPage() {
   }
 
   async function deleteDonationRow(charityId, index) {
-    if (!window.confirm('Delete this donation?')) return;
+    const ok = await ask({
+      title: 'Delete this donation?',
+      message: 'It is removed from the charity totals.',
+      confirmLabel: 'Delete',
+      danger: true
+    });
+    if (!ok) return;
     try {
       await api.removeDonation(charityId, index);
       if (donationOpen === charityId && donationIndex === index) closeDonation();
@@ -262,7 +270,13 @@ export default function CharityPage() {
   }
 
   async function deleteCharity(charityId) {
-    if (!window.confirm('Delete this charity and its donation history?')) return;
+    const ok = await ask({
+      title: 'Delete this charity?',
+      message: 'Its donation history goes with it. This cannot be undone.',
+      confirmLabel: 'Delete',
+      danger: true
+    });
+    if (!ok) return;
     try {
       await api.remove(charityId);
       await load();

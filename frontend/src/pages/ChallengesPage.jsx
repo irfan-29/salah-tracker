@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { challenges as api } from '../services/api';
+import { useConfirm } from '../components/ConfirmProvider';
 import { useSession } from '../hooks/useSession.jsx';
 import Loader from '../components/Loader';
 import DateField from '../components/DateField';
@@ -8,6 +9,7 @@ import DateField from '../components/DateField';
 // Markup mirrors views/challenges.ejs so the shared stylesheet applies.
 export default function ChallengesPage() {
   const { isLoggedIn } = useSession();
+  const ask = useConfirm();
   const [list, setList] = useState([]);
   const [canManage, setCanManage] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -138,8 +140,15 @@ export default function ChallengesPage() {
 
   async function remove(id) {
     // Same confirmation the EJS form used, so the destructive action is never
-    // one stray click away.
-    if (!window.confirm('Delete this challenge?')) return;
+    // one stray click away - now as an in-app dialog instead of a browser
+    // alert, which the installed app cannot show.
+    const ok = await ask({
+      title: 'Delete this challenge?',
+      message: 'Its check-in history goes with it.',
+      confirmLabel: 'Delete',
+      danger: true
+    });
+    if (!ok) return;
     try {
       await api.remove(id);
       await load();

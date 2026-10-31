@@ -1,6 +1,16 @@
 import { useCallback, useEffect, useState } from 'react';
-import { api } from '../services/api';
+import { useNavigate } from 'react-router-dom';
+import { api, ApiError } from '../services/api';
+import { useSession } from '../hooks/useSession.jsx';
 import Loader from '../components/Loader';
+
+// Map the username route's error codes to plain sentences - the raw codes
+// ("taken", "invalid-username") are for programs, not for people.
+const USERNAME_ERRORS = {
+  taken: 'That username is already in use. Try another.',
+  'invalid-username': 'Usernames are 3-30 letters, numbers, dots or underscores.',
+  reserved: 'That username is reserved. Try another.'
+};
 
 // Markup mirrors views/account.ejs (.account-card, .account-avatar,
 // .account-handle, .username-input, .tg-hint).
@@ -10,6 +20,14 @@ export default function AccountPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
+  // Deleting runs in its own small modal (password first), not the shared
+  // confirm dialog: it needs an input, and a mis-tap here costs everything.
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [password, setPassword] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+  const { refresh } = useSession();
+  const navigate = useNavigate();
 
   const load = useCallback(async () => {
     try {
@@ -30,11 +48,38 @@ export default function AccountPage() {
       await load();
       setSaved(true);
     } catch (err) {
-      // The server returns the message in the redirect's ?un= parameter for the
-      // EJS form; the JSON route answers with { error } instead.
-      setError(err.body?.error || 'Could not update your username.');
+      setError(USERNAME_ERRORS[err.body?.error] || 'Could not update your username.');
     } finally {
       setSaving(false);
+    }
+  }
+
+  const closeDelete = () => {
+    setDeleteOpen(false);
+    setPassword('');
+    setDeleteError('');
+  };
+
+  async function deleteAccount(event) {
+    event.preventDefault();
+    if (deleting) return;
+    setDeleting(true);
+    setDeleteError('');
+    try {
+      await api.delete('/account', { password });
+      // The session record is destroyed server-side; drop the cached copy and
+      // land on the public landing page.
+      await refresh();
+      navigate('/');
+    } catch (err) {
+      if (err instanceof ApiError && err.body?.error === 'wrong-password') {
+        setDeleteError('That password is not correct.');
+      } else if (err instanceof ApiError && err.body?.error === 'password-required') {
+        setDeleteError('Enter your password to continue.');
+      } else {
+        setDeleteError('Could not delete the account. Try again.');
+      }
+      setDeleting(false);
     }
   }
 
@@ -118,6 +163,53 @@ export default function AccountPage() {
           </p>
         </div>
       </section>
+
+      <section className="account-danger">
+        <h3><span className="material-symbols-rounded">delete_forever</span> Delete account</h3>
+        <p>
+          This erases everything - your salah record, challenges, charity goals and
+          donations, posts, and this very account. It cannot be undone and it cannot
+          be recovered.
+        </p>
+        <button type="button" className="btn btn-danger-outline" onClick={() => setDeleteOpen(true)}>
+          Delete my account
+        </button>
+      </section>
+
+      {deleteOpen && (
+        <div className="confirm-overlay" role="presentation">
+          <form className="confirm-card" role="alertdialog" aria-modal="true" aria-label="Delete account"
+                onSubmit={deleteAccount} onClick={(e) => e.stopPropagation()}>
+            <h3 className="confirm-title">Delete your account?</h3>
+            <p className="confirm-message">
+              Everything goes - salah history, challenges, charity, posts. Confirm your
+              password to prove it is you.
+            </p>
+            <input
+              className="form-control"
+              type="password"
+              name="password"
+              value={password}
+              autoComplete="current-password"
+              placeholder="Your password"
+              autoFocus
+              onChange={(e) => { setPassword(e.target.value); setDeleteError(''); }}
+              style={{ marginTop: '0.9rem' }}
+            />
+            {deleteError && (
+              <p className="confirm-message" role="alert" style={{ color: 'var(--color-danger)' }}>
+                {deleteError}
+              </p>
+            )}
+            <div className="confirm-actions">
+              <button type="button" className="btn btn-outline" onClick={closeDelete}>Cancel</button>
+              <button type="submit" className="btn btn-danger" disabled={deleting || !password}>
+                {deleting ? 'Deleting…' : 'Delete forever'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </>
   );
 }

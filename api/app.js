@@ -1600,6 +1600,75 @@ app.get("/api/account", requireLogin, function(req, res){
     });
 });
 
+// Update the public handle behind /u/<username>. Usernames are lower-cased on
+// save (see the model's pre-save hook), so uniqueness is checked against the
+// sanitised candidate, excluding the caller's own document.
+app.post("/api/settings/username", requireLogin, async function(req, res){
+    try {
+        const candidate = usernameUtil.sanitize(String((req.body || {}).username || ""));
+        if (!usernameUtil.isValid(candidate)) return res.status(400).json({ error: "invalid-username" });
+        if (usernameUtil.isReserved(candidate)) return res.status(400).json({ error: "reserved" });
+
+        const clash = await User.findOne({ username: candidate, _id: { $ne: req.user._id } })
+            .select("_id")
+            .lean();
+        if (clash) return res.status(409).json({ error: "taken" });
+
+        req.user.username = candidate;
+        await req.user.save();
+        res.json({ ok: true, username: req.user.username });
+    } catch (err) {
+        console.error("api/settings/username POST:", err.message);
+        res.status(500).json({ error: "failed" });
+    }
+});
+
+// Full account deletion. The password re-proves it is the account holder -
+// a hijacked session must not be able to erase the account - and every write
+// the user made is removed, not just the profile row.
+app.delete("/api/account", requireLogin, async function(req, res){
+    try {
+        const password = String((req.body || {}).password || "");
+        if (!password) return res.status(400).json({ error: "password-required" });
+
+        const user = await User.findById(req.user._id);
+        if (!user) return res.status(401).json({ error: "login-required" });
+
+        // v9 of passport-local-mongoose resolves { user, error } instead of
+        // taking a callback; a wrong password resolves with user:false.
+        const { user: match } = await user.authenticate(password);
+        if (!match) return res.status(403).json({ error: "wrong-password" });
+
+        await Posts.deleteMany({ author: user._id });
+        // Posts by others keep their like counts honest: remove this user from
+        // every like list rather than deleting the posts.
+        await Posts.updateMany({ likedBy: user._id }, { $pull: { likedBy: user._id } });
+
+        req.logout((err) => {
+            const finish = () => {
+                User.findByIdAndDelete(user._id)
+                    .then(() => res.json({ ok: true }))
+                    .catch((deleteErr) => {
+                        console.error("api/account DELETE:", deleteErr.message);
+                        res.status(500).json({ error: "failed" });
+                    });
+            };
+            if (err) {
+                console.error("api/account DELETE logout:", err.message);
+                return finish();
+            }
+            if (req.session && typeof req.session.destroy === "function") {
+                req.session.destroy(finish);
+                return;
+            }
+            finish();
+        });
+    } catch (err) {
+        console.error("api/account DELETE:", err.message);
+        res.status(500).json({ error: "failed" });
+    }
+});
+
 // ---- Settings ----
 
 // One payload rather than several: the settings page needs all of it at once,

@@ -6376,6 +6376,37 @@ body {
   border-radius: 6px;
 }
 
+/* The delete-account zone on the Account page - visually apart from the
+   account details above it, so the danger reads before the copy does. */
+.account-danger {
+  max-width: 980px;
+  margin: 1.5rem auto 0;
+  padding: 1.25rem 1.5rem 1.5rem;
+  border: 1px solid rgba(217, 83, 79, 0.35);
+  border-radius: 20px;
+  background: rgba(217, 83, 79, 0.05);
+}
+
+.account-danger h3 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-danger);
+}
+
+.account-danger p {
+  margin-top: 0.35rem;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+}
+
+.account-danger .btn {
+  margin-top: 0.9rem;
+}
+
 /* ---- Auth and gates ---- */
 
 .auth-body { background: var(--color-bg-gradient); }
@@ -6671,6 +6702,84 @@ body {
 }
 
 .charity-donation-actions .fav-btn { width: 1.9rem; height: 1.9rem; }
+
+/* --- Destructive controls --------------------------------------------------
+   Delete is always red, never the brand green: the dustbin tints on hover,
+   and the two button variants carry the danger colour outright. */
+.fav-btn.is-danger:hover,
+.fav-btn.is-danger:focus-visible {
+  color: var(--color-danger);
+  background: rgba(217, 83, 79, 0.12);
+}
+
+.btn-danger {
+  background: var(--color-danger);
+  border: 1px solid var(--color-danger);
+  color: #fff;
+}
+
+.btn-danger:hover {
+  background: #c9453f;
+  border-color: #c9453f;
+  color: #fff;
+}
+
+.btn-danger-outline {
+  background: transparent;
+  border: 1px solid rgba(217, 83, 79, 0.45);
+  color: var(--color-danger);
+}
+
+.btn-danger-outline:hover {
+  border-color: var(--color-danger);
+  background: rgba(217, 83, 79, 0.08);
+  color: var(--color-danger);
+}
+
+/* --- In-app confirm dialog -------------------------------------------------
+   Replaces window.confirm, which the installed app cannot render. Same
+   visual family as the auth cards. */
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 220;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background: rgba(10, 25, 24, 0.55);
+  backdrop-filter: blur(3px);
+}
+
+.confirm-card {
+  width: 100%;
+  max-width: 22rem;
+  padding: 1.5rem;
+  border-radius: 20px;
+  background: var(--color-surface, #fff);
+  box-shadow: 0 24px 60px rgba(10, 25, 24, 0.3);
+  animation: app-rise 0.18s ease-out;
+}
+
+.confirm-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.confirm-message {
+  margin-top: 0.4rem;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+}
+
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  margin-top: 1.25rem;
+}
 
 .charity-empty {
   text-align: center;
@@ -6969,9 +7078,14 @@ body {
 .stats-donation-amount { font-weight: 800; color: var(--color-primary-dark); }
 .stats-donation-date { color: var(--color-text-muted); font-size: 0.8rem; }
 
-/* The donation's reason, in brackets after the charity name - the same grey
-   the date wears, so the amount keeps its emphasis. */
-.stats-donation-reason { color: var(--color-text-muted); }
+/* The donation's reason, in brackets after the charity name - deliberately
+   plain, the same grey, weight and size as the date, so it reads as metadata
+   rather than part of the name. */
+.stats-donation-reason {
+  color: var(--color-text-muted);
+  font-weight: 400;
+  font-size: 0.8rem;
+}
 
 /* Soft entrance for each route. The app shell does not remount, so this
    plays once per page instead of looping on data refreshes. */

@@ -6,6 +6,7 @@ import Navbar from './components/Navbar';
 import Player from './components/Player';
 import TabBar from './components/TabBar';
 import { SessionProvider, THEME_STORAGE_KEY } from './hooks/useSession';
+import { ConfirmProvider } from './components/ConfirmProvider';
 import useShareHandler from './hooks/useShareHandler';
 import { api } from './services/api';
 import * as typography from './services/typography';
@@ -197,8 +198,9 @@ function Shell() {
 
   return (
     <SessionProvider value={resolved}>
-      <Navbar session={resolved} />
-      <div className="main-content">
+      <ConfirmProvider>
+        <Navbar session={resolved} />
+        <div className="main-content">
         <Routes>
           <Route path="/quran" element={<QuranPage />} />
           <Route path="/hadith" element={<HadithPage />} />
@@ -225,6 +227,7 @@ function Shell() {
       {/* The phone footer: fixed five-slot navigation. Lives beside the player
           so the dock can stack on top of it, exactly like a native app. */}
       <TabBar />
+      </ConfirmProvider>
     </SessionProvider>
   );
 }

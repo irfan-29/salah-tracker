@@ -56,6 +56,7 @@ export const api = {
   request,
   get: (path, opts) => request(path, opts),
   post: (path, body, opts) => request(path, { ...opts, method: 'POST', body }),
+  delete: (path, body, opts) => request(path, { ...opts, method: 'DELETE', body }),
 };
 
 // ---- Quran module --------------------------------------------------------

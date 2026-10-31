@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { posts as api } from '../services/api';
+import { useConfirm } from '../components/ConfirmProvider';
 import { useSession } from '../hooks/useSession';
 import Loader from '../components/Loader';
 import NotFound from './NotFound';
@@ -11,6 +12,7 @@ import NotFound from './NotFound';
 export function PostCard({ post, permalinkBase = '', canManage, onChanged, onDeleted }) {
   const { username, isLoggedIn } = useSession();
   const navigate = useNavigate();
+  const ask = useConfirm();
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [removed, setRemoved] = useState(false);
@@ -94,7 +96,13 @@ export function PostCard({ post, permalinkBase = '', canManage, onChanged, onDel
 
   async function handleDelete() {
     if (deleting) return;
-    if (!window.confirm('Delete this post? This cannot be undone.')) return;
+    const ok = await ask({
+      title: 'Delete this post?',
+      message: 'This cannot be undone.',
+      confirmLabel: 'Delete',
+      danger: true
+    });
+    if (!ok) return;
 
     setDeleting(true);
     setError('');

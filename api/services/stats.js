@@ -292,10 +292,23 @@ function buildCharityStats(charities, months = 6, today = new Date()) {
     const totalDonated = list.reduce((sum, charity) => sum + charity.donated, 0);
     const donationCount = list.reduce((sum, charity) => sum + charity.donationCount, 0);
 
+    // The chart's yardstick is the giving target itself, not the largest
+    // month - a full bar should mean "the monthly targets were met", the way
+    // the per-charity bars read. Only monthly-period charities count toward
+    // it; with none set, the client falls back to scaling by the largest
+    // month.
+    const monthlyTarget = (charities || [])
+        .filter((charity) => (charity.period || "monthly") === "monthly")
+        .reduce((sum, charity) => sum + (Number(charity.targetAmount) || 0), 0);
+
     return {
         months,
         goals: list,
-        monthly: { labels, amounts: monthTotals },
+        monthly: {
+            labels,
+            amounts: monthTotals,
+            target: Math.round(monthlyTarget * 100) / 100
+        },
         recent: recent.slice(0, 12).map(({ seq, ...entry }) => entry),
         summary: {
             goals: list.length,
