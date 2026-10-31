@@ -29,9 +29,9 @@ export function ToastProvider({ children }) {
   return (
     <ToastContext.Provider value={value}>
       {children}
-      <div className="toast-stack" role="status" aria-live="polite">
+      <div className="app-toast-stack" role="status" aria-live="polite">
         {toasts.map((t) => (
-          <div key={t.id} className={`toast toast-${t.kind}`}>
+          <div key={t.id} className={`app-toast app-toast-${t.kind}`}>
             <span className="material-symbols-rounded" aria-hidden="true">
               {t.kind === 'error' ? 'error' : 'check_circle'}
             </span>

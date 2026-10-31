@@ -6806,8 +6806,10 @@ body {
 
 /* --- Toasts -----------------------------------------------------------------
    Self-dismissing confirmations for every write. Sits above the tab bar so
-   the phone dock never covers it, under the confirm dialog's overlay. */
-.toast-stack {
+   the phone dock never covers it, under the confirm dialog's overlay.
+   (Prefixed app-toast-: Bootstrap also ships a .toast, whose
+   .toast:not(.show) { display: none } would swallow ours.) */
+.app-toast-stack {
   position: fixed;
   left: 0;
   right: 0;
@@ -6820,7 +6822,7 @@ body {
   pointer-events: none;
 }
 
-.toast {
+.app-toast {
   display: flex;
   align-items: center;
   gap: 0.45rem;
@@ -6835,11 +6837,11 @@ body {
   animation: toast-rise 0.22s ease-out;
 }
 
-.toast .material-symbols-rounded { font-size: 1.1rem; }
+.app-toast .material-symbols-rounded { font-size: 1.1rem; }
 
-.toast-ok .material-symbols-rounded { color: #4ade80; }
+.app-toast-ok .material-symbols-rounded { color: #4ade80; }
 
-.toast-error .material-symbols-rounded { color: #f87171; }
+.app-toast-error .material-symbols-rounded { color: #f87171; }
 
 @keyframes toast-rise {
   from { opacity: 0; transform: translateY(10px); }
