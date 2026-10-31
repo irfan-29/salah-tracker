@@ -268,7 +268,7 @@ export default function CharityPage() {
       await api.removeDonation(charityId, index);
       if (donationOpen === charityId && donationIndex === index) closeDonation();
       await load();
-      toast('Donation deleted');
+      toast('Donation deleted', { kind: 'delete' });
     } catch (err) {
       setError('Could not delete that donation.');
     }
@@ -285,7 +285,7 @@ export default function CharityPage() {
     try {
       await api.remove(charityId);
       await load();
-      toast('Charity deleted');
+      toast('Charity deleted', { kind: 'delete' });
     } catch (err) {
       setError('Could not delete that charity.');
     }

@@ -23,7 +23,6 @@ export function ToastProvider({ children }) {
       delete timers.current[id];
     }, duration);
   }, []);
-
   const value = useMemo(() => toast, [toast]);
 
   return (
@@ -33,7 +32,7 @@ export function ToastProvider({ children }) {
         {toasts.map((t) => (
           <div key={t.id} className={`app-toast app-toast-${t.kind}`}>
             <span className="material-symbols-rounded" aria-hidden="true">
-              {t.kind === 'error' ? 'error' : 'check_circle'}
+              {t.kind === 'delete' ? 'delete' : t.kind === 'error' ? 'error' : 'check_circle'}
             </span>
             {t.message}
           </div>
@@ -45,5 +44,7 @@ export function ToastProvider({ children }) {
 
 export function useToast() {
   const toast = useContext(ToastContext);
+  // `toast(message)` → success pill; `toast(message, { kind: 'delete' })` →
+  // the red destructive pill, so a removal never reads as a celebration.
   return toast;
 }

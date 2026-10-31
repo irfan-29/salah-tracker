@@ -156,7 +156,7 @@ export default function ChallengesPage() {
     try {
       await api.remove(id);
       await load();
-      toast('Challenge deleted');
+      toast('Challenge deleted', { kind: 'delete' });
     } catch (err) {
       setError('Could not delete that challenge.');
     }

@@ -112,7 +112,7 @@ export function PostCard({ post, permalinkBase = '', canManage, onChanged, onDel
       await api.remove(post._id);
       setRemoved(true);
       if (onDeleted) onDeleted(post);
-      toast('Post deleted');
+      toast('Post deleted', { kind: 'delete' });
     } catch (err) {
       setError(err.status === 401 ? 'Sign in to delete this post.' : 'Could not delete that post.');
       setDeleting(false);
