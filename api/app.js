@@ -1618,6 +1618,10 @@ app.post("/api/settings/username", requireLogin, async function(req, res){
         const { user: match } = await user.authenticate(String(body.password || ""));
         if (!match) return res.status(403).json({ error: "wrong-password" });
 
+        // Same handle as before: nothing to write, and no link breaks. Report
+        // success so the client can close its dialog cleanly.
+        if (candidate === user.username) return res.json({ ok: true, username: user.username, unchanged: true });
+
         const clash = await User.findOne({ username: candidate, _id: { $ne: user._id } })
             .select("_id")
             .lean();

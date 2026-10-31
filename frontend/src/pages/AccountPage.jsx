@@ -48,14 +48,16 @@ export default function AccountPage() {
   useEffect(() => { load(); }, [load]);
 
   const closeEditor = () => {
+    // Throw away the draft: the field shows the name the server has again.
     setEditing(false);
     setError('');
   };
 
   // The pencil only opens the field; the password modal appears when the
-  // visitor commits to the change.
+  // visitor commits to the change. A name identical to the saved one is not
+  // a change and never reaches the password step.
   function requestSave() {
-    if (!username.trim()) return;
+    if (!username.trim() || unchanged) return;
     setError('');
     setPassword('');
     setPasswordOpen(true);
@@ -123,6 +125,10 @@ export default function AccountPage() {
   }
 
   const d = state.data;
+  // The name as the server has it. Editing works on a copy: cancelling throws
+  // the copy away, and a name that matches the saved one is not a change.
+  const savedUsername = d.username || '';
+  const unchanged = username.trim().toLowerCase() === savedUsername.toLowerCase();
 
   return (
     <>
@@ -169,11 +175,13 @@ export default function AccountPage() {
                    onChange={(e) => { setUsername(e.target.value); setError(''); }} />
             {editing ? (
               <>
-                <button type="button" className="btn btn-primary" onClick={requestSave} disabled={saving || !username.trim()}>
+                <button type="button" className="btn btn-primary" onClick={requestSave}
+                        disabled={saving || !username.trim() || unchanged}>
                   <span className="material-symbols-rounded">check</span>
                   Update
                 </button>
-                <button type="button" className="btn btn-outline" style={{ marginLeft: '0.5rem' }} onClick={closeEditor}>
+                <button type="button" className="btn btn-outline" style={{ marginLeft: '0.5rem' }}
+                        onClick={() => { closeEditor(); setUsername(d.username || ''); }}>
                   Cancel
                 </button>
               </>
