@@ -335,7 +335,10 @@ export default function HadithBookPage() {
                 </div>
 
                 {h.arabic && (
-                  <p className="ayah-arabic-text hadith-arabic-text" dir="rtl" lang="ar">{h.arabic}</p>
+                  <p className="ayah-arabic-text hadith-arabic-text" dir="rtl" lang="ar"
+                     style={section.favoriteFont ? { fontFamily: `'${section.favoriteFont}', serif` } : undefined}>
+                    {h.arabic}
+                  </p>
                 )}
 
                 <div className="ayah-translation">

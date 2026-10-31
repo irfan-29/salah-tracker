@@ -1600,23 +1600,32 @@ app.get("/api/account", requireLogin, function(req, res){
     });
 });
 
-// Update the public handle behind /u/<username>. Usernames are lower-cased on
-// save (see the model's pre-save hook), so uniqueness is checked against the
-// sanitised candidate, excluding the caller's own document.
+// Update the public handle behind /u/<username>. The password re-proves it is
+// the account holder - the handle is how shared post links resolve, so a
+// hijacked session must not be able to swap it silently. Usernames are
+// lower-cased on save (see the model's pre-save hook), so uniqueness is
+// checked against the sanitised candidate, excluding the caller's own document.
 app.post("/api/settings/username", requireLogin, async function(req, res){
     try {
-        const candidate = usernameUtil.sanitize(String((req.body || {}).username || ""));
+        const body = req.body || {};
+        const candidate = usernameUtil.sanitize(String(body.username || ""));
         if (!usernameUtil.isValid(candidate)) return res.status(400).json({ error: "invalid-username" });
         if (usernameUtil.isReserved(candidate)) return res.status(400).json({ error: "reserved" });
 
-        const clash = await User.findOne({ username: candidate, _id: { $ne: req.user._id } })
+        const user = await User.findById(req.user._id);
+        if (!user) return res.status(401).json({ error: "login-required" });
+
+        const { user: match } = await user.authenticate(String(body.password || ""));
+        if (!match) return res.status(403).json({ error: "wrong-password" });
+
+        const clash = await User.findOne({ username: candidate, _id: { $ne: user._id } })
             .select("_id")
             .lean();
         if (clash) return res.status(409).json({ error: "taken" });
 
-        req.user.username = candidate;
-        await req.user.save();
-        res.json({ ok: true, username: req.user.username });
+        user.username = candidate;
+        await user.save();
+        res.json({ ok: true, username: user.username });
     } catch (err) {
         console.error("api/settings/username POST:", err.message);
         res.status(500).json({ error: "failed" });
@@ -2058,7 +2067,8 @@ const hadithStore = require("./utils/hadithStore.js");
 const handleHadithBookmarks = async(req, res) => {
     try {
         const entries = await hadithStore.resolveBookmarks(req, req.user.bookmarkHadiths || []);
-        res.json({ ok: true, entries });
+        const settings = await userData.getSettings(req);
+        res.json({ ok: true, entries, favoriteFont: settings.favoriteFont || "QPC-Hafs" });
     } catch (err) {
         console.error("hadiths/bookmarks:", err.message);
         res.status(500).json({ error: "failed" });
@@ -2137,7 +2147,10 @@ app.get("/api/hadiths/:collection/section/:sectionId", async function(req, res){
         const lang = String(req.query.lang || "eng");
         const section = await hadithStore.getSection(req.params.collection, req.params.sectionId, { page, per, lang });
         if (!section) return res.status(404).json({ error: "unknown-section" });
-        res.json(section);
+        // The Arabic face follows the user's Quran Font preference, the same
+        // way the surah payload carries it.
+        const settings = await userData.getSettings(req);
+        res.json({ ...section, favoriteFont: settings.favoriteFont || "QPC-Hafs" });
     } catch (err) {
         console.error("api/hadiths/section:", err.message);
         res.status(500).json({ error: "failed" });

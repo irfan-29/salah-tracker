@@ -8,6 +8,9 @@ import { hadiths } from '../services/api';
 // documents the reader uses.
 export function useHadithBookmarks() {
   const [bookmarks, setBookmarks] = useState([]);
+  // The user's Quran Font preference rides on the bookmarks payload, so the
+  // bookmarked Arabic renders in the same face the reader chose.
+  const [favoriteFont, setFavoriteFont] = useState('');
   const [loaded, setLoaded] = useState(false);
   // True once the server has answered 401 - the Bookmarks tab uses it to show
   // the sign-in gate instead of a wrongly-empty list.
@@ -20,6 +23,7 @@ export function useHadithBookmarks() {
       const entries = data.entries || [];
       keysRef.current = new Set(entries.map((b) => `${b.collection}:${b.number}`));
       setBookmarks(entries);
+      setFavoriteFont(data.favoriteFont || '');
       setSignedOut(false);
       setLoaded(true);
       return entries;
@@ -72,5 +76,5 @@ export function useHadithBookmarks() {
     }
   }, [reload]);
 
-  return { bookmarks, loaded, signedOut, isBookmarked, toggleBookmark, reload };
+  return { bookmarks, favoriteFont, loaded, signedOut, isBookmarked, toggleBookmark, reload };
 }

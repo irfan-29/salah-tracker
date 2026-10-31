@@ -3472,6 +3472,21 @@ hr {
   max-width: 420px;
 }
 
+/* The pencil that opens the otherwise read-only handle. Same icon-button
+   treatment as the readers' share / bookmark pair. */
+.username-input .username-edit {
+  flex: 0 0 auto;
+  width: 2.4rem;
+  height: 2.4rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.username-input .username-edit:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
 .username-input .form-control {
   text-transform: lowercase;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -6783,6 +6798,48 @@ body {
   justify-content: flex-end;
   gap: 0.6rem;
   margin-top: 1.25rem;
+}
+
+/* --- Toasts -----------------------------------------------------------------
+   Self-dismissing confirmations for every write. Sits above the tab bar so
+   the phone dock never covers it, under the confirm dialog's overlay. */
+.toast-stack {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(4.6rem + env(safe-area-inset-bottom, 0px));
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  max-width: min(26rem, calc(100vw - 2rem));
+  padding: 0.6rem 1.1rem;
+  border-radius: 999px;
+  background: var(--color-text);
+  color: var(--color-surface, #fffdfa);
+  font-size: 0.86rem;
+  font-weight: 600;
+  box-shadow: 0 12px 30px -12px rgba(10, 25, 24, 0.45);
+  animation: toast-rise 0.22s ease-out;
+}
+
+.toast .material-symbols-rounded { font-size: 1.1rem; }
+
+.toast-ok .material-symbols-rounded { color: #4ade80; }
+
+.toast-error .material-symbols-rounded { color: #f87171; }
+
+@keyframes toast-rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .charity-empty {

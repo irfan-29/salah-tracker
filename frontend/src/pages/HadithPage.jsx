@@ -17,7 +17,7 @@ export default function HadithPage() {
   const [tab, setTab] = useState('collections');
   const [collections, setCollections] = useState(null);
   const [error, setError] = useState('');
-  const { bookmarks, signedOut, toggleBookmark } = useHadithBookmarks();
+  const { bookmarks, favoriteFont, signedOut, toggleBookmark } = useHadithBookmarks();
 
   useEffect(() => {
     let cancelled = false;
@@ -128,7 +128,10 @@ export default function HadithPage() {
                     </header>
 
                     {entry.arabic && (
-                      <p className="ayah-arabic-text hadith-arabic-text" dir="rtl" lang="ar">{entry.arabic}</p>
+                      <p className="ayah-arabic-text hadith-arabic-text" dir="rtl" lang="ar"
+                         style={favoriteFont ? { fontFamily: `'${favoriteFont}', serif` } : undefined}>
+                        {entry.arabic}
+                      </p>
                     )}
                     {entry.text && (
                       <div className="ayah-translation">

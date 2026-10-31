@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { charity as api, ApiError } from '../services/api';
 import { useConfirm } from '../components/ConfirmProvider';
+import { useToast } from '../components/ToastProvider';
 import { useSession } from '../hooks/useSession.jsx';
 import Loader from '../components/Loader';
 import DateField from '../components/DateField';
@@ -153,6 +154,7 @@ function CharityCard({ charity, onDonate, onEdit, onDelete, donationOpen, donati
 export default function CharityPage() {
   const { isLoggedIn } = useSession();
   const ask = useConfirm();
+  const toast = useToast();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -207,6 +209,7 @@ export default function CharityPage() {
       else await api.update(editing, payload);
       closeEditor();
       await load();
+      toast(editing === '__new__' ? 'Charity added' : 'Charity updated');
     } catch (err) {
       if (err instanceof ApiError && err.body?.error === 'duplicate') {
         setError('You already have a charity with that name.');
@@ -232,6 +235,7 @@ export default function CharityPage() {
       else await api.donate(charityId, payload);
       closeDonation();
       await load();
+      toast(donationIndex != null ? 'Donation updated' : 'Donation added');
     } catch (err) {
       setError('Could not save that donation.');
     } finally {
@@ -264,6 +268,7 @@ export default function CharityPage() {
       await api.removeDonation(charityId, index);
       if (donationOpen === charityId && donationIndex === index) closeDonation();
       await load();
+      toast('Donation deleted');
     } catch (err) {
       setError('Could not delete that donation.');
     }
@@ -280,6 +285,7 @@ export default function CharityPage() {
     try {
       await api.remove(charityId);
       await load();
+      toast('Charity deleted');
     } catch (err) {
       setError('Could not delete that charity.');
     }

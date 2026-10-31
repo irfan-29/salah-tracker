@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { posts as api } from '../services/api';
 import { useConfirm } from '../components/ConfirmProvider';
+import { useToast } from '../components/ToastProvider';
 import { useSession } from '../hooks/useSession';
 import Loader from '../components/Loader';
 import NotFound from './NotFound';
@@ -13,6 +14,7 @@ export function PostCard({ post, permalinkBase = '', canManage, onChanged, onDel
   const { username, isLoggedIn } = useSession();
   const navigate = useNavigate();
   const ask = useConfirm();
+  const toast = useToast();
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [removed, setRemoved] = useState(false);
@@ -110,6 +112,7 @@ export function PostCard({ post, permalinkBase = '', canManage, onChanged, onDel
       await api.remove(post._id);
       setRemoved(true);
       if (onDeleted) onDeleted(post);
+      toast('Post deleted');
     } catch (err) {
       setError(err.status === 401 ? 'Sign in to delete this post.' : 'Could not delete that post.');
       setDeleting(false);
@@ -355,6 +358,7 @@ function videoLink(content) {
 
 function PostForm({ post, onClose, onSaved }) {
   const editing = Boolean(post);
+  const toast = useToast();
   const [isVideo, setIsVideo] = useState(post ? Boolean(post.isVideo) : false);
   const [link, setLink] = useState(post && post.isVideo ? videoLink(post.content) : '');
   const [content, setContent] = useState(post && !post.isVideo ? (post.content || '') : '');
@@ -387,6 +391,7 @@ function PostForm({ post, onClose, onSaved }) {
       };
       const result = editing ? await api.update(post._id, payload) : await api.create(payload);
       await onSaved(result && result.post);
+      toast(editing ? 'Post updated' : 'Post shared');
     } catch (err) {
       if (err.status === 401) setError('Sign in to save this post.');
       else if (err.status === 403) setError('You can only edit your own posts.');

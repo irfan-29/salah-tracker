@@ -7,6 +7,7 @@ import Player from './components/Player';
 import TabBar from './components/TabBar';
 import { SessionProvider, THEME_STORAGE_KEY } from './hooks/useSession';
 import { ConfirmProvider } from './components/ConfirmProvider';
+import { ToastProvider } from './components/ToastProvider';
 import useShareHandler from './hooks/useShareHandler';
 import { api } from './services/api';
 import * as typography from './services/typography';
@@ -198,6 +199,7 @@ function Shell() {
 
   return (
     <SessionProvider value={resolved}>
+      <ToastProvider>
       <ConfirmProvider>
         <Navbar session={resolved} />
         <div className="main-content">
@@ -228,6 +230,7 @@ function Shell() {
           so the dock can stack on top of it, exactly like a native app. */}
       <TabBar />
       </ConfirmProvider>
+      </ToastProvider>
     </SessionProvider>
   );
 }

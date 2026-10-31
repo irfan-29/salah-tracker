@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { challenges as api } from '../services/api';
 import { useConfirm } from '../components/ConfirmProvider';
+import { useToast } from '../components/ToastProvider';
 import { useSession } from '../hooks/useSession.jsx';
 import Loader from '../components/Loader';
 import DateField from '../components/DateField';
@@ -10,6 +11,7 @@ import DateField from '../components/DateField';
 export default function ChallengesPage() {
   const { isLoggedIn } = useSession();
   const ask = useConfirm();
+  const toast = useToast();
   const [list, setList] = useState([]);
   const [canManage, setCanManage] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -115,6 +117,7 @@ export default function ChallengesPage() {
       setDraft('');
       setEditing(null);
       await load();
+      toast('Challenge added');
     } catch (err) {
       setError('Could not add that challenge.');
     } finally {
@@ -131,6 +134,7 @@ export default function ChallengesPage() {
       setEditing(null);
       setDraft('');
       await load();
+      toast('Challenge renamed');
     } catch (err) {
       setError('Could not rename that challenge.');
     } finally {
@@ -152,6 +156,7 @@ export default function ChallengesPage() {
     try {
       await api.remove(id);
       await load();
+      toast('Challenge deleted');
     } catch (err) {
       setError('Could not delete that challenge.');
     }

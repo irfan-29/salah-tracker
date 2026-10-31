@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, ApiError } from '../services/api';
 import { useSession } from '../hooks/useSession.jsx';
+import { useToast } from '../components/ToastProvider';
 import Loader from '../components/Loader';
 
 // Map the username route's error codes to plain sentences - the raw codes
@@ -9,7 +10,8 @@ import Loader from '../components/Loader';
 const USERNAME_ERRORS = {
   taken: 'That username is already in use. Try another.',
   'invalid-username': 'Usernames are 3-30 letters, numbers, dots or underscores.',
-  reserved: 'That username is reserved. Try another.'
+  reserved: 'That username is reserved. Try another.',
+  'wrong-password': 'That password is not correct.'
 };
 
 // Markup mirrors views/account.ejs (.account-card, .account-avatar,
@@ -17,16 +19,20 @@ const USERNAME_ERRORS = {
 export default function AccountPage() {
   const [state, setState] = useState({ loading: true, data: null });
   const [username, setUsername] = useState('');
+  // The handle reads as text until the pencil opens it - an account's identity
+  // is not something a stray tap should change.
+  const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [saved, setSaved] = useState(false);
-  // Deleting runs in its own small modal (password first), not the shared
-  // confirm dialog: it needs an input, and a mis-tap here costs everything.
-  const [deleteOpen, setDeleteOpen] = useState(false);
+  // Changing the handle asks for the password first, in its own small modal -
+  // the same re-proof account deletion demands.
+  const [passwordOpen, setPasswordOpen] = useState(false);
   const [password, setPassword] = useState('');
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState('');
   const { refresh } = useSession();
+  const toast = useToast();
   const navigate = useNavigate();
 
   const load = useCallback(async () => {
@@ -41,14 +47,41 @@ export default function AccountPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  async function save() {
-    setSaving(true); setError(''); setSaved(false);
+  const closeEditor = () => {
+    setEditing(false);
+    setError('');
+  };
+
+  // The pencil only opens the field; the password modal appears when the
+  // visitor commits to the change.
+  function requestSave() {
+    if (!username.trim()) return;
+    setError('');
+    setPassword('');
+    setPasswordOpen(true);
+  }
+
+  async function save(event) {
+    event?.preventDefault();
+    if (saving) return;
+    setSaving(true);
     try {
-      await api.post('/settings/username', { username });
+      await api.post('/settings/username', { username, password });
       await load();
-      setSaved(true);
+      await refresh();
+      setPasswordOpen(false);
+      setEditing(false);
+      setPassword('');
+      toast('Username updated');
     } catch (err) {
-      setError(USERNAME_ERRORS[err.body?.error] || 'Could not update your username.');
+      const code = err instanceof ApiError && err.body?.error;
+      if (code === 'wrong-password') {
+        // Keep the modal open; the sentence replaces the generic one.
+        setDeleteError(USERNAME_ERRORS[code]);
+      } else {
+        setError(USERNAME_ERRORS[code] || 'Could not update your username.');
+        setPasswordOpen(false);
+      }
     } finally {
       setSaving(false);
     }
@@ -98,10 +131,10 @@ export default function AccountPage() {
         <p>Your identity in Hasanath</p>
       </div>
 
-      {(error || saved) && (
-        <div className={`auth-alert${saved && !error ? ' auth-alert-ok' : ''}`} role={error ? 'alert' : 'status'}>
-          <span className="material-symbols-rounded">{error ? 'error' : 'check_circle'}</span>
-          {error || 'Username updated.'}
+      {error && (
+        <div className="auth-alert" role="alert">
+          <span className="material-symbols-rounded">error</span>
+          {error}
         </div>
       )}
 
@@ -132,11 +165,24 @@ export default function AccountPage() {
                    value={username} placeholder="your-name"
                    pattern="[a-zA-Z0-9._]{3,30}" maxLength={30}
                    autoComplete="off" autoCapitalize="none" spellCheck="false"
-                   onChange={(e) => { setUsername(e.target.value); setSaved(false); setError(''); }} />
-            <button type="button" className="btn btn-primary" onClick={save} disabled={saving}>
-              <span className="material-symbols-rounded">check</span>
-              {saving ? 'Saving…' : 'Update'}
-            </button>
+                   readOnly={!editing}
+                   onChange={(e) => { setUsername(e.target.value); setError(''); }} />
+            {editing ? (
+              <>
+                <button type="button" className="btn btn-primary" onClick={requestSave} disabled={saving || !username.trim()}>
+                  <span className="material-symbols-rounded">check</span>
+                  Update
+                </button>
+                <button type="button" className="btn btn-outline" style={{ marginLeft: '0.5rem' }} onClick={closeEditor}>
+                  Cancel
+                </button>
+              </>
+            ) : (
+              <button type="button" className="fav-btn username-edit" aria-label="Edit username" title="Edit username"
+                      onClick={() => { setEditing(true); }}>
+                <span className="material-symbols-rounded">edit</span>
+              </button>
+            )}
           </div>
         </div>
       </section>
@@ -175,6 +221,44 @@ export default function AccountPage() {
           Delete my account
         </button>
       </section>
+
+      {passwordOpen && (
+        <div className="confirm-overlay" role="presentation">
+          <form className="confirm-card" role="alertdialog" aria-modal="true" aria-label="Confirm username change"
+                onSubmit={save} onClick={(e) => e.stopPropagation()}>
+            <h3 className="confirm-title">Change your username?</h3>
+            <p className="confirm-message">
+              <strong>{d.username || 'your current handle'}</strong> becomes{' '}
+              <strong>{username.trim()}</strong>. Links shared under the old name stop
+              working. Confirm your password to continue.
+            </p>
+            <input
+              className="form-control"
+              type="password"
+              name="password"
+              value={password}
+              autoComplete="current-password"
+              placeholder="Your password"
+              autoFocus
+              onChange={(e) => { setPassword(e.target.value); setDeleteError(''); }}
+              style={{ marginTop: '0.9rem' }}
+            />
+            {deleteError && (
+              <p className="confirm-message" role="alert" style={{ color: 'var(--color-danger)' }}>
+                {deleteError}
+              </p>
+            )}
+            <div className="confirm-actions">
+              <button type="button" className="btn btn-outline" onClick={() => { setPasswordOpen(false); setPassword(''); setDeleteError(''); }}>
+                Cancel
+              </button>
+              <button type="submit" className="btn btn-primary" disabled={saving || !password}>
+                {saving ? 'Saving…' : 'Update'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {deleteOpen && (
         <div className="confirm-overlay" role="presentation">
