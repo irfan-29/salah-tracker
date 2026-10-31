@@ -32,7 +32,7 @@ export function ToastProvider({ children }) {
         {toasts.map((t) => (
           <div key={t.id} className={`app-toast app-toast-${t.kind}`}>
             <span className="material-symbols-rounded" aria-hidden="true">
-              {t.kind === 'delete' ? 'delete' : t.kind === 'error' ? 'error' : 'check_circle'}
+              {t.kind === 'delete' ? 'cancel' : t.kind === 'error' ? 'error' : 'check_circle'}
             </span>
             {t.message}
           </div>

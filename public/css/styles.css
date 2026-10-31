@@ -6841,16 +6841,11 @@ body {
 
 .app-toast-ok .material-symbols-rounded { color: #4ade80; }
 
+/* Deletes keep the same pill as successes - only the icon turns: the red
+   circle-cross where the green tick would sit. */
+.app-toast-delete .material-symbols-rounded { color: #f87171; }
+
 .app-toast-error .material-symbols-rounded { color: #f87171; }
-
-/* Removals wear the danger colour outright - same red as the dustbins and
-   the confirm buttons - so a delete never reads like a success. */
-.app-toast-delete {
-  background: var(--color-danger);
-  color: #fff;
-}
-
-.app-toast-delete .material-symbols-rounded { color: rgba(255, 255, 255, 0.92); }
 
 @keyframes toast-rise {
   from { opacity: 0; transform: translateY(10px); }
